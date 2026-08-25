@@ -14,7 +14,8 @@ from _common import CONTRACTS, ROOT, delete_if_exists, setup_logging, write_text
 
 TS_OUT = ROOT / "packages" / "contracts" / "src" / "generated"
 PY_OUT = ROOT / "python" / "contracts" / "generated"
-RS_OUT = ROOT / "crates" / "common" / "src" / "contracts"
+# Rust 端生成物已随 4c292a6 迁入 src-tauri；crates/common 为历史遗留，勿再写入。
+RS_OUT = ROOT / "apps" / "desktop" / "src-tauri" / "src" / "contracts" / "contracts"
 
 TYPE_MAP_TS = {
     "string": "string",
@@ -159,11 +160,13 @@ def _emit_rs(name: str, schema: dict, rel: Path, schema_root: Path) -> str:
         "",
     ]
     # rustfmt reorder_imports 排序：crate 内部引用先于外部 crate。
+    # 生成物位于 `src/contracts/contracts`（模块 `crate::contracts::contracts`），
+    # 跨引用必须带 `contracts::` 前缀。
     if len(refs) == 1:
-        lines.append(f"use crate::contracts::{refs[0][0]};")
+        lines.append(f"use crate::contracts::contracts::{refs[0][0]};")
     elif len(refs) > 1:
         joined = ", ".join(pascal for pascal, _ in refs)
-        lines.append(f"use crate::contracts::{{{joined}}};")
+        lines.append(f"use crate::contracts::contracts::{{{joined}}};")
     lines.append("use serde::{Deserialize, Serialize};")
     lines.append("")
     lines.append("#[derive(Debug, Clone, Serialize, Deserialize)]")
