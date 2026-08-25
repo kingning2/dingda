@@ -110,7 +110,7 @@ pub async fn account_qr_start(
         platform: Some(platform.to_string()),
     };
     let sidecar = state.lifecycle.client();
-    let response = infra::sidecar::routes::channel_qr_start::call(sidecar, sidecar_request)
+    let response = crate::runtime::python::routes::channel_qr_start::call(sidecar, sidecar_request)
         .await
         .map_err(common::DingDaError::wrap)?;
 
@@ -147,7 +147,7 @@ pub async fn account_qr_check(
         platform: Some(platform.to_string()),
     };
     let sidecar = state.lifecycle.client();
-    let response = infra::sidecar::routes::channel_qr_check::call(sidecar, sidecar_request)
+    let response = crate::runtime::python::routes::channel_qr_check::call(sidecar, sidecar_request)
         .await
         .map_err(common::DingDaError::wrap)?;
 
@@ -235,9 +235,10 @@ pub async fn account_qr_cancel(
         platform: Some(platform.to_string()),
     };
     let sidecar = state.lifecycle.client();
-    let response = infra::sidecar::routes::channel_qr_cancel::call(sidecar, sidecar_request)
-        .await
-        .map_err(common::DingDaError::wrap)?;
+    let response =
+        crate::runtime::python::routes::channel_qr_cancel::call(sidecar, sidecar_request)
+            .await
+            .map_err(common::DingDaError::wrap)?;
 
     Ok(IpcResponse::ok(ChannelIpcQrCancelResponse {
         ok: response.ok,

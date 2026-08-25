@@ -30,6 +30,7 @@ fn sidecar_path_label(path: &str) -> &'static str {
     match path {
         "/health" => "Sidecar 健康检查",
         "/v1/agent/ping" => "Sidecar Agent 探活",
+        "/v1/agent/reply" => "Sidecar Agent 对话",
         "/v1/channel/qr_start" => "Sidecar 发起扫码",
         "/v1/channel/qr_check" => "Sidecar 检查扫码",
         "/v1/channel/qr_cancel" => "Sidecar 取消扫码",

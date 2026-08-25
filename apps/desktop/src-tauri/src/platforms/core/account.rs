@@ -163,7 +163,11 @@ pub async fn account_probe_login(
                 trace_id: Some(format!("ali1688-login-probe-{}", request.account_id)),
             };
             let sidecar = app_state.lifecycle.client();
-            match infra::sidecar::routes::channel_login_probe::call(sidecar, sidecar_request).await
+            match crate::runtime::python::routes::channel_login_probe::call(
+                sidecar,
+                sidecar_request,
+            )
+            .await
             {
                 Ok(response) => {
                     tracing::info!(

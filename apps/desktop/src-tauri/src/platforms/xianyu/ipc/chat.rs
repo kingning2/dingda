@@ -197,7 +197,7 @@ pub async fn channel_qr_start(
         platform: Some("xianyu".to_string()),
     };
     let sidecar = state.lifecycle.client();
-    let response = infra::sidecar::routes::channel_qr_start::call(sidecar, sidecar_request)
+    let response = crate::runtime::python::routes::channel_qr_start::call(sidecar, sidecar_request)
         .await
         .map_err(|error| error.to_string())?;
 
@@ -251,7 +251,7 @@ pub async fn channel_qr_check(
         platform: Some("xianyu".to_string()),
     };
     let sidecar = state.lifecycle.client();
-    let response = infra::sidecar::routes::channel_qr_check::call(sidecar, sidecar_request)
+    let response = crate::runtime::python::routes::channel_qr_check::call(sidecar, sidecar_request)
         .await
         .map_err(|error| error.to_string())?;
 
@@ -321,9 +321,10 @@ pub async fn channel_qr_cancel(
         platform: Some("xianyu".to_string()),
     };
     let sidecar = state.lifecycle.client();
-    let response = infra::sidecar::routes::channel_qr_cancel::call(sidecar, sidecar_request)
-        .await
-        .map_err(|error| error.to_string())?;
+    let response =
+        crate::runtime::python::routes::channel_qr_cancel::call(sidecar, sidecar_request)
+            .await
+            .map_err(|error| error.to_string())?;
 
     Ok(IpcResponse::ok(ChannelIpcQrCancelResponse {
         ok: response.ok,
