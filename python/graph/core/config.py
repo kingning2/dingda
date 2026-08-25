@@ -1,4 +1,6 @@
-"""Graph 运行时配置。"""
+"""Graph 运行时配置。
+
+从 AiSettings 派生 GraphConfig（模型、温度、知识开关等），注入 GraphContext。"""
 
 from __future__ import annotations
 

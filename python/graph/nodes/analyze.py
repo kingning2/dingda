@@ -1,4 +1,6 @@
-"""analyze 节点。"""
+"""analyze 节点 — 先调研摘要，再深度比价分析。
+
+组合 ``research`` 与 ``analyze`` Agent，把结论写回 GraphState.analysis。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""Runtime observability 单元测试。"""
+"""Runtime observability 单元测试。
+
+验证活跃操作登记、错误记录与状态快照字段。"""
 
 from __future__ import annotations
 

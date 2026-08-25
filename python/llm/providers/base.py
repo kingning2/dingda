@@ -1,4 +1,6 @@
-"""Provider 协议。"""
+"""Provider 协议（Protocol）。
+
+规定 ``chat`` 等必须实现的方法，供 LlmClient 与工厂做结构化依赖。"""
 
 from __future__ import annotations
 

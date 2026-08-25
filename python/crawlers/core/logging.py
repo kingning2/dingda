@@ -1,4 +1,6 @@
-"""Contract-compatible JSON Lines logging for the Python sidecar."""
+"""Sidecar 契约兼容的 JSON Lines 日志。
+
+输出 schema_version / timestamp / level / source 等字段，并对密钥、路径、联系方式做脱敏。"""
 
 from __future__ import annotations
 
@@ -179,11 +181,25 @@ def _ensure_utf8(stream: TextIO) -> TextIO:
 
 
 def configure_logging(*, stream: TextIO | None = None) -> None:
-    """Configure the root logger to emit v1 JSON Lines to stdout."""
-    if stream is None:
-        stream = _ensure_utf8(sys.stdout)
-        _ensure_utf8(sys.stderr)
-    handler = logging.StreamHandler(stream)
+    """Configure the root logger to emit v1 JSON Lines.
+
+    设置 `DINGDA_SIDECAR_LOG` 时写入共享日志文件（文件共享通讯，
+    由 Rust 侧 tail）；未设置时回退到 stdout 管道。
+    """
+    log_path = os.getenv("DINGDA_SIDECAR_LOG", "").strip()
+    if log_path:
+        parent = os.path.dirname(log_path)
+        if parent:
+            with suppress(OSError):
+                os.makedirs(parent, exist_ok=True)
+        handler: logging.Handler = logging.FileHandler(
+            log_path, mode="a", encoding="utf-8", delay=True
+        )
+    else:
+        if stream is None:
+            stream = _ensure_utf8(sys.stdout)
+            _ensure_utf8(sys.stderr)
+        handler = logging.StreamHandler(stream)
     handler.setFormatter(JsonLineFormatter())
 
     root = logging.getLogger()

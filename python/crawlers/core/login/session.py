@@ -1,4 +1,6 @@
-"""扫码登录会话与状态常量。"""
+"""扫码登录会话与状态常量。
+
+定义 generating → ready → scanned → success 等状态，以及等待/刷新/过期超时。"""
 
 from __future__ import annotations
 

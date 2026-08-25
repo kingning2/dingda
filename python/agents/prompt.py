@@ -1,4 +1,6 @@
-"""提示词模板 — 对齐 Rust `crates/agent/src/prompt`。"""
+"""提示词模板 — 对齐 Rust ``crates/agent/src/prompt``。
+
+提供议价 / 技术 / 默认 system prompt 与 user 模板，供自动回复生成节点拼装消息。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""渠道抽象基类（参考 CowAgent channel/channel.py）。"""
+"""渠道抽象基类（参考 CowAgent channel/channel.py）。
+
+规定浏览器与扫码登录访问接口，具体平台由 ``Ali1688Channel`` / ``XianyuChannel`` 实现。"""
 
 from __future__ import annotations
 

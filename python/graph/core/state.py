@@ -1,4 +1,6 @@
-"""LangGraph 共享状态。"""
+"""LangGraph 共享状态 TypedDict。
+
+定义比价编排用的 GraphState 与买家回复用的 BuyerReplyState 字段约定。"""
 
 from __future__ import annotations
 

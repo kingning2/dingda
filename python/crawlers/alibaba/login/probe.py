@@ -1,4 +1,6 @@
-"""1688 登录态 Playwright 探针（对齐 1688-cli verifyOnline）。"""
+"""1688 登录态 Playwright 探针（对齐 1688-cli verifyOnline）。
+
+用短生命周期浏览器访问受保护页，根据跳转与 Cookie 判断账号是否仍在线。"""
 
 from __future__ import annotations
 

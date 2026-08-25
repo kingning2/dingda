@@ -1,4 +1,6 @@
-"""分析 Agent — 比价与结论。"""
+"""分析 Agent — 基于归一化商品与匹配结果给出比价/选购结论。
+
+读取 GraphState 中的 query、plan、调研摘要与 matches，经 GraphContext.llm 生成可执行分析。"""
 
 from __future__ import annotations
 

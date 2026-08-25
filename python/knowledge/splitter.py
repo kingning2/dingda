@@ -1,4 +1,6 @@
-"""文档切分。"""
+"""文档切分 — 按长度把长文本切成块。
+
+为 indexer 提供重叠可控的文本块列表（MVP 朴素切分）。"""
 
 from __future__ import annotations
 

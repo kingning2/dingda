@@ -1,4 +1,6 @@
-"""1688 扫码登录（对齐 1688-cli：signin 页 + qrcode/generate API 拦截）。"""
+"""1688 扫码登录（对齐 1688-cli：signin 页 + qrcode/generate API 拦截）。
+
+拦截二维码生成/状态接口，将会话进度映射为统一 QR 状态机供 Rust/UI 轮询。"""
 
 from __future__ import annotations
 

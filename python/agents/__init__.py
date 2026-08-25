@@ -1,8 +1,7 @@
-"""Agent 角色 — 规划、调研、分析。
+"""Agent 角色包 — 规划、调研、分析。
 
 包级不做 eager import，避免 ``graph`` ↔ ``agents.analyst`` 循环依赖；
-``analyze`` / ``plan`` / ``research`` 经 ``__getattr__`` 延迟加载。
-"""
+``analyze`` / ``plan`` / ``research`` 经 ``__getattr__`` 延迟加载。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""Provider 工厂 — 对齐 Rust `provider_from_settings` / `normalize_provider_type`。"""
+"""Provider 工厂 — 对齐 Rust ``provider_from_settings`` / ``normalize_provider_type``。
+
+把配置里的 provider 字符串规范化并实例化对应实现。"""
 
 from __future__ import annotations
 

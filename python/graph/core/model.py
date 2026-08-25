@@ -1,4 +1,6 @@
-"""LangChain ChatModel 工厂 — Graph 节点统一走 LangGraph 生态 LLM。"""
+"""LangChain ChatModel 工厂 — Graph 节点统一走 LangGraph 生态 LLM。
+
+按 AiSettings 创建 ChatModel，并提供议价超限等固定回复常量。"""
 
 from __future__ import annotations
 

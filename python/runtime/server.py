@@ -1,81 +1,20 @@
-"""Runtime HTTP server — consumed by Rust-managed lifecycle."""
+"""Runtime HTTP server — 由 Rust 托管生命周期消费。
+
+把 Contract 路径请求交给 ``dispatch_post``；本模块只负责 HTTP 读写与 GET 探活。"""
 
 from __future__ import annotations
 
-import asyncio
-import inspect
 import json
 import logging
-import threading
-import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, ClassVar
 
+from runtime.dispatch import dispatch_post
 from runtime.handlers.runtime import build_runtime_status
-from runtime.ipc import HANDLERS, ROUTES
+from runtime.ipc import ROUTES
 from runtime.lifecycle import RuntimeLifecycle
-from runtime.observability import get_runtime_observability
 
 logger = logging.getLogger("dingda.runtime")
-
-_QUIET_PATHS = frozenset({"/v1/channel/qr_check"})
-_QUIET_SLOW_MS = 500
-
-_ASYNC_LOOP: asyncio.AbstractEventLoop | None = None
-_ASYNC_LOOP_LOCK = threading.Lock()
-
-
-def _duration_ms(started: float) -> int:
-    return max(0, int((time.perf_counter() - started) * 1000))
-
-
-def _log_request_completed(
-    *,
-    path: str,
-    status: int,
-    duration_ms: int,
-    trace_id: str = "",
-    handler: str = "",
-    ok: bool | None = None,
-) -> None:
-    extra: dict[str, Any] = {
-        "event": "sidecar.request.completed",
-        "feature": "runtime",
-        "method": "POST",
-        "path": path,
-        "status": status,
-        "duration_ms": duration_ms,
-    }
-    if handler:
-        extra["handler"] = handler
-    if trace_id:
-        extra["trace_id"] = trace_id
-    if ok is not None:
-        extra["ok"] = ok
-    message = f"接口调用完成 method=POST path={path} status={status} duration_ms={duration_ms}"
-    quiet = (
-        path in _QUIET_PATHS and status < 400 and duration_ms < _QUIET_SLOW_MS and ok is not False
-    )
-    if quiet:
-        logger.debug(message, extra=extra)
-    else:
-        logger.info(message, extra=extra)
-
-
-def _get_async_loop() -> asyncio.AbstractEventLoop:
-    global _ASYNC_LOOP
-    if _ASYNC_LOOP is None or _ASYNC_LOOP.is_closed():
-        with _ASYNC_LOOP_LOCK:
-            if _ASYNC_LOOP is None or _ASYNC_LOOP.is_closed():
-                loop = asyncio.new_event_loop()
-
-                def _run() -> None:
-                    asyncio.set_event_loop(loop)
-                    loop.run_forever()
-
-                threading.Thread(target=_run, daemon=True, name="runtime-asyncio").start()
-                _ASYNC_LOOP = loop
-    return _ASYNC_LOOP
 
 
 class RuntimeHandler(BaseHTTPRequestHandler):
@@ -106,81 +45,10 @@ class RuntimeHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"code": "not_found", "message": "route not found"})
 
     def do_POST(self) -> None:
-        started = time.perf_counter()
-        path = self.path
-        route = ROUTES.get(path)
-        if route is None:
-            self._send_json(404, {"code": "not_found", "message": "route not found"})
-            _log_request_completed(path=path, status=404, duration_ms=_duration_ms(started))
-            return
-        method, handler_name = route
-        if method != "POST":
-            self._send_json(405, {"code": "method_not_allowed", "message": "method not allowed"})
-            _log_request_completed(
-                path=path,
-                status=405,
-                duration_ms=_duration_ms(started),
-                handler=handler_name,
-            )
-            return
-        handler = HANDLERS.get(handler_name)
-        if handler is None:
-            self._send_json(500, {"code": "handler_missing", "message": "handler not registered"})
-            _log_request_completed(
-                path=path,
-                status=500,
-                duration_ms=_duration_ms(started),
-                handler=handler_name,
-            )
-            return
         payload = self._read_json()
-        trace_id = ""
-        if isinstance(payload, dict):
-            trace_id = str(payload.get("trace_id", ""))
-        obs = get_runtime_observability()
-        req_op = obs.begin_request(path, handler_name, trace_id)
-        try:
-            result = handler(payload if isinstance(payload, dict) else None, trace_id=trace_id)
-            if inspect.iscoroutine(result):
-                loop = _get_async_loop()
-                result = asyncio.run_coroutine_threadsafe(result, loop).result()
-        except Exception as error:
-            duration_ms = _duration_ms(started)
-            obs.record_error(path=path, message=str(error), trace_id=trace_id)
-            obs.end_request(req_op, ok=False)
-            logger.exception(
-                "接口调用异常 method=POST path=%s duration_ms=%s",
-                path,
-                duration_ms,
-                extra={
-                    "event": "sidecar.request.failed",
-                    "feature": "runtime",
-                    "method": "POST",
-                    "path": path,
-                    "status": 500,
-                    "duration_ms": duration_ms,
-                    "handler": handler_name,
-                    "trace_id": trace_id,
-                },
-            )
-            self._send_json(500, {"code": "handler_error", "message": "handler failed"})
-            return
-        ok: bool | None = None
-        if isinstance(result, dict) and "ok" in result:
-            ok = bool(result.get("ok"))
-            if ok is False:
-                message = str(result.get("message") or "handler returned ok=false")
-                obs.record_error(path=path, message=message, trace_id=trace_id)
-        obs.end_request(req_op, ok=ok)
-        self._send_json(200, result)
-        _log_request_completed(
-            path=path,
-            status=200,
-            duration_ms=_duration_ms(started),
-            trace_id=trace_id,
-            handler=handler_name,
-            ok=ok,
-        )
+        body = payload if isinstance(payload, dict) else None
+        result = dispatch_post(self.path, body, method="POST")
+        self._send_json(result.status, result.body)
 
     def _read_json(self) -> Any:
         length = int(self.headers.get("Content-Length", "0"))

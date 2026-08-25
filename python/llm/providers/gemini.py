@@ -1,4 +1,6 @@
-"""Google Gemini Provider。"""
+"""Google Gemini Provider。
+
+调用 Gemini generateContent HTTP API，映射统一 ChatRequest/Response。"""
 
 from __future__ import annotations
 

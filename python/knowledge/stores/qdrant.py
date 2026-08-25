@@ -1,4 +1,6 @@
-"""Qdrant 存储 — 骨架（未接 SDK）。"""
+"""Qdrant 存储 — 骨架（尚未接入 SDK）。
+
+预留与 SQLite 相同的 store 接口，便于后续替换向量后端。"""
 
 from __future__ import annotations
 

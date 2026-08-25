@@ -1,4 +1,6 @@
-"""Anthropic Claude Provider。"""
+"""Anthropic Claude Provider。
+
+走 Messages API（含 API version 头），把统一 ChatRequest 映射为 Claude 请求。"""
 
 from __future__ import annotations
 

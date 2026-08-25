@@ -1,4 +1,6 @@
-"""Graph 编排层错误类型。"""
+"""Graph 编排层错误类型。
+
+区分通用 GraphError、单节点 NodeError 与工作流 WorkflowError，便于上层映射。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""内存向量存储 — MVP 骨架。"""
+"""内存向量存储 — MVP 骨架（非真实 SQLite 持久化）。
+
+用余弦相似度做 top-k 检索，验证知识链路后再换持久后端。"""
 
 from __future__ import annotations
 

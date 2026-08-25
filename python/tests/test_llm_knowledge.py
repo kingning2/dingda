@@ -1,4 +1,6 @@
-"""LLM / 知识库 / 配置层单元测试。"""
+"""LLM / 知识库 / 配置层单元测试。
+
+校验 Provider 工厂规范化、知识服务与比价/商品服务纯函数。"""
 
 from __future__ import annotations
 

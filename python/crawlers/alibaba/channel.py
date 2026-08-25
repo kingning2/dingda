@@ -1,4 +1,6 @@
-"""1688 渠道。"""
+"""1688 渠道实现。
+
+组装浏览器与扫码登录能力，供 ``create_channel("ali1688")`` 返回统一 Channel 接口。"""
 
 from __future__ import annotations
 

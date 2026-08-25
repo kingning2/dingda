@@ -1,4 +1,6 @@
-"""1688 搜索 MTOP 解析（对齐 1688-cli search-mtop.ts）。"""
+"""1688 搜索 MTOP 解析（对齐 1688-cli search-mtop.ts）。
+
+从 JSONP/JSON 文本提取 offer 字段（标题、价格、店铺、销量等）并规范化。"""
 
 from __future__ import annotations
 

@@ -10,7 +10,7 @@
 header（小端）:
 
 ```text
-0x00 [u8;8]  magic = b"DINGSHM\x01"
+0x00 [u8;8]  magic = b"DINGSHM"
 0x08 u32     version
 0x0C u32     slot_count
 0x10 u64     heartbeat_ms（Python 每 ~250ms 更新）
@@ -33,8 +33,7 @@ header（小端）:
 ```
 
 注意：`mmap` 按字节偏移读写，本文件只声明常量与偏移辅助函数，
-不依赖任何第三方库。
-"""
+不依赖任何第三方库。"""
 
 from __future__ import annotations
 

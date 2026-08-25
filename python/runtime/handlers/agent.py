@@ -1,4 +1,6 @@
-"""Agent IPC — 支持多 Provider 与 AiSettings。"""
+"""Agent IPC — 支持多 Provider 与 AiSettings。
+
+处理 ping / complete / reply，把请求交给比价等工作流并记录观测指标。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""Sidecar handlers: /v1/channel/qr_* (POST)。"""
+"""Sidecar handlers：``POST /v1/channel/qr_*`` — 扫码登录启停与状态查询。
+
+``qr_start`` / ``qr_check`` / ``qr_cancel`` 经渠道工厂拿到平台实现后驱动会话。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""1688 搜索工具。"""
+"""1688 搜索工具（Graph 侧薄封装）。
+
+把关键词请求转给 ``crawlers.alibaba`` 搜索，返回结构化 offer 列表。"""
 
 from __future__ import annotations
 

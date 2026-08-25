@@ -1,4 +1,6 @@
-"""1688 Playwright 浏览器配置。"""
+"""1688 Playwright 浏览器配置。
+
+``Ali1688Browser`` 继承平台浏览器抽象，提供 UA / 反检测等 1688 专用参数。"""
 
 from __future__ import annotations
 

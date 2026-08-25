@@ -1,4 +1,6 @@
-"""网页搜索 — DuckDuckGo Instant Answer。"""
+"""网页搜索 — DuckDuckGo Instant Answer。
+
+无密钥 HTTP 查询，为 Graph search 节点提供轻量外网摘要。"""
 
 from __future__ import annotations
 

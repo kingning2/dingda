@@ -1,4 +1,6 @@
-"""统一 LLM 客户端。"""
+"""统一 LLM 客户端。
+
+按 ProviderSettings 创建具体 Provider，对外提供 chat 等一致调用面。"""
 
 from __future__ import annotations
 

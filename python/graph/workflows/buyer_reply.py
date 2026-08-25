@@ -1,4 +1,15 @@
-"""买家 IM 自动回复 — LangGraph 编排（guard → generate）。"""
+"""买家 IM 自动回复 — LangGraph 编排（guard → generate）。
+
+两节点条件图，供 WSS ``auto_reply`` 在收到买家消息时调用：
+
+- ``guard``   — 零成本守卫，依次检查：AI 开关 / api_key / 营业时间段 /
+  意图路由（寒暄等 NO_REPLY 直接跳过）/ 议价轮数超限。
+  不该回复时置 ``skip=True`` 短路，其中议价超限会带固定话术 ``BARGAIN_LIMIT_REPLY``。
+- ``generate``— 拼 system + user prompt 后 LLM 生成回复；若 guard 已给出
+  固定话术则直接透传，不再调模型。
+
+``_route_after_guard`` 条件边：skip → END（无话术时上层返回 None 表示不回复），
+否则 → generate。"""
 
 from __future__ import annotations
 
@@ -17,6 +28,10 @@ from graph.core.state import BuyerReplyState
 
 
 def _compile_buyer_reply_graph(ctx: GraphContext) -> Any:
+    """编译买家回复图：guard 条件分支到 generate 或 END。
+
+    与比价流不同，这里是条件图——guard 的判定决定是否花钱调 LLM。
+    """
     from langgraph.graph import END, StateGraph
 
     graph = StateGraph(BuyerReplyState)
@@ -33,12 +48,18 @@ def _compile_buyer_reply_graph(ctx: GraphContext) -> Any:
 
 
 def _route_after_guard(state: BuyerReplyState) -> Literal["generate", "end"]:
+    """guard 后的条件路由：skip 短路结束，否则进入生成。"""
     if state.get("skip"):
         return "end"
     return "generate"
 
 
 def guard_node(state: BuyerReplyState, ctx: GraphContext) -> dict[str, Any]:
+    """零成本守卫：不调 LLM，只做规则判定。
+
+    任一条件不满足即置 ``skip=True``；唯一例外是议价超限——仍跳过生成，
+    但带上固定婉拒话术让上层直接发送。
+    """
     settings = ctx.config.ai_settings
     if settings is None or not settings.ai_enabled:
         return {"skip": True, "reply": ""}
@@ -59,6 +80,7 @@ def guard_node(state: BuyerReplyState, ctx: GraphContext) -> dict[str, Any]:
 
 
 def generate_node(state: BuyerReplyState, ctx: GraphContext) -> dict[str, str]:
+    """生成回复：guard 已写入固定话术时透传，否则按意图拼 prompt 调 LLM。"""
     if state.get("reply"):
         return {"reply": str(state["reply"])}
 
@@ -88,7 +110,7 @@ def generate_node(state: BuyerReplyState, ctx: GraphContext) -> dict[str, str]:
 
 
 def run_buyer_reply(settings: AiSettings, inbound: dict[str, Any]) -> str | None:
-    """生成买家回复；无需回复时返回 None。"""
+    """生成买家回复；无需回复时返回 None（skip 且无固定话术）。"""
     config = GraphConfig.from_ai_settings(settings)
     ctx = GraphContext(config)
     compiled = _compile_buyer_reply_graph(ctx)

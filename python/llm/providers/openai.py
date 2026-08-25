@@ -1,4 +1,6 @@
-"""OpenAI 兼容 Provider — DeepSeek / Qwen / Doubao / Ollama 等。"""
+"""OpenAI 兼容 Provider — DeepSeek / Qwen / Doubao / Ollama 等。
+
+规范化 base_url，用 ``/v1/chat/completions`` 风格路径发 chat 请求。"""
 
 from __future__ import annotations
 

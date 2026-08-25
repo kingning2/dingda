@@ -1,4 +1,6 @@
-"""LLM 消息与请求/响应模型。"""
+"""LLM 消息与请求/响应模型。
+
+定义 ChatMessage、ChatRequest/Response、Embedding* 与 LlmError，供各 Provider 共用。"""
 
 from __future__ import annotations
 

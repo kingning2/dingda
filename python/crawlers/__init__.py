@@ -1,4 +1,6 @@
-"""数据采集 — 闲鱼 / 1688 爬虫与浏览器会话。"""
+"""数据采集包 — 闲鱼 / 1688 爬虫、登录与浏览器会话。
+
+对外再导出各平台 search 入口与 ``create_channel`` 工厂。"""
 
 from crawlers.alibaba.search import fetch_search as fetch_alibaba_search
 from crawlers.factory import create_channel

@@ -1,3 +1,7 @@
+"""JSON Lines 日志格式与配置单元测试。
+
+断言必填字段、脱敏与 ``configure_logging`` 在环境变量下的行为。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -6,6 +10,7 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -128,6 +133,20 @@ class LoggingConfigurationTests(unittest.TestCase):
         self.assertEqual(logging.getLogger().level, logging.INFO)
         warning = json.loads(stream.getvalue().splitlines()[0])
         self.assertEqual(warning["event"], "logging.invalid_level")
+
+    def test_sidecar_log_env_writes_to_shared_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            log_path = os.path.join(tmp, "logs", "sidecar.log")
+            with patch.dict(os.environ, {"DINGDA_SIDECAR_LOG": log_path}):
+                configure_logging()
+                logging.getLogger("dingda.test").info("共享日志测试")
+                for handler in list(logging.getLogger().handlers):
+                    handler.close()
+
+            with open(log_path, encoding="utf-8") as fh:
+                entry = json.loads(fh.readline())
+        self.assertEqual(entry["message"], "共享日志测试")
+        self.assertEqual(entry["source"], "python")
 
     def test_development_preview_is_truncated_and_sanitized(self) -> None:
         text = "person@example.com token=sample-credential " + ("x" * 1200)

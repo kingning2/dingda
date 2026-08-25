@@ -1,4 +1,6 @@
-"""Sidecar handler: /v1/channel/login_probe (POST) — 1688 Playwright 登录态探针。"""
+"""Sidecar handler：``POST /v1/channel/login_probe`` — 1688 Playwright 登录态探针。
+
+校验平台后调用 ``verify_login_online``，供 Rust 判断 Cookie 是否仍有效。"""
 
 from __future__ import annotations
 

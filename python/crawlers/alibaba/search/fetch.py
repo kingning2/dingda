@@ -1,4 +1,6 @@
-"""1688 关键词搜索（Camoufox 指纹浏览器 + MTOP getOfferList 拦截）。"""
+"""1688 关键词搜索 — Camoufox 指纹浏览器 + MTOP getOfferList 拦截。
+
+打开首页或搜索页，捕获 MTOP 响应并解析为统一 offer 列表；支持有头超时加长。"""
 
 from __future__ import annotations
 

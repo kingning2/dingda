@@ -1,4 +1,6 @@
-"""本地意图检测 — 对齐 Rust `crates/agent/src/intent.rs`。"""
+"""本地意图检测 — 对齐 Rust ``crates/agent/src/intent.rs``。
+
+按关键词将买家消息路由到议价 / 技术 / 默认 / 不回复等意图，供 buyer_reply guard 使用。"""
 
 from __future__ import annotations
 

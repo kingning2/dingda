@@ -1,4 +1,6 @@
-"""AI 回复设置 — 对齐 Rust `AiSettings` / 业务 `ai-config.json`。"""
+"""AI 回复设置 — 对齐 Rust ``AiSettings`` / 业务 ``ai-config.json``。
+
+解析营业时段、议价上限、自动回复开关等，并派生可用的 Provider 配置。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""DashScope App Provider — 百炼应用级接口。"""
+"""DashScope App Provider — 百炼应用级接口。
+
+面向已发布应用的 completion 调用，与普通 OpenAI 兼容 chat 路径区分。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""LangGraph 图构建辅助。"""
+"""LangGraph 图构建辅助。
+
+``bind_context`` 把 GraphContext 闭包进节点函数，便于 ``StateGraph`` 编译。"""
 
 from __future__ import annotations
 

@@ -69,7 +69,6 @@ a = Analysis(
         "graph.core.config",
         "graph.core.graph",
         "graph.workflows.price_compare",
-        "graph.workflows.product_monitor",
         "graph.workflows.buyer_reply",
         "runtime.wss.auto_reply",
         "graph.nodes.planner",

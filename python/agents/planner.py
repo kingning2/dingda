@@ -1,4 +1,6 @@
-"""规划 Agent — 生成执行计划。"""
+"""规划 Agent — 根据用户需求生成后续检索与分析执行计划。
+
+输出写入 GraphState.plan，供 search / analyze 等下游节点消费。"""
 
 from __future__ import annotations
 

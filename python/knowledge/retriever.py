@@ -1,4 +1,6 @@
-"""向量检索。"""
+"""向量检索 — 按 query embedding 查 store。
+
+封装 top-k 查询，供 KnowledgeService / Graph 知识工具使用。"""
 
 from __future__ import annotations
 

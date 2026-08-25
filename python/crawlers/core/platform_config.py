@@ -1,8 +1,6 @@
 """渠道浏览器任务用的平台配置（登录页 URL、二维码选择器、Cookie 域）。
 
-作者：Xiaoman
-创建时间：2026-08-21
-"""
+``normalize_platform`` / ``get_platform_config`` 供工厂与各登录/搜索任务读取。"""
 
 from __future__ import annotations
 

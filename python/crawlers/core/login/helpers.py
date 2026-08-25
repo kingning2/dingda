@@ -1,4 +1,6 @@
-"""扫码登录公用 helper（页面、截图、Cookie 判定等）。"""
+"""扫码登录公用 helper（页面文本、截图、Cookie 判定等）。
+
+把二维码截图转 data URL、从页面文案推断进度，并按平台 Cookie 域判断是否已登录。"""
 
 from __future__ import annotations
 

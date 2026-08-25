@@ -1,4 +1,6 @@
-"""IPC 路由表与 handler 注册 — Contract 路径 → Python handler。"""
+"""IPC 路由表与 handler 注册 — Contract 路径 → Python handler。
+
+HTTP 与共享内存传输共用同一 ROUTES/HANDLERS，保证行为一致。"""
 
 from __future__ import annotations
 

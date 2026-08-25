@@ -1,10 +1,12 @@
-"""工作流定义。"""
+"""工作流定义包。
+
+经 ``__getattr__`` 延迟导出比价 / 买家回复等编排入口。"""
 
 from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["run_buyer_reply", "run_price_compare", "run_product_monitor", "run_reply"]
+__all__ = ["run_buyer_reply", "run_price_compare", "run_reply"]
 
 
 def __getattr__(name: str) -> Any:
@@ -16,10 +18,6 @@ def __getattr__(name: str) -> Any:
         from graph.workflows.price_compare import run_price_compare
 
         return run_price_compare
-    if name == "run_product_monitor":
-        from graph.workflows.product_monitor import run_product_monitor
-
-        return run_product_monitor
     if name == "run_buyer_reply":
         from graph.workflows.buyer_reply import run_buyer_reply
 

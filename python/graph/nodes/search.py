@@ -1,4 +1,6 @@
-"""search 节点 — 网页检索 + 可选渠道工具。"""
+"""search 节点 — 网页检索 + 可选渠道 / 知识工具。
+
+按计划调用 web_search、闲鱼/1688 搜索与知识检索，汇总到 GraphState 检索字段。"""
 
 from __future__ import annotations
 

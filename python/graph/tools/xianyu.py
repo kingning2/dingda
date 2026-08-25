@@ -1,4 +1,6 @@
-"""闲鱼搜索工具。"""
+"""闲鱼搜索工具（Graph 侧薄封装）。
+
+把关键词请求转给 ``crawlers.xianyu`` 搜索，返回结构化商品列表。"""
 
 from __future__ import annotations
 

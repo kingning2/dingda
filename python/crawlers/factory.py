@@ -1,4 +1,6 @@
-"""渠道工厂（参考 CowAgent channel/channel_factory.py）。"""
+"""渠道工厂（参考 CowAgent channel/channel_factory.py）。
+
+按平台名构造 ``Channel`` 实例，供 sidecar 路由在运行时分发登录与搜索。"""
 
 from __future__ import annotations
 

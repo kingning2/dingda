@@ -1,4 +1,6 @@
-"""normalize 节点。"""
+"""normalize 节点 — 商品字段归一化。
+
+调用 ``services.product.normalize_products``，统一标题/价格等供匹配与分析使用。"""
 
 from __future__ import annotations
 

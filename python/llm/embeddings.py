@@ -1,4 +1,6 @@
-"""Embedding — OpenAI 兼容 `/v1/embeddings`。"""
+"""Embedding — OpenAI 兼容 ``/v1/embeddings``。
+
+用 urllib 发请求，供知识库建索引与检索生成向量。"""
 
 from __future__ import annotations
 

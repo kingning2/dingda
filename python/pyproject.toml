@@ -12,6 +12,7 @@ dependencies = [
   "langchain-openai>=0.3",
   "openai>=1.40",
   "websockets>=13.0",
+  "msgpack>=1.0",
 ]
 
 [dependency-groups]

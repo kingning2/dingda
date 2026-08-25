@@ -1,4 +1,6 @@
-"""商品知识 — 对齐 Rust `ItemKnowledge`。"""
+"""商品知识 — 对齐 Rust ``ItemKnowledge``。
+
+组装商品上下文短摘要，并提供简单知识服务门面。"""
 
 from __future__ import annotations
 

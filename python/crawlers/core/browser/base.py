@@ -1,4 +1,6 @@
-"""平台浏览器抽象：UA、代理、反检测由各平台子类实现。"""
+"""平台浏览器抽象：UA、代理、反检测由各平台子类实现。
+
+``BrowserPlatform`` 定义启动前钩子，供 Playwright 公用启动流程调用。"""
 
 from __future__ import annotations
 

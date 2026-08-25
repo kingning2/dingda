@@ -1,4 +1,6 @@
-"""调研 Agent — 汇总搜索与渠道上下文。"""
+"""调研 Agent — 汇总搜索结果与渠道上下文为分析前摘要。
+
+在 analyze 节点中先于深度分析调用，把检索材料压成 GraphState.analysis。"""
 
 from __future__ import annotations
 

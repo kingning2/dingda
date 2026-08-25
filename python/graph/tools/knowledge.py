@@ -1,4 +1,6 @@
-"""知识检索 Graph 工具。"""
+"""知识检索 Graph 工具。
+
+向知识服务查询与当前商品/问题相关的片段，供 search / 回复节点引用。"""
 
 from __future__ import annotations
 

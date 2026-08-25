@@ -1,4 +1,6 @@
-"""Sidecar 运行时观测 — 活跃编排、错误、WSS 摘要（Rust runtime 轮询）。"""
+"""Sidecar 运行时观测 — 活跃编排、错误、WSS 摘要（Rust 轮询）。
+
+线程安全地记录 ActiveOp 与错误环形缓冲，供 ``/v1/runtime/status`` 使用。"""
 
 from __future__ import annotations
 

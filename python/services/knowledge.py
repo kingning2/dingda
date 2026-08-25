@@ -1,4 +1,6 @@
-"""知识库业务服务 — 委托 knowledge 层。"""
+"""知识库业务服务 — 委托 knowledge 层。
+
+暴露 ``item_context`` / ``retrieve``，供 Graph 工具与测试调用。"""
 
 from __future__ import annotations
 

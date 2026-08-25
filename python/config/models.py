@@ -1,4 +1,6 @@
-"""LLM Provider 配置模型。"""
+"""LLM Provider 配置模型。
+
+定义 ProviderKind 与 ProviderSettings（api_key、base_url、model 等），供工厂与客户端使用。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""应用配置 — AI 设置与模型定义。"""
+"""应用配置包 — AI 设置与 Provider 模型定义。
+
+对外经 ``__getattr__`` 延迟导出，避免配置与 LLM 工厂循环导入。"""
 
 from __future__ import annotations
 

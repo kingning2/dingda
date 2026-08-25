@@ -1,8 +1,7 @@
 """Playwright 公用能力：浏览器启动、stealth、通用页面操作。
 
 平台相关的 UA / 代理 / 反检测由 `crawlers.<platform>.browser.BrowserPlatform` 子类实现，
-经 [`create_channel`] 获取渠道实例后调用 ``channel.browser()``。
-"""
+经 [`create_channel`] 获取渠道实例后调用 ``channel.browser()``。"""
 
 from __future__ import annotations
 

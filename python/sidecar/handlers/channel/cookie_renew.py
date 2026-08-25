@@ -1,4 +1,6 @@
-"""Sidecar handler: /v1/channel/cookie_renew (POST) — 按渠道工厂分发登录续期。"""
+"""Sidecar handler：``POST /v1/channel/cookie_renew`` — 按渠道工厂分发登录续期。
+
+解析平台与 Cookie，调用对应续期实现并返回结构化结果与耗时。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""Runtime 生命周期 — 启动/停止钩子。"""
+"""Runtime 生命周期 — 启动/停止钩子。
+
+在 serve 前后登记观测状态，便于 Rust 侧感知 sidecar 就绪与退出。"""
 
 from __future__ import annotations
 

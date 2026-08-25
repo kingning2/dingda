@@ -1,4 +1,6 @@
-"""OpenAI 兼容 LLM 客户端 — 兼容层，委托 llm.client。"""
+"""OpenAI 兼容 LLM 客户端 — 兼容层，委托 ``llm.client``。
+
+保留 ``chat`` 符号，内部转发到统一 LLM 客户端与工厂。"""
 
 from llm.client import LlmClient
 from llm.factory import create_provider, normalize_provider_type

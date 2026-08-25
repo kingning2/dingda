@@ -1,4 +1,6 @@
-"""Sidecar handler: /v1/channel/search (POST) — 渠道关键词搜索（1688 / 闲鱼）。"""
+"""Sidecar handler：``POST /v1/channel/search`` — 渠道关键词搜索（1688 / 闲鱼）。
+
+按平台选择 fetch 实现，统一返回商品/offer 列表给 Rust。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""finalize 节点 — 生成最终回复。"""
+"""finalize 节点 — 基于分析结论生成最终回复文案。
+
+工作流末段调用，输出面向用户的简洁可执行回复。"""
 
 from __future__ import annotations
 

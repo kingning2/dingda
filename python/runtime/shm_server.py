@@ -10,14 +10,10 @@ Rust 侧读取响应后自行归位 `IDLE`。启动时将所有槽位置 `IDLE`�
 ```json
 { "method": "POST", "path": "/v1/...", "body": {...} }
 ```
-路由分发复用 `runtime.ipc.ROUTES / HANDLERS`，handler 签名与 HTTP 版本相同：
-`handler(payload, trace_id=...)`，可返回 `dict` 或协程。
-"""
+业务分发复用 ``runtime.dispatch.dispatch_post``，与 HTTP 路径行为一致。"""
 
 from __future__ import annotations
 
-import asyncio
-import inspect
 import json
 import logging
 import mmap
@@ -26,59 +22,16 @@ import struct
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any
 
 from runtime import shm_protocol as shm
-from runtime.ipc import HANDLERS, ROUTES
-from runtime.observability import get_runtime_observability
-from runtime.server import _get_async_loop
+from runtime.dispatch import dispatch_post
 
 logger = logging.getLogger("dingda.runtime.shm")
-
-_QUIET_PATHS = frozenset({"/v1/channel/qr_check"})
-_QUIET_SLOW_MS = 500
 
 # 心跳刷新周期（ms）。
 _HEARTBEAT_INTERVAL_MS = 250
 # 等待 Rust 先创建好段文件并完成初始化映射的最长时间。
 _SEGMENT_WAIT_TIMEOUT = 15.0
-
-
-def _duration_ms(started: float) -> int:
-    return max(0, int((time.perf_counter() - started) * 1000))
-
-
-def _log_request_completed(
-    *,
-    path: str,
-    status: int,
-    duration_ms: int,
-    trace_id: str = "",
-    handler: str = "",
-    ok: bool | None = None,
-) -> None:
-    extra: dict[str, Any] = {
-        "event": "sidecar.request.completed",
-        "feature": "runtime",
-        "method": "POST",
-        "path": path,
-        "status": status,
-        "duration_ms": duration_ms,
-    }
-    if handler:
-        extra["handler"] = handler
-    if trace_id:
-        extra["trace_id"] = trace_id
-    if ok is not None:
-        extra["ok"] = ok
-    message = f"接口调用完成 method=POST path={path} status={status} duration_ms={duration_ms}"
-    quiet = (
-        path in _QUIET_PATHS and status < 400 and duration_ms < _QUIET_SLOW_MS and ok is not False
-    )
-    if quiet:
-        logger.debug(message, extra=extra)
-    else:
-        logger.info(message, extra=extra)
 
 
 class ShmServer:
@@ -225,18 +178,18 @@ class ShmServer:
     # ------------------------------------------------------------------
     # 请求处理
     # ------------------------------------------------------------------
-    def _handle_slot(self, index: int, raw: bytes, req_seq: int) -> None:
-        started = time.perf_counter()
-        trace_id = ""
+    def _handle_slot(self, index: int, raw: bytes, _req_seq: int) -> None:
         try:
             envelope = json.loads(raw.decode("utf-8"))
         except (ValueError, UnicodeDecodeError) as error:
             logger.warning("请求 envelope 解析失败 slot=%s error=%s", index, error)
             self._write_response(index, status=400, body=b'{"code":"bad_request"}', trace_id="")
             return
-        method = envelope.get("method")
-        path = envelope.get("path", "")
+
+        method = str(envelope.get("method") or "POST")
+        path = str(envelope.get("path") or "")
         body = envelope.get("body")
+        trace_id = ""
         if isinstance(body, dict):
             trace_id = str(body.get("trace_id", ""))
 
@@ -255,80 +208,10 @@ class ShmServer:
             self._running.set()
             return
 
-        if method != "POST" or path not in ROUTES:
-            self._write_response(
-                index,
-                status=404,
-                body=json.dumps({"code": "not_found", "message": "route not found"}).encode(),
-                trace_id=trace_id,
-            )
-            _log_request_completed(
-                path=path, status=404, duration_ms=_duration_ms(started), trace_id=trace_id
-            )
-            return
-
-        _, handler_name = ROUTES[path]
-        handler = HANDLERS.get(handler_name)
-        if handler is None:
-            self._write_response(
-                index,
-                status=500,
-                body=b'{"code":"handler_missing"}',
-                trace_id=trace_id,
-            )
-            return
-
-        obs = get_runtime_observability()
-        req_op = obs.begin_request(path, handler_name, trace_id)
-        ok: bool | None = None
-        try:
-            result = handler(body if isinstance(body, dict) else None, trace_id=trace_id)
-            if inspect.iscoroutine(result):
-                loop = _get_async_loop()
-                result = asyncio.run_coroutine_threadsafe(result, loop).result()
-        except Exception as error:
-            duration_ms = _duration_ms(started)
-            obs.record_error(path=path, message=str(error), trace_id=trace_id)
-            obs.end_request(req_op, ok=False)
-            logger.exception(
-                "接口调用异常 path=%s duration_ms=%s",
-                path,
-                duration_ms,
-                extra={
-                    "event": "sidecar.request.failed",
-                    "feature": "runtime",
-                    "method": "POST",
-                    "path": path,
-                    "status": 500,
-                    "duration_ms": duration_ms,
-                    "handler": handler_name,
-                    "trace_id": trace_id,
-                },
-            )
-            self._write_response(
-                index,
-                status=500,
-                body=b'{"code":"handler_error","message":"handler failed"}',
-                trace_id=trace_id,
-            )
-            return
-
-        if isinstance(result, dict) and "ok" in result:
-            ok = bool(result.get("ok"))
-            if ok is False:
-                message = str(result.get("message") or "handler returned ok=false")
-                obs.record_error(path=path, message=message, trace_id=trace_id)
-        obs.end_request(req_op, ok=ok)
-        payload = json.dumps(result, ensure_ascii=False).encode("utf-8")
-        self._write_response(index, status=200, body=payload, trace_id=trace_id)
-        _log_request_completed(
-            path=path,
-            status=200,
-            duration_ms=_duration_ms(started),
-            trace_id=trace_id,
-            handler=handler_name,
-            ok=ok,
-        )
+        payload = body if isinstance(body, dict) else None
+        result = dispatch_post(path, payload, method=method)
+        encoded = json.dumps(result.body, ensure_ascii=False).encode("utf-8")
+        self._write_response(index, status=result.status, body=encoded, trace_id=result.trace_id)
 
     def _write_response(self, index: int, *, status: int, body: bytes, trace_id: str) -> None:
         mm = self._require_mm()

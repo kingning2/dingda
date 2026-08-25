@@ -1,4 +1,6 @@
-"""Graph 执行上下文 — LangChain ChatModel + 可选知识。"""
+"""Graph 执行上下文 — LangChain ChatModel + 可选知识。
+
+节点通过 ``ctx.llm(prompt)`` 统一调用模型，避免各节点自行创建 Provider。"""
 
 from __future__ import annotations
 

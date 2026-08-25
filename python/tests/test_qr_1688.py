@@ -1,4 +1,6 @@
-"""平台登录 Cookie 判定与 1688 QR 辅助函数测试（不启动 Playwright）。"""
+"""平台登录 Cookie 判定与 1688 QR 辅助函数测试（不启动 Playwright）。
+
+覆盖 Cookie 域判断、进度文案映射与二维码 API 解析辅助逻辑。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""建索引 — 委托 store。"""
+"""建索引 — 将文本块写入向量 store。
+
+MVP 委托 ``SqliteVectorStore``（内存实现），后续可切换 Qdrant。"""
 
 from __future__ import annotations
 

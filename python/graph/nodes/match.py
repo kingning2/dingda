@@ -1,4 +1,6 @@
-"""match 节点。"""
+"""match 节点 — 跨平台商品匹配。
+
+调用 ``services.product.match_products``，把归一化商品配对写入 GraphState.matches。"""
 
 from __future__ import annotations
 

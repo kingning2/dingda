@@ -1,11 +1,7 @@
 """Camoufox / Chromium 统一启动入口（Cookie 续期用）。
 
 优先 `DINGDA_CAMOUFOX_EXE` 或 `DINGDA_PLUGINS_DIR/camoufox` 下的可执行文件；
-否则回退系统 Edge/Chrome。
-
-作者：Xiaoman
-创建时间：2026-08-21
-"""
+否则回退系统 Edge/Chrome。"""
 
 from __future__ import annotations
 
