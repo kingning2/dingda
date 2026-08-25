@@ -8,6 +8,8 @@ dependencies = [
   "playwright-stealth>=2.0.3",
   "camoufox>=0.4.11",
   "segno>=1.6.6",
+  "langgraph>=0.2",
+  "openai>=1.40",
 ]
 
 [dependency-groups]
