@@ -6,23 +6,14 @@ pub mod account;
 pub mod ai;
 pub mod app;
 pub mod channel;
-pub mod license;
-pub mod log;
-pub mod platform;
-pub mod plugin;
+pub mod manage;
 pub mod response;
 pub mod search;
 
 #[cfg(platform_xianyu)]
-pub mod dashboard;
-#[cfg(platform_xianyu)]
-pub mod item;
+pub mod market;
 #[cfg(platform_xianyu)]
 pub mod monitor;
-#[cfg(platform_xianyu)]
-pub mod order;
-#[cfg(platform_xianyu)]
-pub mod risk;
 #[cfg(platform_xianyu)]
 pub mod setting;
 
@@ -32,7 +23,10 @@ pub use account::{
     AccountQrHandle, PostQrLoginHook,
 };
 pub use ai::{agent_reply, ai_account_balance, ai_config_get, ai_config_set, ai_test_api_key};
-pub use app::{app_version, runtime_status, runtime_task_cancel};
+pub use app::{
+    app_version, log_clear, log_recent, log_write, platform_descriptors, runtime_status,
+    runtime_task_cancel,
+};
 #[cfg(platform_xianyu)]
 pub use channel::{
     account_connect, account_connection_state, account_cookie_renew, account_disconnect,
@@ -42,37 +36,32 @@ pub use channel::{
 pub use channel::{
     channel_connect, channel_disconnect, channel_send, channel_state_get, channel_state_set,
 };
+pub use manage::{
+    license_activate, license_machine_code, license_status, plugin_install, plugin_list,
+    plugin_uninstall,
+};
 #[cfg(platform_xianyu)]
-pub use dashboard::{dashboard_stats, DashboardHandle};
-#[cfg(platform_xianyu)]
-pub use item::{item_detail_fetch, item_get, item_list, item_sync, item_update, ItemHandle};
-pub use license::{license_activate, license_machine_code, license_status};
-pub use log::{log_clear, log_recent, log_write};
+pub use market::{
+    item_detail_fetch, item_get, item_list, item_sync, item_update, order_create, order_delete,
+    order_get, order_list, order_update_delivery, order_update_status, ItemHandle, OrderHandle,
+};
 #[cfg(platform_xianyu)]
 pub use monitor::{
-    monitor_generate_keywords, monitor_result_list, monitor_run_get, monitor_run_list,
-    monitor_stats, monitor_task_delete, monitor_task_list, monitor_task_pause_schedule,
-    monitor_task_resume_schedule, monitor_task_run, monitor_task_save, MonitorHandle,
+    dashboard_stats, monitor_generate_keywords, monitor_result_list, monitor_run_get,
+    monitor_run_list, monitor_stats, monitor_task_delete, monitor_task_list,
+    monitor_task_pause_schedule, monitor_task_resume_schedule, monitor_task_run, monitor_task_save,
+    DashboardHandle, MonitorHandle,
 };
-#[cfg(platform_xianyu)]
-pub use order::{
-    order_create, order_delete, order_get, order_list, order_update_delivery, order_update_status,
-    OrderHandle,
-};
-pub use platform::platform_descriptors;
-pub use plugin::{plugin_install, plugin_list, plugin_uninstall};
 pub use response::IpcResponse;
-#[cfg(platform_xianyu)]
-pub use risk::{
-    risk_config_get, risk_config_set, risk_log_clear, risk_log_clear_processing, risk_log_list,
-    risk_log_today_rate, RiskHandle,
-};
 #[cfg(platform_ali1688)]
 pub use search::ali1688_search;
 #[cfg(platform_xianyu)]
 pub use search::xianyu_search;
 #[cfg(platform_xianyu)]
-pub use setting::{user_setting_get, user_setting_set, UserSettingHandle};
+pub use setting::{
+    risk_config_get, risk_config_set, risk_log_clear, risk_log_clear_processing, risk_log_list,
+    risk_log_today_rate, user_setting_get, user_setting_set, RiskHandle, UserSettingHandle,
+};
 
 #[cfg(not(any(platform_xianyu, platform_ali1688)))]
 compile_error!("至少启用一个平台 feature（见 Cargo.toml [features]）");

@@ -1,24 +1,97 @@
-//! 内置插件 IPC — 列表、安装（下载）、卸载。
-//!
-//! OCR 语言包由主进程 HTTP 下载到 `{app_local_data}/plugins/ocr/tessdata/`，进度经
-//! `plugin/progress` 事件推送前端。识别引擎不在本模块。
-//!
-//! 作者：Xiaoman
-//! 创建时间：2026-08-19
+//! 产品管理 IPC — License 授权 / 内置插件。
 
+use crate::cmd::IpcResponse;
+use crate::config::ConfigStore;
 use crate::contracts::contracts::{
     PluginIpcInstallRequest, PluginIpcInstallResponse, PluginIpcListResponse,
     PluginIpcUninstallRequest, PluginIpcUninstallResponse,
 };
+use crate::contracts::license::{LicenseActivateRequest, LicenseStatus};
 use crate::contracts::DingDaResult;
-use std::sync::Arc;
-use tauri::State;
-
-use crate::cmd::IpcResponse;
-use crate::config::ConfigStore;
+use crate::core::manager::app::startup;
+use crate::state::AppState;
 use crate::utils::plugin_download::{
     install_plugin, plugin_list_with_status, sync_camoufox_env, PluginDownloadTracker,
 };
+use std::sync::Arc;
+use tauri::State;
+
+/// 查询当前授权状态的 IPC。
+///
+/// 作者：coisini
+/// 创建时间：2026-07-16
+///
+/// # 参数
+/// - `state` — 应用共享状态
+///
+/// # 返回值
+/// 当前 [`LicenseStatus`]。
+#[tauri::command]
+pub async fn license_status(
+    state: tauri::State<'_, AppState>,
+) -> DingDaResult<IpcResponse<LicenseStatus>> {
+    let within_startup = startup::elapsed_ms() < 15_000;
+    if within_startup {
+        startup::phase("license.status.begin");
+    }
+    let status = state
+        .license
+        .status()
+        .await
+        .map_err(|error| error.to_string())?;
+    if within_startup {
+        startup::phase("license.status.end");
+    }
+    Ok(IpcResponse::ok(status))
+}
+
+/// 读取本机机器码的 IPC。
+///
+/// 作者：coisini
+/// 创建时间：2026-07-16
+///
+/// # 参数
+/// - `state` — 应用共享状态
+///
+/// # 返回值
+/// 本机机器码字符串。
+#[tauri::command]
+pub async fn license_machine_code(
+    state: tauri::State<'_, AppState>,
+) -> DingDaResult<IpcResponse<String>> {
+    Ok(IpcResponse::ok(
+        state
+            .license
+            .machine_code()
+            .await
+            .map_err(|error| error.to_string())?,
+    ))
+}
+
+/// 提交激活请求的 IPC。
+///
+/// 作者：coisini
+/// 创建时间：2026-07-16
+///
+/// # 参数
+/// - `state` — 应用共享状态
+/// - `request` — 激活码或 license key
+///
+/// # 返回值
+/// 激活后的 [`LicenseStatus`]。
+#[tauri::command]
+pub async fn license_activate(
+    state: tauri::State<'_, AppState>,
+    request: LicenseActivateRequest,
+) -> DingDaResult<IpcResponse<LicenseStatus>> {
+    Ok(IpcResponse::ok(
+        state
+            .license
+            .activate(request)
+            .await
+            .map_err(|error| error.to_string())?,
+    ))
+}
 
 /// 列出内置插件及安装状态。
 ///
