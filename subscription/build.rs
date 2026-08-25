@@ -28,7 +28,9 @@ fn main() {
 
     #[cfg(feature = "gui")]
     {
-        slint_build::compile("ui/activation_gen.slint").expect("compile activation_gen.slint");
+        let config = slint_build::CompilerConfiguration::new().with_style("material".into());
+        slint_build::compile_with_config("ui/activation_gen.slint", config)
+            .expect("compile activation_gen.slint");
     }
 }
 
