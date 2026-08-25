@@ -1,47 +1,54 @@
-//! License ?? Tauri commands?
+//! License 闸门 Tauri commands。
 //!
-//! ???coisini
-//! ?????2026-07-21
+//! 作者：coisini
+//! 创建时间：2026-07-21
 
 use common::license::{LicenseActivateRequest, LicenseStatus};
 use common::DingDaResult;
 
+use crate::runtime::app::startup;
 use crate::shared::ipc::IpcResponse;
 use crate::state::AppState;
 
-/// ?????? IPC?
+/// 查询当前授权状态的 IPC。
 ///
-/// ???coisini
-/// ?????2026-07-16
+/// 作者：coisini
+/// 创建时间：2026-07-16
 ///
-/// # ??
-/// - `state` ? ??????
+/// # 参数
+/// - `state` — 应用共享状态
 ///
-/// # ???
-/// ?? [`LicenseStatus`]?
+/// # 返回值
+/// 当前 [`LicenseStatus`]。
 #[tauri::command]
 pub async fn license_status(
     state: tauri::State<'_, AppState>,
 ) -> DingDaResult<IpcResponse<LicenseStatus>> {
-    Ok(IpcResponse::ok(
-        state
-            .license
-            .status()
-            .await
-            .map_err(|error| error.to_string())?,
-    ))
+    let within_startup = startup::elapsed_ms() < 15_000;
+    if within_startup {
+        startup::phase("license.status.begin");
+    }
+    let status = state
+        .license
+        .status()
+        .await
+        .map_err(|error| error.to_string())?;
+    if within_startup {
+        startup::phase("license.status.end");
+    }
+    Ok(IpcResponse::ok(status))
 }
 
-/// ??????? IPC?
+/// 读取本机机器码的 IPC。
 ///
-/// ???coisini
-/// ?????2026-07-16
+/// 作者：coisini
+/// 创建时间：2026-07-16
 ///
-/// # ??
-/// - `state` ? ??????
+/// # 参数
+/// - `state` — 应用共享状态
 ///
-/// # ???
-/// ???????
+/// # 返回值
+/// 本机机器码字符串。
 #[tauri::command]
 pub async fn license_machine_code(
     state: tauri::State<'_, AppState>,
@@ -55,17 +62,17 @@ pub async fn license_machine_code(
     ))
 }
 
-/// ???? IPC?
+/// 提交激活请求的 IPC。
 ///
-/// ???coisini
-/// ?????2026-07-16
+/// 作者：coisini
+/// 创建时间：2026-07-16
 ///
-/// # ??
-/// - `state` ? ??????
-/// - `request` ? ?????? license key?
+/// # 参数
+/// - `state` — 应用共享状态
+/// - `request` — 激活码或 license key
 ///
-/// # ???
-/// ???? [`LicenseStatus`]?
+/// # 返回值
+/// 激活后的 [`LicenseStatus`]。
 #[tauri::command]
 pub async fn license_activate(
     state: tauri::State<'_, AppState>,

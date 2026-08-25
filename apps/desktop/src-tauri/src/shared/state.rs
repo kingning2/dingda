@@ -3,13 +3,13 @@
 //! 作者：coisini
 //! 创建时间：2026-07-16
 
-use infra::agent_sidecar::RuntimeAgentSidecar;
+use crate::runtime::python::{RuntimeAgentSidecar, SidecarLifecycle};
+use crate::runtime::RuntimeSupervisor;
 use infra::event::InMemoryEventBus;
 #[cfg(not(feature = "license-lock"))]
 use infra::license::UnlockedLicenseGate;
 #[cfg(feature = "license-lock")]
 use infra::license::{FailClosedLicenseGate, VerifierProcessLicense};
-use infra::sidecar::lifecycle::SidecarLifecycle;
 use ports::license::LicenseGate;
 use std::sync::Arc;
 
@@ -20,6 +20,7 @@ use std::sync::Arc;
 /// - 持有 sidecar 生命周期与 Agent 网关
 /// - 持有 License 闸门实现
 /// - 持有进程内事件总线
+/// - 持有 Runtime 总协调器（控制层；App 观测走 `runtime::app`）
 ///
 /// 作者：coisini
 /// 创建时间：2026-07-16
@@ -33,6 +34,8 @@ pub struct AppState {
     pub license: Arc<dyn LicenseGate>,
     /// 进程内事件总线（runtime.* 事件经 BusToTauri 转发到前端）。
     pub event_bus: Arc<InMemoryEventBus>,
+    /// Runtime 总协调器（Python / Agent / Task / Shutdown）。
+    pub supervisor: Arc<RuntimeSupervisor>,
 }
 
 /// 按 Cargo feature 构造 License 闸门。

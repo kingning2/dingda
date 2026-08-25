@@ -2,12 +2,12 @@
 //!
 //! 本目录只保留 Tauri 专属胶水：
 //! - `ipc/`：所有 `#[tauri::command]`
-//! - `lifecycle/`：`on_setup` / `on_exit` 等 Tauri 生命周期钩子
 //! - `state.rs`：`AppState`（持有 Tauri 类型的共享状态）
 //! - `channel/coordinator.rs`：协调器（依赖 `tauri::Emitter`）
 //! - `shell_platform.rs`：Tauri 初始化脚本注入
 //! - `compile.rs`：平台编译期常量 re-export
 //!
+//! App 生命周期观测已移至 `crate::runtime::app`（`[startup]` / 窗口 / 路由日志）。
 //! 纯 Rust 业务逻辑已移至 `dingda-business` crate，通过 re-export 向 IPC 层暴露。
 //!
 //! 作者：Xiaoman
@@ -18,7 +18,6 @@ pub mod compile;
 pub mod event_bridge;
 pub mod event_sink;
 pub mod ipc;
-pub mod lifecycle;
 pub mod plugin_download;
 pub mod shell_platform;
 pub mod state;

@@ -6,6 +6,10 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
+    // sidecar 命名用目标 triple（与 infra 一致；`bundled_sidecar_filename` 依赖它）。
+    let target = std::env::var("TARGET").unwrap_or_else(|_| "unknown".into());
+    println!("cargo:rustc-env=DINGDA_TARGET_TRIPLE={target}");
+
     channel_platform_cfg::emit_channel_platform_cfg(
         "../../../tooling/config/channel-platforms.json",
     );
