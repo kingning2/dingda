@@ -1,0 +1,4 @@
+# license-verifier 构建产物（由 pnpm build:license-verifier 生成）
+*
+!.gitkeep
+!.gitignore

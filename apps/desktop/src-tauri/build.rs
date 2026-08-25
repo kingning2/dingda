@@ -2,13 +2,33 @@ mod channel_platform_cfg {
     include!("../../../tooling/build/channel_platform_cfg.rs");
 }
 
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    // sidecar 命名用目标 triple（与 infra 一致；`bundled_sidecar_filename` 依赖它）。
-    let target = std::env::var("TARGET").unwrap_or_else(|_| "unknown".into());
+    // sidecar 命名用目标 triple（与 bundled sidecar 命名一致）。
+    let target = env::var("TARGET").unwrap_or_else(|_| "unknown".into());
     println!("cargo:rustc-env=DINGDA_TARGET_TRIPLE={target}");
+
+    // license verifier 校验数据（原 infra build.rs）。
+    let license_triple = license_target_triple(&target);
+    println!("cargo:rustc-env=DINGDA_LICENSE_TARGET_TRIPLE={license_triple}");
+
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
+    let generated = manifest_dir.join("generated");
+    println!(
+        "cargo:rerun-if-changed={}",
+        generated.join("license_verifier.sha256").display()
+    );
+    println!(
+        "cargo:rerun-if-changed={}",
+        generated.join("license_attest_key.hex").display()
+    );
+    let sha = read_trimmed(generated.join("license_verifier.sha256"));
+    let attest = read_trimmed(generated.join("license_attest_key.hex"));
+    println!("cargo:rustc-env=DINGDA_LICENSE_VERIFIER_SHA256={sha}");
+    println!("cargo:rustc-env=DINGDA_LICENSE_ATTEST_KEY_HEX={attest}");
 
     channel_platform_cfg::emit_channel_platform_cfg(
         "../../../tooling/config/channel-platforms.json",
@@ -18,15 +38,35 @@ fn main() {
     tauri_build::build();
 }
 
+/// Windows 上固定映射为 `*-windows-msvc`，与 bundled verifier 命名一致。
+fn license_target_triple(target: &str) -> String {
+    if cfg!(target_os = "windows") || target.contains("windows") {
+        if target.contains("windows-gnu") {
+            return target.replace("windows-gnu", "windows-msvc");
+        }
+        if target.contains("windows-msvc") {
+            return target.to_string();
+        }
+        return "x86_64-pc-windows-msvc".into();
+    }
+    target.to_string()
+}
+
+fn read_trimmed(path: PathBuf) -> String {
+    fs::read_to_string(&path)
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default()
+}
+
 /// Tauri validates `externalBin` at compile time. Release builds must run
 /// the matching build script first; debug/clippy only needs a placeholder file.
 fn ensure_external_bin_stub_for_dev(base_name: &str) {
-    let profile = std::env::var("PROFILE").unwrap_or_else(|_| "debug".into());
+    let profile = env::var("PROFILE").unwrap_or_else(|_| "debug".into());
     if profile == "release" {
         return;
     }
 
-    let target = std::env::var("TARGET").unwrap_or_else(|_| "unknown".into());
+    let target = env::var("TARGET").unwrap_or_else(|_| "unknown".into());
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let binaries_dir = manifest_dir.join("binaries");
     let binary_path = binaries_dir.join(external_binary_name(base_name, &target));
@@ -82,7 +122,7 @@ fn write_unix_stub(path: &PathBuf) {
 
 #[cfg(windows)]
 fn write_windows_stub(path: &PathBuf) {
-    if let Ok(system_root) = std::env::var("SystemRoot") {
+    if let Ok(system_root) = env::var("SystemRoot") {
         let donor = PathBuf::from(system_root)
             .join("System32")
             .join("where.exe");

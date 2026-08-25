@@ -19,7 +19,7 @@ python skills/dingda/scripts/sync_contracts.py
 | 端 | 目录 |
 |----|------|
 | TypeScript | `packages/contracts/src/generated/` |
-| Rust | `crates/common/src/contracts/` |
+| Rust | `apps/desktop/src-tauri/src/contracts/contracts/` |
 | Python | `python/contracts/generated/` |
 
 变更顺序仍为：**Contract → sync_contracts → 受影响端**（默认 Rust → React；仅 sidecar 例外才改 Python）
