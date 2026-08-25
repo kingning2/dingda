@@ -2,7 +2,7 @@
 name = "macros"
 version.workspace = true
 edition.workspace = true
-description = "DingDa procedural macros (e.g. #[timed])"
+description = "DingDa procedural macros (#[timed], #[runtime], apply_conn_state!)"
 
 [lib]
 proc-macro = true

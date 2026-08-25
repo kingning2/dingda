@@ -12,40 +12,35 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "dingda"
 path = "src/main.rs"
 
-[[bin]]
-name = "dingda-dev-channel"
-path = "src/bin/dingda_dev_channel.rs"
-
 [features]
 default = ["xianyu", "ali1688"]
 license-lock = []
-xianyu = ["platform/xianyu"]
-ali1688 = ["platform/ali1688"]
+xianyu = []
+ali1688 = []
 
 [build-dependencies]
 serde_json = { workspace = true }
 tauri-build = { workspace = true }
 
 [dependencies]
-infra = { path = "../../../crates/infra" }
-business = { path = "../../../business" }
-agent = { path = "../../../crates/agent" }
+anyhow = { workspace = true }
 async-trait = { workspace = true }
-common = { path = "../../../crates/common" }
 base64 = "0.22"
 chrono = { workspace = true }
 diesel = { workspace = true }
+diesel_migrations = { workspace = true }
+dirs = { workspace = true }
 futures-util = { workspace = true }
+hmac = "0.12"
+libsqlite3-sys = { workspace = true }
+macros = { path = "macros" }
 md-5 = { workspace = true }
-macros = { path = "../../../crates/macros" }
-platform = { path = "../../../crates/platform", default-features = false }
-ports = { path = "../../../crates/ports" }
 rand = { workspace = true }
 reqwest = { workspace = true }
 rmpv = { workspace = true }
-schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+sha2 = "0.10"
 tauri = { workspace = true }
 tauri-plugin-opener = { workspace = true }
 thiserror = { workspace = true }
@@ -53,7 +48,9 @@ tokio = { workspace = true }
 tokio-tungstenite = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-url = { workspace = true }
+memmap2 = { workspace = true }
 uuid = { workspace = true }
 zip = "2"
-dirs = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["md-5", "libsqlite3-sys"]
