@@ -6,10 +6,10 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-18
 
-use infra::event::{EventError, EventHandler};
+use crate::infra::event::{EventError, EventHandler};
 use tauri::{AppHandle, Emitter};
 
-/// 将 `infra::event::EventBus` 事件桥接到 `tauri::AppHandle::emit`。
+/// 将 `crate::infra::event::EventBus` 事件桥接到 `tauri::AppHandle::emit`。
 ///
 /// 作者：Xiaoman
 /// 创建时间：2026-08-18

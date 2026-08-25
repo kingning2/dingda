@@ -3,8 +3,8 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-19
 
-use common::contracts::{PluginEventProgress, PluginItem};
-use common::DingDaResult;
+use crate::contracts::contracts::{PluginEventProgress, PluginItem};
+use crate::contracts::DingDaResult;
 use futures_util::StreamExt;
 use std::collections::HashSet;
 use std::io::Write;
@@ -145,7 +145,7 @@ fn failed_plugin_item(store: &ConfigStore, plugin_id: &str, message: String) -> 
             item.error = Some(message);
             item
         })
-        .unwrap_or_else(|| common::contracts::PluginItem {
+        .unwrap_or_else(|| crate::contracts::contracts::PluginItem {
             id: plugin_id.to_string(),
             name: plugin_id.to_string(),
             description: String::new(),

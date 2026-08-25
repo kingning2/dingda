@@ -3,11 +3,11 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-18
 
-use common::events::EventSink;
-use common::DingDaResult;
+use crate::contracts::events::EventSink;
+use crate::contracts::DingDaResult;
 use tauri::{AppHandle, Emitter};
 
-/// 将 `common::events::EventSink` 桥接到 `tauri::AppHandle::emit`。
+/// 将 `crate::contracts::events::EventSink` 桥接到 `tauri::AppHandle::emit`。
 ///
 /// 作者：Xiaoman
 /// 创建时间：2026-08-18
@@ -24,9 +24,9 @@ impl TauriEventSink {
 impl EventSink for TauriEventSink {
     fn publish(&self, topic: &str, payload: &[u8]) -> DingDaResult<()> {
         let json: serde_json::Value = serde_json::from_slice(payload)
-            .map_err(|e| common::DingDaError::Serialization(e.to_string()))?;
+            .map_err(|e| crate::contracts::DingDaError::Serialization(e.to_string()))?;
         self.app
             .emit(topic, json)
-            .map_err(|e| common::DingDaError::Internal(e.to_string()))
+            .map_err(|e| crate::contracts::DingDaError::Internal(e.to_string()))
     }
 }
