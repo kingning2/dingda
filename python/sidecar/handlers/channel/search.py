@@ -6,10 +6,10 @@ import logging
 import time
 from typing import Any
 
-from channels.ali1688.search import fetch_search as fetch_ali1688_search
-from channels.core.logging import bind_log_context
-from channels.core.platform_config import normalize_platform
-from channels.xianyu.search import fetch_search as fetch_xianyu_search
+from crawlers.alibaba import fetch_search as fetch_ali1688_search
+from crawlers.core.logging import bind_log_context
+from crawlers.core.platform_config import normalize_platform
+from crawlers.xianyu import fetch_search as fetch_xianyu_search
 
 logger = logging.getLogger("dingda.sidecar.channel.search")
 

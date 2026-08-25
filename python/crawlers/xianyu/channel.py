@@ -1,0 +1,42 @@
+"""闲鱼渠道（参考 CowAgent channel/weixin/weixin_channel.py 组织方式）。"""
+
+from __future__ import annotations
+
+from typing import Any
+
+from crawlers.channel import Channel
+from crawlers.core.browser.base import BrowserPlatform
+from crawlers.core.login.qrcode import QrcodeLogin
+from crawlers.xianyu.browser import XianyuBrowser
+from crawlers.xianyu.login.qrcode import XianyuQrcode
+
+
+class XianyuChannel(Channel):
+    """闲鱼：扫码 + Cookie 续期 + 滑块。"""
+
+    def __init__(self) -> None:
+        self._browser = XianyuBrowser()
+
+    def browser(self) -> BrowserPlatform:
+        return self._browser
+
+    def qrcode(self) -> QrcodeLogin:
+        return XianyuQrcode()
+
+    async def renew_cookies(
+        self,
+        cookies: list[dict[str, Any]],
+        *,
+        account_id: str,
+        punish_url: str | None = None,
+        timeout_secs: int = 180,
+    ) -> tuple[bool, str, dict[str, Any]]:
+        from crawlers.xianyu.login.cookie_renew import renew_cookies
+
+        return await renew_cookies(
+            cookies,
+            account_id=account_id,
+            punish_url=punish_url,
+            platform=self.channel_type or "xianyu",
+            timeout_secs=timeout_secs,
+        )

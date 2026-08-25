@@ -6,9 +6,9 @@ import logging
 import time
 from typing import Any
 
-from channels.ali1688.login import verify_login_online
-from channels.core.logging import bind_log_context
-from channels.core.platform_config import normalize_platform
+from crawlers.alibaba.login import verify_login_online
+from crawlers.core.logging import bind_log_context
+from crawlers.core.platform_config import normalize_platform
 
 logger = logging.getLogger("dingda.sidecar.channel.login_probe")
 

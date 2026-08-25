@@ -6,9 +6,9 @@ import logging
 import time
 from typing import Any
 
-from channels.channel_factory import create_channel
-from channels.core.logging import bind_log_context
-from channels.core.platform_config import normalize_platform
+from crawlers.core.logging import bind_log_context
+from crawlers.core.platform_config import normalize_platform
+from crawlers.factory import create_channel
 
 logger = logging.getLogger("dingda.sidecar.channel.cookie_renew")
 

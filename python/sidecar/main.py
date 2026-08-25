@@ -1,11 +1,11 @@
-"""DingDa AI sidecar entrypoint."""
+"""DingDa AI sidecar entrypoint — 委托 runtime.serve。"""
 
 from __future__ import annotations
 
 import argparse
 
-from channels.core.logging import configure_logging
-from sidecar.server import serve
+from crawlers.core.logging import configure_logging
+from runtime.server import serve
 
 
 def main() -> None:

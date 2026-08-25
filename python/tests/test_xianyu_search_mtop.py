@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from channels.xianyu.search.mtop import map_item, parse_search_items
+from crawlers.xianyu.search.mtop import map_item, parse_search_items
 
 FIXTURE = {
     "data": {
