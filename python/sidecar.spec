@@ -49,6 +49,8 @@ a = Analysis(
         "sidecar.routes",
         "runtime",
         "runtime.server",
+        "runtime.shm_protocol",
+        "runtime.shm_server",
         "runtime.ipc",
         "runtime.lifecycle",
         "runtime.handlers.agent",
