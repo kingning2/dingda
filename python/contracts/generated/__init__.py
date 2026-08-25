@@ -47,12 +47,6 @@ from .channel_sidecar_qr_start_response import ChannelSidecarQrStartResponse
 from .channel_sidecar_search_request import ChannelSidecarSearchRequest
 from .channel_sidecar_search_response import ChannelSidecarSearchResponse
 from .channel_xianyu_search_item import ChannelXianyuSearchItem
-from .llm_ipc_chat_request import LlmIpcChatRequest
-from .llm_ipc_chat_response import LlmIpcChatResponse
-from .llm_ipc_classify_request import LlmIpcClassifyRequest
-from .llm_ipc_classify_response import LlmIpcClassifyResponse
-from .llm_message import LlmMessage
-from .llm_provider import LlmProvider
 from .plugin_event_progress import PluginEventProgress
 from .plugin_ipc_install_request import PluginIpcInstallRequest
 from .plugin_ipc_install_response import PluginIpcInstallResponse
@@ -112,12 +106,6 @@ __all__ = [
     "ChannelSidecarSearchRequest",
     "ChannelSidecarSearchResponse",
     "ChannelXianyuSearchItem",
-    "LlmIpcChatRequest",
-    "LlmIpcChatResponse",
-    "LlmIpcClassifyRequest",
-    "LlmIpcClassifyResponse",
-    "LlmMessage",
-    "LlmProvider",
     "PluginEventProgress",
     "PluginIpcInstallRequest",
     "PluginIpcInstallResponse",

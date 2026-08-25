@@ -47,12 +47,6 @@ export type { ChannelSidecarQrStartResponse } from "./channel_sidecar_qr_start_r
 export type { ChannelSidecarSearchRequest } from "./channel_sidecar_search_request";
 export type { ChannelSidecarSearchResponse } from "./channel_sidecar_search_response";
 export type { ChannelXianyuSearchItem } from "./channel_xianyu_search_item";
-export type { LlmIpcChatRequest } from "./llm_ipc_chat_request";
-export type { LlmIpcChatResponse } from "./llm_ipc_chat_response";
-export type { LlmIpcClassifyRequest } from "./llm_ipc_classify_request";
-export type { LlmIpcClassifyResponse } from "./llm_ipc_classify_response";
-export type { LlmMessage } from "./llm_message";
-export type { LlmProvider } from "./llm_provider";
 export type { PluginEventProgress } from "./plugin_event_progress";
 export type { PluginIpcInstallRequest } from "./plugin_ipc_install_request";
 export type { PluginIpcInstallResponse } from "./plugin_ipc_install_response";
