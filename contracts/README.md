@@ -7,7 +7,7 @@
 ```
 1. 修改 Contract（本目录）
        ↓
-2. Code Generation（codegen/）
+2. Code Generation（python skills/dingda/scripts/sync_contracts.py）
        ↓
 3. 受影响实现端：默认 Rust → React
    仅当该能力必须走 sidecar 时才改 Python
@@ -19,17 +19,15 @@
 
 - `schema/v1/` — JSON Schema
 - `openapi/` — OpenAPI 规范（含 sidecar 管理面 `sidecar.v1.yaml` 与 `sidecar.paths/`）
-- `codegen/` — 生成 TypeScript / Rust / Python
-- `compatibility/` — 字段规则与迁移指南
 
-## Breaking Change
+## 变更工作流
 
-1. 新增 `schema/v2`（或新文件）
-2. 更新 [`compatibility/MIGRATION.md`](compatibility/MIGRATION.md)
-3. 更新 [`CHANGELOG.md`](CHANGELOG.md)
+1. 编辑 schema / openapi
+2. 运行 `python skills/dingda/scripts/sync_contracts.py`
+3. 更新受影响端引用（默认 Rust / TS；仅 sidecar 例外才改 Python）
 4. PR 至少 2 人 Approve
 
 ## 相关文档
 
 - [`.cursor/rules/master.md`](../.cursor/rules/master.md) — 全局架构约束
-- [`compatibility/FIELD_RULES.md`](compatibility/FIELD_RULES.md) — 字段变更规则
+- [`skills/dingda/guides/contracts.md`](../skills/dingda/guides/contracts.md) — Contracts 指南

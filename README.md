@@ -60,7 +60,6 @@ pnpm lint:fix          # 自动修复（前端 + rust fmt + python）
 - [`skills/dingda/`](skills/dingda/) — AI 开发知识库
 - [`.cursor/skills/dingda/SKILL.md`](.cursor/skills/dingda/SKILL.md) — Cursor Skill 入口
 - [`.cursor/rules/master.md`](.cursor/rules/master.md) — 全局架构约束
-- [`docs/architecture/`](docs/architecture/) — 架构文档与 ADR
 
 ### 架构检查
 

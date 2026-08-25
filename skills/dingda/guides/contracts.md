@@ -28,16 +28,14 @@ contracts/schema/v1/<feature>/error/<code>.schema.json
 ## 变更工作流
 
 1. 编辑 schema / openapi
-2. 更新 `contracts/CHANGELOG.md`
-3. 运行 `python skills/dingda/scripts/sync_contracts.py`
-4. 更新受影响端引用（默认 Rust / TS；仅 sidecar 例外才改 Python）
-5. PR：2+ Approve
+2. 运行 `python skills/dingda/scripts/sync_contracts.py`
+3. 更新受影响端引用（默认 Rust / TS；仅 sidecar 例外才改 Python）
+4. PR：2+ Approve
 
 ## Breaking Change
 
 1. 新建 `schema/v2/` 或新文件
-2. 编写 `compatibility/MIGRATION.md`
-3. 旧版本保留至迁移完成
+2. 旧版本保留至迁移完成
 
 ## 工具
 

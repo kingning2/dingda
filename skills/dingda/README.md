@@ -111,7 +111,6 @@ python skills/dingda/scripts/generate_tree.py
 |------|------|
 | `.cursor/rules/master.md` | 基线规则（本 Skill 的权威来源之一） |
 | `contracts/` | 运行时契约（本 Skill 的 templates/contract 对齐此处） |
-| `docs/architecture/` | ADR 与架构补充 |
 | `skills/dingda/guides/xianyu-mtop-discovery.md` | 闲鱼 mtop 抓包发现流程与已接入接口表 |
 
 ### 平台专项 Guides

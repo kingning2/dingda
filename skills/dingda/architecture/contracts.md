@@ -61,8 +61,6 @@ contracts/
 ## PR 要求
 
 - Contract PR 至少 **2 人 Approve**
-- 更新 `contracts/CHANGELOG.md`
-- Breaking Change 附 `compatibility/MIGRATION.md`
 
 ## 相关文档
 

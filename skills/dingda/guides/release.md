@@ -5,7 +5,6 @@
 ## 版本策略
 
 - 桌面应用：SemVer（`apps/desktop/package.json`）
-- Contract：`contracts/CHANGELOG.md` 独立版本注记
 - Rust workspace：统一 `workspace.package.version`
 
 ## 发布前检查

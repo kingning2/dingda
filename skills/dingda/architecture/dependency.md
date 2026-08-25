@@ -24,7 +24,7 @@ React  →  platform  →  (Tauri IPC)  →  Rust  →  ports  ←  infrastructu
 | `infra` | `common`, `ports`, 外部 crate | Tauri、business、兄弟能力包 |
 
 `business`（应用胶水）可依赖：`common` · `infra` · `platform`。
-`src-tauri`（应用壳）可依赖：全部 crate + business。详见 [`docs/architecture/module-dependency-graph.md`](../../../docs/architecture/module-dependency-graph.md)。
+`src-tauri`（应用壳）可依赖：全部 crate + business。
 
 ## React 依赖矩阵
 
