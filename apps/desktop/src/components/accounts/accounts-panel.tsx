@@ -48,6 +48,7 @@ import {
 import type { AccountPanelDeps } from "./types";
 import { AccountQrDialog } from "./account-qr-dialog";
 import {
+  invalidateProbeCache,
   loadConnectedAccountIds,
   probeAccountLoginSessions,
   probeConnectedAccounts,
@@ -242,6 +243,9 @@ export function AccountsPanel({ deps }: { deps: AccountPanelDeps }) {
       if (cancelled || !payload.account_id) {
         return;
       }
+      if (payload.state !== "connected") {
+        invalidateProbeCache(payload.account_id);
+      }
       setConnectionStates((current) => ({
         ...current,
         [payload.account_id]: mergeChannelConnectionState(
@@ -313,7 +317,31 @@ export function AccountsPanel({ deps }: { deps: AccountPanelDeps }) {
       return next;
     });
 
-    const results = await probeConnectedAccounts(list);
+    // 已有渠道 WS 快照为 connected 的账号直接视为在线，不发 Playwright 探针。
+    const results: Record<string, boolean> = {};
+    const needProbe: XianyuAccount[] = [];
+    await Promise.all(
+      list
+        .filter((account) => platformConnected.includes(account.account_id))
+        .map(async (account) => {
+          if (deps.connectionState && Boolean(account.cookie?.trim())) {
+            try {
+              const state = normalizeChannelConnectionState(
+                await deps.connectionState(OWNER_ID, account.account_id),
+              );
+              if (state === "connected") {
+                results[account.account_id] = true;
+                return;
+              }
+            } catch {
+              // 状态查询失败则退回探针。
+            }
+          }
+          needProbe.push(account);
+        }),
+    );
+
+    Object.assign(results, await probeConnectedAccounts(needProbe));
     setConnectionStates((current) => {
       const next = { ...current };
       for (const [accountId, ok] of Object.entries(results)) {
@@ -523,6 +551,7 @@ export function AccountsPanel({ deps }: { deps: AccountPanelDeps }) {
   }
 
   async function handleDisconnect(account: XianyuAccount) {
+    invalidateProbeCache(account.account_id);
     if (deps.disconnect) {
       try {
         await deps.disconnect(OWNER_ID, account.account_id);
