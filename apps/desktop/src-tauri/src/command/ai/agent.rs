@@ -1,10 +1,10 @@
 //! Agent IPC — LangGraph agent 对话。
 
-use common::DingDaResult;
+use crate::contracts::DingDaResult;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::shared::ipc::IpcResponse;
+use crate::command::IpcResponse;
 use crate::shared::state::AppState;
 
 /// LangGraph agent 对话请求（provider 配置由调用方携带）。

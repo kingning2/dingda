@@ -6,16 +6,16 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-19
 
-use common::contracts::{
+use crate::contracts::contracts::{
     PluginIpcInstallRequest, PluginIpcInstallResponse, PluginIpcListResponse,
     PluginIpcUninstallRequest, PluginIpcUninstallResponse,
 };
-use common::DingDaResult;
+use crate::contracts::DingDaResult;
 use std::sync::Arc;
 use tauri::State;
 
+use crate::command::IpcResponse;
 use crate::config::ConfigStore;
-use crate::shared::ipc::IpcResponse;
 use crate::shared::plugin_download::{
     install_plugin, plugin_list_with_status, sync_camoufox_env, PluginDownloadTracker,
 };

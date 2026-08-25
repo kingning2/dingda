@@ -1,8 +1,8 @@
 //! 运行日志 IPC 命令 — 供前端日志面板读取/清空/写入进程内日志缓冲。
 
+use crate::command::IpcResponse;
 use crate::logging::{clear_logs, recent_logs, LogEntry};
 use crate::runtime::app::route::on_route_change;
-use crate::shared::ipc::IpcResponse;
 use chrono::Local;
 use std::fs::{self, OpenOptions};
 use std::io::Write;

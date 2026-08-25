@@ -1,10 +1,10 @@
 //! 平台描述 Tauri commands — 把编译期注册表暴露给前端。
 
-use common::DingDaResult;
-use platform::protocol::registry::PlatformRegistry;
+use crate::contracts::DingDaResult;
+use crate::servers::protocol::registry::PlatformRegistry;
 use serde::Serialize;
 
-use crate::shared::ipc::IpcResponse;
+use crate::command::IpcResponse;
 
 /// 平台描述 IPC 返回体，字段与前端约定对齐。
 #[derive(Debug, Clone, Serialize)]

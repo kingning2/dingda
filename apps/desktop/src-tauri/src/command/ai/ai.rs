@@ -3,13 +3,13 @@
 //! @author coisini
 //! @created 2026-08-11
 
-use common::contracts::{AiIpcConfigRequest, AiIpcConfigResponse};
-use common::DingDaResult;
+use crate::contracts::contracts::{AiIpcConfigRequest, AiIpcConfigResponse};
+use crate::contracts::DingDaResult;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::command::IpcResponse;
 use crate::config::ConfigStore;
-use crate::shared::ipc::IpcResponse;
 
 /// 单币种余额条目。
 ///

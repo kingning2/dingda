@@ -1,14 +1,14 @@
 //! 应用版本与 Runtime 生命周期状态 IPC。
 
-use common::DingDaResult;
+use crate::contracts::DingDaResult;
 use serde::Serialize;
 use tauri::{AppHandle, State};
 
+use crate::command::IpcResponse;
 use crate::runtime::agent::AgentState;
-use crate::runtime::python::PythonState;
+use crate::runtime::python::{PythonSidecarSnapshot, PythonState};
 use crate::runtime::tasks::Task;
 use crate::runtime::RuntimeState;
-use crate::shared::ipc::IpcResponse;
 use crate::shared::state::AppState;
 
 /// 读取当前应用版本（与 `tauri.conf.json` / Cargo 版本一致）。
@@ -39,18 +39,28 @@ pub struct RuntimeStatusDto {
     pub agent: AgentState,
     /// 全部后台任务（含状态 / 阶段 / 时间戳）。
     pub tasks: Vec<Task>,
+    /// Python Sidecar 运行时快照（编排进度 / WSS / 错误）。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub python_detail: Option<PythonSidecarSnapshot>,
 }
 
 /// 查询 Runtime 生命周期状态。
 #[tauri::command]
-pub fn runtime_status(state: State<'_, AppState>) -> IpcResponse<RuntimeStatusDto> {
+pub async fn runtime_status(
+    state: State<'_, AppState>,
+) -> DingDaResult<IpcResponse<RuntimeStatusDto>> {
     let supervisor = &state.supervisor;
-    IpcResponse::ok(RuntimeStatusDto {
+    let python_detail = supervisor
+        .sync_python()
+        .await
+        .or_else(|| supervisor.python_snapshot());
+    Ok(IpcResponse::ok(RuntimeStatusDto {
         state: supervisor.state(),
         python: supervisor.python_state(),
         agent: supervisor.agent_state(),
         tasks: supervisor.tasks().list(),
-    })
+        python_detail,
+    }))
 }
 
 /// 取消指定后台任务（按任务 id）。

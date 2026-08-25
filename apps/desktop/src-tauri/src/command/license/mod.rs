@@ -3,11 +3,11 @@
 //! 作者：coisini
 //! 创建时间：2026-07-21
 
-use common::license::{LicenseActivateRequest, LicenseStatus};
-use common::DingDaResult;
+use crate::contracts::license::{LicenseActivateRequest, LicenseStatus};
+use crate::contracts::DingDaResult;
 
+use crate::command::IpcResponse;
 use crate::runtime::app::startup;
-use crate::shared::ipc::IpcResponse;
 use crate::state::AppState;
 
 /// 查询当前授权状态的 IPC。

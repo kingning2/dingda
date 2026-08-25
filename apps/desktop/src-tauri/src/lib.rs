@@ -1,18 +1,15 @@
 //! Tauri shell：组装 AppState、注册 IPC commands、启动 sidecar。
 //!
 //! 目录约定：
-//! - [`shared`] — 三平台共用（IPC、渠道编排、Agent、License、日志）
-//! - [`runtime`] — Runtime 层：按对象拆分生命周期（App / Python / Agent / Task）+ `RuntimeSupervisor` 协调
-//! - [`platforms`] — 编译期平台壳层（`core` 两站共用；`xianyu` / `ali1688` 按 feature 裁剪）
+//! - [`contracts`] — 共享 DTO / 错误 / 事件
+//! - [`command`] — 全部 Tauri IPC（按业务模块分目录）
+//! - [`servers`] — 渠道服务层（领域 / 协议 / 存储 + 站壳）
+//! - [`ports`] / [`infra`] — Port traits 与基础设施适配
+//! - [`config`] / [`logging`] / [`timing`] / [`channel_store`] — 应用胶水
+//! - [`runtime`] — Runtime 层（App / Python / Agent / Task + Supervisor）
+//! - [`shared`] — Tauri 专属胶水（协调器、AppState）
 //!
-//! 生命周期职责：
-//! - 观测：`runtime::app`（`[startup]` / 窗口 / 路由 / RunEvent 日志）
-//! - 控制：`runtime::python` / `runtime::agent` / `runtime::tasks` / `runtime::supervisor`
-//!
-//! IPC 注册与平台条件编译收敛在 [`platforms::ipc`] / [`platforms::runtime`]；
-//! 本文件仅负责 AppState 组装与 Tauri 生命周期编排。
-//!
-//! 根目录仅保留 `lib.rs` / `main.rs`。
+//! IPC 注册收敛在 [`command`]；本文件仅负责 AppState 组装与 Tauri 生命周期编排。
 //!
 //! 作者：Xiaoman
 //! 创建时间：2026-07-16
@@ -20,23 +17,33 @@
 #[macro_use]
 extern crate tracing;
 
-mod platforms;
+pub mod channel_store;
+pub mod command;
+pub mod config;
+pub mod contracts;
+pub mod infra;
+pub mod kernel_event_sink;
+pub mod logging;
+pub mod ports;
 pub mod runtime;
+mod servers;
 mod shared;
+pub mod timing;
 
-// `#[timed]` 展开为 `crate::timing`；命令层历史路径 `crate::agent` / `crate::state` 等亦走此 re-export。
-pub use shared::{config, logging, state, timing};
+// `#[timed]` / 历史路径：`crate::timing` · `crate::logging` · `crate::config` · `crate::state`
+pub use shared::state;
 
-use infra::event::{EventBus, InMemoryEventBus};
+use crate::infra::event::{EventBus, InMemoryEventBus};
+use crate::ports::license::LicenseGate;
 use runtime::app::lifecycle;
 use runtime::python::{
-    RuntimeAgentSidecar, SidecarConfig, SidecarLifecycle, RUNTIME_ERROR_TOPIC,
+    PythonWssBridge, RuntimeAgentSidecar, SidecarConfig, SidecarLifecycle, RUNTIME_ERROR_TOPIC,
     SIDECAR_RESTARTED_TOPIC,
 };
 use shared::channel::coordinator::ChannelCoordinator;
 use shared::channel::dispatcher::ChannelDispatcher;
 use shared::channel::ChannelRepo;
-use shared::{build_license_gate, init_tracing, platform_initialization_script, AppState};
+use shared::{init_tracing, platform_initialization_script, AppState};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Manager, RunEvent};
@@ -51,7 +58,10 @@ use tauri::{Manager, RunEvent};
 ///
 /// # 返回值
 /// 事件循环结束后的 `tauri::Result`。
-pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
+pub fn launch(
+    context: tauri::Context<tauri::Wry>,
+    license: Arc<dyn LicenseGate>,
+) -> tauri::Result<()> {
     init_tracing();
     lifecycle::on_process_start();
 
@@ -61,7 +71,6 @@ pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
         event_bus.clone() as Arc<dyn EventBus>,
     ));
     let gateway = Arc::new(RuntimeAgentSidecar::new(lifecycle.client().clone()));
-    let license = build_license_gate();
     let supervisor = Arc::new(runtime::RuntimeSupervisor::new(lifecycle.clone()));
     let app_state = AppState {
         lifecycle: lifecycle.clone(),
@@ -105,7 +114,7 @@ pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                     config_dir.clone()
                 }
             };
-            let config_store = Arc::new(shared::config::ConfigStore::new(
+            let config_store = Arc::new(crate::config::ConfigStore::new(
                 config_dir.clone(),
                 data_dir,
             ));
@@ -115,7 +124,7 @@ pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             let plugin_tracker = Arc::new(shared::plugin_download::PluginDownloadTracker::new());
             app.manage(plugin_tracker);
 
-            platforms::core::bootstrap::register_business(app.handle(), &config_dir)?;
+            servers::core::bootstrap::register_business(app.handle(), &config_dir)?;
             lifecycle::on_business_ready();
 
             let db_dir = config_dir.join("channel");
@@ -136,7 +145,7 @@ pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
             let dispatcher = Arc::new(ChannelDispatcher::new());
             app.manage(dispatcher.clone());
 
-            let event_sink: Arc<dyn common::events::EventSink> =
+            let event_sink: Arc<dyn crate::contracts::events::EventSink> =
                 Arc::new(shared::TauriEventSink::new(app.handle().clone()));
             app.manage(event_sink.clone());
 
@@ -153,25 +162,41 @@ pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
                 }
             }
 
-            let risk_handler = platforms::runtime::build_risk_handler(
-                app.handle(),
-                &dispatcher,
-                event_sink.clone(),
-            );
-
+            let repo_for_bridge = repo.clone();
             let coordinator = Arc::new(ChannelCoordinator::new(
                 repo,
                 dispatcher.clone(),
-                event_sink,
-                risk_handler,
+                event_sink.clone(),
             ));
+
+            let account_store = app.state::<crate::command::AccountHandle>().store.clone();
+            let wss_bridge = Arc::new(PythonWssBridge::new(
+                app.state::<AppState>().lifecycle.clone(),
+                coordinator.clone(),
+                repo_for_bridge,
+                app.state::<Arc<crate::config::ConfigStore>>()
+                    .inner()
+                    .clone(),
+                account_store,
+            ));
+            coordinator.set_wss_bridge(wss_bridge.clone());
+            app.manage(wss_bridge.clone());
+
             app.manage(coordinator.clone());
 
-            platforms::runtime::register_platform(app.handle(), &dispatcher, &coordinator)?;
+            servers::runtime::register_platform(
+                app.handle(),
+                &dispatcher,
+                &coordinator,
+                &wss_bridge,
+            )?;
             lifecycle::on_platform_ready();
 
             let supervisor = app.state::<AppState>().supervisor.clone();
-            tauri::async_runtime::spawn(async move { supervisor.start().await });
+            tauri::async_runtime::spawn(async move {
+                let _ = supervisor.start().await;
+                supervisor.spawn_observation_loop();
+            });
             lifecycle::on_setup();
             Ok(())
         })
@@ -194,5 +219,11 @@ pub fn launch(context: tauri::Context<tauri::Wry>) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> tauri::Result<()> {
-    launch(tauri::generate_context!())
+    use crate::infra::license::UnlockedLicenseGate;
+    run_with(Arc::new(UnlockedLicenseGate::new()))
+}
+
+/// 桌面 bin 入口：由 [`main`] 注入 License 闸门后启动。
+pub fn run_with(license: Arc<dyn LicenseGate>) -> tauri::Result<()> {
+    launch(tauri::generate_context!(), license)
 }
