@@ -31,7 +31,7 @@ export interface FeaturePlaceholderPageProps {
  */
 export function FeaturePlaceholderPage({ title, description }: FeaturePlaceholderPageProps) {
   return (
-    <PageScaffold subtitle={description ?? `${title} — 开发中`}>
+    <PageScaffold subtitle={description ?? `${title} — 即将推出`}>
       <Card variant="glass" className="w-full">
         <CardHeader>
           <CardTitle>{title}</CardTitle>
@@ -39,7 +39,7 @@ export function FeaturePlaceholderPage({ title, description }: FeaturePlaceholde
         </CardHeader>
         <CardContent>
           <p className="text-[length:var(--text-sm)] text-muted-foreground">
-            该功能正在开发中。
+            该功能即将推出，敬请期待。
           </p>
         </CardContent>
       </Card>

@@ -17,6 +17,12 @@ export interface MonitorTask {
   aiAccountOrder: string[];
   intervalMinutes: number;
   enabled: boolean;
+  /** 定时调度是否暂停（冻结剩余倒计时）。 */
+  schedulePaused?: boolean;
+  /** 暂停时冻结的剩余秒数。 */
+  scheduleRemainingSecs?: number;
+  /** 下次定时运行时间（RFC3339）。 */
+  nextRunAt?: string;
   aiCriteria: string;
   maxResults: number;
   headed: boolean;
@@ -99,6 +105,18 @@ export function monitorTaskDelete(ownerId: number, taskId: string): Promise<void
 
 export function monitorTaskRun(ownerId: number, taskId: string): Promise<MonitorRunSummary> {
   return callRequest<MonitorRunSummary>("monitor_task_run", {
+    request: { owner_id: ownerId, task_id: taskId },
+  }).then((r) => r.data);
+}
+
+export function monitorTaskPauseSchedule(ownerId: number, taskId: string): Promise<MonitorTask> {
+  return callRequest<MonitorTask>("monitor_task_pause_schedule", {
+    request: { owner_id: ownerId, task_id: taskId },
+  }).then((r) => r.data);
+}
+
+export function monitorTaskResumeSchedule(ownerId: number, taskId: string): Promise<MonitorTask> {
+  return callRequest<MonitorTask>("monitor_task_resume_schedule", {
     request: { owner_id: ownerId, task_id: taskId },
   }).then((r) => r.data);
 }

@@ -1,9 +1,21 @@
 import { useEffect, useRef, useState } from "react";
-import { AsyncButton, IconButton, ScrollArea, Textarea, toast } from "@desk/ui";
-import { MessageSquare, PanelRightClose, PanelRightOpen, Send } from "@desk/ui/icons";
+import {
+  AsyncButton,
+  Button,
+  IconButton,
+  ScrollArea,
+  Textarea,
+  toast,
+} from "@desk/ui";
+import {
+  MessageSquare,
+  PanelRightClose,
+  PanelRightOpen,
+  Send,
+} from "@desk/ui/icons";
 import type { ChannelConversation, ChannelMessage } from "@desk/contracts";
 import { ConversationAvatar } from "./conversation-avatar";
-import { formatChatTime } from "./format";
+import { conversationSubject, formatChatTime } from "./format";
 
 export interface ThreadPanelProps {
   selectedConversation: ChannelConversation | null;
@@ -12,11 +24,21 @@ export interface ThreadPanelProps {
   threadMessages: ChannelMessage[];
   error: string | null;
   infoOpen: boolean;
+  needsReply: boolean;
+  draft: string;
+  onDraftChange: (value: string) => void;
   onToggleInfo: () => void;
   onSend: (text: string) => Promise<void>;
 }
 
-/** 会话消息区（中栏）— 消息记录 + 输入框。 */
+function senderLabel(message: ChannelMessage, peerName: string, accountLabel: string): string {
+  if (message.direction === "out") {
+    return message.sender === "human" ? accountLabel : message.sender;
+  }
+  return peerName;
+}
+
+/** 会话消息区（中栏）— 参考 Shadcn Admin inbox-1 邮件线程 + 回复框。 */
 export function ThreadPanel({
   selectedConversation,
   peerName,
@@ -24,16 +46,22 @@ export function ThreadPanel({
   threadMessages,
   error,
   infoOpen,
+  needsReply,
+  draft,
+  onDraftChange,
   onToggleInfo,
   onSend,
 }: ThreadPanelProps) {
-  const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const threadEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [threadMessages]);
+
+  useEffect(() => {
+    onDraftChange("");
+  }, [selectedConversation?.id, onDraftChange]);
 
   async function handleSend() {
     if (!draft.trim()) {
@@ -42,7 +70,7 @@ export function ThreadPanel({
     setSending(true);
     try {
       await onSend(draft);
-      setDraft("");
+      onDraftChange("");
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "发送失败");
     } finally {
@@ -51,14 +79,16 @@ export function ThreadPanel({
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();
       void handleSend();
     }
   }
 
+  const subject = selectedConversation ? conversationSubject(selectedConversation) : "";
+
   return (
-    <section className="flex min-w-0 flex-1 flex-col">
+    <section className="flex min-w-0 flex-1 flex-col bg-transparent">
       {!selectedConversation ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
           <MessageSquare className="size-10 opacity-30" aria-hidden />
@@ -66,17 +96,25 @@ export function ThreadPanel({
         </div>
       ) : (
         <>
-          <header className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <ConversationAvatar name={peerName} />
-              <div className="min-w-0">
-                <h2 className="truncate font-medium text-[length:var(--text-base)]">
-                  {peerName}
+          <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="truncate text-[length:var(--text-sm)] font-semibold text-foreground">
+                  {subject}
                 </h2>
-                <p className="text-[length:var(--text-xs)] text-muted-foreground">
-                  账号：{accountLabel}
-                </p>
+                {needsReply ? (
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[length:var(--text-xs)] text-emerald-600 dark:text-emerald-400">
+                    待回复
+                  </span>
+                ) : (
+                  <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[length:var(--text-xs)] text-muted-foreground">
+                    已读
+                  </span>
+                )}
               </div>
+              <p className="mt-0.5 truncate text-[length:var(--text-xs)] text-muted-foreground">
+                {peerName} · {accountLabel}
+              </p>
             </div>
             <IconButton
               label={infoOpen ? "收起客户信息" : "展开客户信息"}
@@ -91,8 +129,8 @@ export function ThreadPanel({
             </IconButton>
           </header>
 
-          <ScrollArea className="min-h-0 flex-1 px-4 py-4">
-            <div className="space-y-3">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="space-y-4 px-4 py-4">
               {threadMessages.length === 0 ? (
                 <p className="py-8 text-center text-[length:var(--text-sm)] text-muted-foreground">
                   该会话还没有消息记录
@@ -100,31 +138,37 @@ export function ThreadPanel({
               ) : (
                 threadMessages.map((message) => {
                   const outbound = message.direction === "out";
+                  const name = senderLabel(message, peerName, accountLabel);
                   return (
-                    <div
+                    <article
                       key={message.id}
-                      className={`flex ${outbound ? "justify-end" : "justify-start"}`}
+                      className="rounded-[var(--radius-lg)] border border-border/80 bg-card p-4 shadow-sm"
                     >
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-3 py-2 text-[length:var(--text-sm)] ${
-                          outbound
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                        <p
-                          className={`mt-1 text-[length:var(--text-xs)] ${
-                            outbound ? "text-primary-foreground/70" : "text-muted-foreground"
-                          }`}
-                        >
-                          {formatChatTime(message.created_at)}
-                          {outbound && message.sender !== "human"
-                            ? ` · ${message.sender}`
-                            : ""}
-                        </p>
+                      <div className="flex items-start gap-3">
+                        <ConversationAvatar name={name} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-[length:var(--text-sm)] text-foreground">
+                              {name}
+                            </span>
+                            {outbound ? (
+                              <span className="rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[length:var(--text-xs)] text-muted-foreground">
+                                客服
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 text-[length:var(--text-xs)] text-muted-foreground">
+                            {outbound ? `发送至 ${peerName}` : `来自 ${peerName}`}
+                          </p>
+                          <p className="text-[length:var(--text-xs)] text-muted-foreground/80">
+                            {formatChatTime(message.created_at)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                      <p className="mt-3 whitespace-pre-wrap break-words text-[length:var(--text-sm)] leading-relaxed text-foreground">
+                        {message.content}
+                      </p>
+                    </article>
                   );
                 })
               )}
@@ -132,28 +176,47 @@ export function ThreadPanel({
             </div>
           </ScrollArea>
 
-          <footer className="border-t border-border p-3">
+          <footer className="border-t border-border bg-muted/10 p-4">
             {error ? (
               <p className="mb-2 text-[length:var(--text-xs)] text-destructive">{error}</p>
             ) : null}
-            <div className="flex gap-2">
+            <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card shadow-sm">
+              <div className="flex items-center justify-between gap-2 border-b border-border/80 px-3 py-2">
+                <p className="truncate text-[length:var(--text-xs)] text-muted-foreground">
+                  回复 <span className="font-medium text-foreground">{peerName}</span>
+                </p>
+                <span className="shrink-0 text-[length:var(--text-xs)] text-muted-foreground/70">
+                  Ctrl+Enter 发送
+                </span>
+              </div>
               <Textarea
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => onDraftChange(event.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="输入回复，Enter 发送，Shift+Enter 换行"
-                rows={2}
-                className="min-h-[3rem] resize-none"
+                placeholder="撰写回复…"
+                rows={4}
+                className="min-h-[6rem] resize-none rounded-none border-0 bg-transparent shadow-none focus-visible:ring-0"
               />
-              <AsyncButton
-                loading={sending}
-                disabled={!draft.trim()}
-                onClick={() => handleSend()}
-                className="shrink-0 self-end"
-              >
-                <Send className="size-4" aria-hidden />
-                发送
-              </AsyncButton>
+              <div className="flex items-center justify-end gap-2 border-t border-border/80 px-3 py-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={!draft.trim()}
+                  onClick={() => onDraftChange("")}
+                >
+                  清空
+                </Button>
+                <AsyncButton
+                  size="sm"
+                  loading={sending}
+                  disabled={!draft.trim()}
+                  onClick={() => handleSend()}
+                >
+                  <Send className="size-3.5" aria-hidden />
+                  发送
+                </AsyncButton>
+              </div>
             </div>
           </footer>
         </>

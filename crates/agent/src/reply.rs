@@ -201,6 +201,7 @@ impl ReplyEngine {
             max_tokens: 8192,
             temperature: 0.5,
             disable_thinking: false,
+            ..Default::default()
         };
 
         // 5. provider 分发。

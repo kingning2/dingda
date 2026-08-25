@@ -3,7 +3,8 @@
 use chrono::Utc;
 use common::DingDaResult;
 use platform::domain::monitor::{
-    MonitorResult, MonitorRun, MonitorService, MonitorStats, MonitorTask,
+    ensure_next_run_on_enable, pause_schedule, reset_and_pause_schedule_for_manual_run,
+    resume_schedule, MonitorResult, MonitorRun, MonitorService, MonitorStats, MonitorTask,
 };
 use platform::shared::{
     InMemoryMonitorResultStore, InMemoryMonitorRunStore, InMemoryMonitorTaskStore,
@@ -139,7 +140,7 @@ pub async fn monitor_task_save(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| Uuid::new_v4().to_string());
     let existing = service(&handle).get_task(request.owner_id, &id)?;
-    let task = MonitorTask {
+    let mut task = MonitorTask {
         id,
         owner_id: request.owner_id,
         name: request.name.trim().to_string(),
@@ -163,6 +164,14 @@ pub async fn monitor_task_save(
             .unwrap_or(false),
         last_run_at: existing.as_ref().and_then(|item| item.last_run_at.clone()),
         last_error: existing.as_ref().and_then(|item| item.last_error.clone()),
+        schedule_paused: existing
+            .as_ref()
+            .map(|item| item.schedule_paused)
+            .unwrap_or(false),
+        schedule_remaining_secs: existing
+            .as_ref()
+            .and_then(|item| item.schedule_remaining_secs),
+        next_run_at: existing.as_ref().and_then(|item| item.next_run_at.clone()),
         created_at: existing
             .as_ref()
             .map(|item| item.created_at.clone())
@@ -177,6 +186,46 @@ pub async fn monitor_task_save(
     if task.ai_account_id.is_empty() {
         return Err(common::DingDaError::validation("请选择 AI 账号"));
     }
+    let now_dt = Utc::now();
+    if !task.enabled {
+        task.schedule_paused = false;
+        task.schedule_remaining_secs = None;
+        task.next_run_at = None;
+    } else if !task.schedule_paused {
+        ensure_next_run_on_enable(&mut task, now_dt);
+    }
+    service(&handle).save_task(&task)?;
+    Ok(IpcResponse::ok(task))
+}
+
+#[tauri::command]
+pub async fn monitor_task_pause_schedule(
+    handle: State<'_, MonitorHandle>,
+    request: MonitorTaskIdRequest,
+) -> DingDaResult<IpcResponse<MonitorTask>> {
+    let mut task = service(&handle)
+        .get_task(request.owner_id, &request.task_id)?
+        .ok_or_else(|| common::DingDaError::validation("监控任务不存在"))?;
+    if !task.enabled {
+        return Err(common::DingDaError::validation("未启用定时爬取"));
+    }
+    pause_schedule(&mut task, Utc::now());
+    service(&handle).save_task(&task)?;
+    Ok(IpcResponse::ok(task))
+}
+
+#[tauri::command]
+pub async fn monitor_task_resume_schedule(
+    handle: State<'_, MonitorHandle>,
+    request: MonitorTaskIdRequest,
+) -> DingDaResult<IpcResponse<MonitorTask>> {
+    let mut task = service(&handle)
+        .get_task(request.owner_id, &request.task_id)?
+        .ok_or_else(|| common::DingDaError::validation("监控任务不存在"))?;
+    if !task.enabled {
+        return Err(common::DingDaError::validation("未启用定时爬取"));
+    }
+    resume_schedule(&mut task, Utc::now());
     service(&handle).save_task(&task)?;
     Ok(IpcResponse::ok(task))
 }
@@ -195,6 +244,11 @@ pub async fn monitor_task_run(
     handle: State<'_, MonitorHandle>,
     request: MonitorTaskIdRequest,
 ) -> DingDaResult<IpcResponse<MonitorRunSummary>> {
+    let mut task = service(&handle)
+        .get_task(request.owner_id, &request.task_id)?
+        .ok_or_else(|| common::DingDaError::validation("监控任务不存在"))?;
+    reset_and_pause_schedule_for_manual_run(&mut task, Utc::now());
+    service(&handle).save_task(&task)?;
     let summary = handle
         .engine
         .run_task(request.owner_id, &request.task_id)

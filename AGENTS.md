@@ -73,6 +73,8 @@ AI 开发知识库：[`skills/dingda/`](skills/dingda/)（架构 · recipes · t
 - [`.cursor/rules/branch-workflow.mdc`](.cursor/rules/branch-workflow.mdc) — 分支命令与工作流
 - [`.cursor/rules/active-branch.mdc`](.cursor/rules/active-branch.mdc) — **当前分支** scope（生成文件）
 - [`.cursor/rules/frontend.md`](.cursor/rules/frontend.md) · [`.cursor/rules/rust.md`](.cursor/rules/rust.md) · [`.cursor/rules/python.md`](.cursor/rules/python.md)
+- [`skills/dingda/guides/ui-reference.md`](skills/dingda/guides/ui-reference.md) — **UI 任务首选参考**（Shadcn Admin + Aceternity UI + `@desk/ui` 三层）
+- [`docs/shadcn-admin-aceternity-migration-prompt.md`](docs/shadcn-admin-aceternity-migration-prompt.md) — 完整 UI 改造规格与路由清单
 - [`.cursor/skills/emil-design-eng/SKILL.md`](.cursor/skills/emil-design-eng/SKILL.md) — 前端 UI / 动效必须遵循（Emil Kowalski）
 - `/check-emil-design` — 对照上述 skill 审查当前 UI/动效（见 [`.cursor/commands/check-emil-design.md`](.cursor/commands/check-emil-design.md)）
 - [`contracts/`](contracts/) — 三端共享契约，Breaking Change 必须先改契约并提供迁移说明

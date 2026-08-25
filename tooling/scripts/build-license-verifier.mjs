@@ -215,12 +215,17 @@ function resolveVerifierSyncState(destPath, sourcePath, force) {
 }
 
 function syncSha256Sidecars(destPath) {
-  const digest = sha256File(destPath);
   const shaPath = join(infraGeneratedDir, "license_verifier.sha256");
   mkdirSync(infraGeneratedDir, { recursive: true });
   const previous = existsSync(shaPath)
     ? readFileSync(shaPath, "utf8").trim()
     : "";
+  const destMtime = existsSync(destPath) ? statSync(destPath).mtimeMs : 0;
+  const shaMtime = existsSync(shaPath) ? statSync(shaPath).mtimeMs : 0;
+  if (previous && destMtime > 0 && shaMtime >= destMtime) {
+    return previous;
+  }
+  const digest = sha256File(destPath);
   writeFileSync(shaPath, `${digest}\n`, "utf8");
   if (previous !== digest) {
     console.log(`sha256 -> ${shaPath} (${digest})`);

@@ -18,7 +18,7 @@ Rust 是**唯一业务核心**与**唯一协调者**。
 
 ```
 apps/desktop/src-tauri/src/   # 业务 UseCase · Tauri commands · 组装
-crates/<infra>/               # 基建（kernel · common · ports · adapter · storage · runtime）
+crates/{agent,platform,infra}/ # 自包含能力包；共享叶子 common/ports/macros
 └── src/
     └── lib.rs                # 单一职责模块（无 app / domain 分层）
 ```

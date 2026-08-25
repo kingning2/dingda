@@ -1,10 +1,6 @@
 /**
- * Agent Feature — AI 配置 + Agent 状态。
- *
- * @author Xiaoman
+ * AI 配置 — 内置平台与账号管理。
  */
-
-import { Bot } from "@desk/ui/icons";
 
 export { AiPage } from "./ai-page";
 export { AiAccountCard } from "./ai-account-card";
@@ -18,10 +14,10 @@ export {
   ACCOUNT_PROVIDERS,
   type BuiltInProvider,
 } from "./builtin-providers";
-export { useAgentPing } from "./use-agent-ping";
-export { AgentPage } from "./agent-page";
 
-/** AI 配置 feature（侧栏「AI 配置」）。 */
+import { Bot } from "@desk/ui/icons";
+
+/** AI 配置（侧栏入口）。 */
 export const aiFeature = {
   id: "ai",
   path: "/features/ai",
@@ -29,18 +25,6 @@ export const aiFeature = {
     id: "ai",
     path: "/features/ai",
     label: "AI 配置",
-    icon: Bot,
-  },
-};
-
-/** Agent 状态 feature（侧栏「Agent」）。 */
-export const agentFeature = {
-  id: "agent",
-  path: "/features/agent",
-  navItem: {
-    id: "agent",
-    path: "/features/agent",
-    label: "Agent",
     icon: Bot,
   },
 };

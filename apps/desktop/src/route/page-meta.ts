@@ -26,27 +26,23 @@ export interface PageMeta {
 const pageMetaByPath: Record<string, PageMeta> = {
   "/": {
     title: "首页",
-    description: "DingDa 架构脚手架",
-  },
-  "/features/agent": {
-    title: "Agent",
-    description: "Sidecar 连通性垂直切片",
+    description: "渠道经营总览与快捷入口",
   },
   "/features/ai": {
     title: "AI 配置",
-    description: "管理 AI 账号与本地模型",
+    description: "管理智能回复与监控任务使用的 AI 账号",
   },
   "/features/chat": {
     title: "客户会话",
     description: "查看买家消息并人工回复",
   },
   [CHANNEL_MANAGE_ROOT]: {
-    title: "管理后台",
-    description: "平台业务管理控制台",
+    title: "首页",
+    description: "渠道经营总览与快捷入口",
   },
   "/features/knowledge": {
-    title: "Knowledge",
-    description: "知识库与检索",
+    title: "知识库",
+    description: "沉淀商品话术与常见问题，供客服快速检索",
   },
 };
 
@@ -64,7 +60,7 @@ export function getPageMeta(pathname: string): PageMeta {
   if (manageTitle) {
     return {
       title: manageTitle,
-      description: "平台管理业务子页面",
+      description: "渠道经营与管理",
     };
   }
 

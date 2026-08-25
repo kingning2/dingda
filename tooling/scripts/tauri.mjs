@@ -220,9 +220,6 @@ function prepareLockedBuild(env, command, buildTarget) {
 
   const verifierScript = join(rootDir, "tooling/scripts/build-license-verifier.mjs");
   const verifierArgs = [];
-  if (command === "dev") {
-    verifierArgs.push("--force");
-  }
   if (buildTarget) {
     verifierArgs.push("--target", buildTarget);
   }

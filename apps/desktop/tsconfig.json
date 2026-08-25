@@ -54,6 +54,15 @@
                                           "@feature/*":  [
                                                              "./src/features/*"
                                                          ],
+                                          "@components/*":  [
+                                                                "./src/components/*"
+                                                            ],
+                                          "@license":  [
+                                                           "./src/license/index.ts"
+                                                       ],
+                                          "@license/*":  [
+                                                             "./src/license/*"
+                                                         ],
                                           "@platform-routes":  [
                                                                    "./src/route/platforms/index.ts"
                                                                ]

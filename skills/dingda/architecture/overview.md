@@ -13,15 +13,17 @@ flowchart TB
     end
 
     subgraph Core["Rust Application Core"]
-        Tauri[apps/desktop/src-tauri\n业务 UseCase + 组装 + 默认 AI]
-        Kernel[kernel - event / task]
-        Ports[ports - traits]
-        Infra[adapter / storage / runtime]
+        Tauri[apps/desktop/src-tauri\n应用壳：IPC + 状态 + Builder]
+        Business[business - 应用胶水]
+        AgentC[crates/agent - AI 编排]
+        PlatformC[crates/platform - 渠道平台全栈]
+        Infra[crates/infra - 事件总线 + sidecar 运行时]
+        Leaves[common / ports / macros]
     end
 
     subgraph Sidecar["Python Sidecar（例外）"]
         Process[python/sidecar]
-        Gateway[gateway — 仅生态缺口]
+        Channels[channels — 渠道浏览器例外]
     end
 
     Contracts[(contracts/)]
@@ -31,7 +33,7 @@ flowchart TB
     Tauri --> Ports
     Ports --> Infra
     Tauri -.->|仅 ADR-0009 例外| Process
-    Process --> Gateway
+    Process --> Channels
     Tauri -->|Tauri Events| Platform
     Contracts -.->|codegen| Frontend
     Contracts -.->|codegen| Core
@@ -44,7 +46,7 @@ flowchart TB
 |----|------|
 | 桌面壳 | Tauri 2 |
 | 前端 | React · TypeScript · Vite · pnpm workspace |
-| 核心（默认含 AI） | Rust Workspace · SQLite（经 storage 抽象） |
+| 核心（默认含 AI） | Rust Workspace · SQLite（经 platform::storage） |
 | 例外 Sidecar | Python · 仅 Rust 生态不够时 |
 | 契约 | JSON Schema · OpenAPI · codegen |
 

@@ -1,19 +1,19 @@
 /**
- * 闲鱼管理子页面导航配置 — 类型与助手来自共享 `features/manage/nav/`，
+ * 闲鱼管理子页面导航配置 — 类型与助手来自共享 `components/manage/nav/`，
  * 本文件只提供闲鱼侧配置。
  *
  * `ready: false` 的项仍保留路由与页面，但侧栏不展示（未接入平台能力）。
  */
-import type { ManageNavGroup, ManageNavItem } from "@feature/manage/nav";
+import type { ManageNavGroup, ManageNavItem } from "@components/manage/nav";
 import {
   isManageView as isManageViewFor,
   manageNavItemsForGroup as itemsForGroup,
   navTitles,
   visibleManageNavGroups as visibleGroups,
-} from "@feature/manage/nav";
+} from "@components/manage/nav";
 import { Building2, Package, Radar, Search, ShoppingCart, Users } from "@desk/ui/icons";
 
-export type { ManageNavGroup, ManageNavItem } from "@feature/manage/nav";
+export type { ManageNavGroup, ManageNavItem } from "@components/manage/nav";
 export { managePath } from "@desk/platform/compile";
 
 /** 闲鱼管理子页面标识（URL 片段，如 `/manage/accounts`）。 */
@@ -33,21 +33,21 @@ export const MANAGE_NAV: ManageNavItem<ManageView>[] = [
     key: "accounts",
     label: "账号管理",
     icon: Users,
-    description: "闲鱼 / 1688 分 Tab 扫码登录与账号状态",
+    description: "闲鱼 / 1688 分 Tab 扫码登录与连接状态",
     ready: true,
   },
   {
     key: "search",
     label: "闲鱼商品搜索",
     icon: Search,
-    description: "指纹浏览器搜索闲鱼二手商品",
+    description: "关键词搜索闲鱼二手商品",
     ready: true,
   },
   {
     key: "monitor",
     label: "商品监控",
     icon: Radar,
-    description: "定时多任务监控 + AI 关键词与决策",
+    description: "定时扫描商品，AI 自动筛选并推荐入库",
     ready: true,
   },
   ...(__DINGDA_HAS_ALI1688__
@@ -56,14 +56,14 @@ export const MANAGE_NAV: ManageNavItem<ManageView>[] = [
           key: "accounts-1688" as const,
           label: "1688账号",
           icon: Building2,
-          description: "兼容旧路由，打开账号管理并定位 1688 Tab",
+          description: "打开账号管理并定位 1688 账号",
           ready: false,
         },
         {
           key: "search-1688" as const,
           label: "1688商品搜索",
           icon: Search,
-          description: "Camoufox 指纹浏览器搜索 1688 批发商品",
+          description: "关键词搜索 1688 批发商品",
           ready: true,
         },
       ]

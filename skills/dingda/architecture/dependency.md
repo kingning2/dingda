@@ -12,18 +12,19 @@ React  →  platform  →  (Tauri IPC)  →  Rust  →  ports  ←  infrastructu
 
 ## Rust Workspace 依赖矩阵
 
-业务代码（UseCase / Tauri commands）放在 `apps/desktop/src-tauri`；`crates/` 仅放基础设施，基础设施禁止依赖业务代码。
+业务代码（UseCase / Tauri commands）放在 `apps/desktop/src-tauri`；`crates/` 内能力包只依赖共享叶子（`common` / `ports`）+ 外部 crate，禁止兄弟能力包互相依赖。
 
 | Crate 类型 | 可依赖 | 禁止依赖 |
 |------------|--------|----------|
-| `common` | — | 业务代码（src-tauri） |
-| `kernel` | — | 业务代码 |
-| `ports` | `common` | 业务代码, `storage`, `runtime`, `adapter` |
-| `adapter` | `common`, `ports`, `runtime` | 业务代码 |
-| `storage` | `common`, `ports` | 业务代码 |
-| `runtime` | `common`, `ports` | 业务代码 |
+| `common` | — | 业务代码、其他 crates |
+| `ports` | `common` | 能力包（agent / platform / infra）、业务代码 |
+| `macros` | — | 业务代码 |
+| `agent` | `common`, `ports`, 外部 crate | Tauri、business、兄弟能力包 |
+| `platform` | `common`, `ports`, 外部 crate | Tauri、business、兄弟能力包 |
+| `infra` | `common`, `ports`, 外部 crate | Tauri、business、兄弟能力包 |
 
-`src-tauri`（业务层）可依赖：`common` · `kernel` · `ports` · `adapter` · `storage` · `runtime`。
+`business`（应用胶水）可依赖：`common` · `infra` · `platform`。
+`src-tauri`（应用壳）可依赖：全部 crate + business。详见 [`docs/architecture/module-dependency-graph.md`](../../../docs/architecture/module-dependency-graph.md)。
 
 ## React 依赖矩阵
 
@@ -42,8 +43,8 @@ Python 包只服务 sidecar 例外能力。不要为默认 AI 增加依赖。
 |----|--------|----------|
 | `contracts` | pydantic / typing | sqlalchemy, sqlite3 |
 | `shared` | — | tauri, react |
-| `gateway` | contracts, shared | tauri, react, SQLite |
-| `sidecar` | gateway, contracts, shared | GUI 框架 |
+| `channels` | contracts, shared, core | tauri, react, SQLite |
+| `sidecar` | channels, contracts, shared | GUI 框架 |
 
 ## 循环依赖检测
 

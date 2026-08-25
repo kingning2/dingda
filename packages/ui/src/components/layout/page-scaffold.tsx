@@ -70,7 +70,7 @@ export interface PageScaffoldProps extends Omit<React.HTMLAttributes<HTMLDivElem
    * @default true
    */
   scroll?: boolean;
-  /** 环境背景：`spotlight` 为 Aceternity 聚光灯。 */
+  /** 环境背景。默认 `spotlight`；不需要光效时传 `none`。 */
   ambient?: "spotlight" | "none";
 }
 
@@ -132,7 +132,7 @@ export function PageScaffold({
   containerPadding = "md",
   fill = true,
   scroll = true,
-  ambient = "none",
+  ambient = "spotlight",
   className,
   ...props
 }: PageScaffoldProps) {

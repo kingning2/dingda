@@ -162,12 +162,12 @@ export function XianyuItemsPage() {
   return (
     <PageScaffold
       title="商品管理"
-      subtitle="卡片 / 筛选 / 同步 / AI 提示词"
+      subtitle="查看在售商品、按账号筛选，并维护智能回复说明"
       toolbar={
         <div className="flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Input
-              placeholder="搜索商品 ID / 标题"
+              placeholder="搜索商品编号或标题"
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onKeyDown={(event) => {

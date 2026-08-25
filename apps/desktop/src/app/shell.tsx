@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { IconButton, SidebarProvider, ThemeProvider, ThemeToggle } from "@desk/ui";
+import { IconButton, SidebarProvider, ThemeToggle } from "@desk/ui";
 import { Settings } from "@desk/ui/icons";
 import {
   closeWindow,
@@ -16,9 +16,9 @@ import {
   subscribeWindowMaximized,
   toggleMaximizeWindow,
 } from "@desk/platform";
-import { SettingsDialogProvider, useSettingsDialog } from "@feature/setting";
+import { SettingsDialogProvider, useSettingsDialog } from "./settings";
 import { PlatformShellLifecycles } from "virtual:dingda/platform-shell-lifecycles";
-import { useRouteChange, useStartApp, usePluginLifecycle, useErrorLifecycle } from "../lifecycle";
+import { useRouteChange, useStartApp, usePluginLifecycle } from "../lifecycle";
 import { AppLayout, MainPanel } from "./layout";
 import { WorkspaceSidebar } from "./layout/workspace-sidebar";
 import { TitleBar } from "./title-bar";
@@ -52,7 +52,6 @@ function AppShellInner() {
   useRouteChange();
   useStartApp();
   usePluginLifecycle();
-  useErrorLifecycle();
 
   useEffect(() => {
     let cancelled = false;
@@ -128,10 +127,8 @@ function AppShellInner() {
  */
 export function AppShell() {
   return (
-    <ThemeProvider defaultTheme="dark">
-      <SettingsDialogProvider>
-        <AppShellInner />
-      </SettingsDialogProvider>
-    </ThemeProvider>
+    <SettingsDialogProvider>
+      <AppShellInner />
+    </SettingsDialogProvider>
   );
 }

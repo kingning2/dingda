@@ -7,7 +7,8 @@ use common::events::{
 };
 use common::DingDaResult;
 use platform::domain::monitor::{
-    MonitorResult, MonitorRun, MonitorRunStore, MonitorService, MonitorTask, MonitorTaskStore,
+    bump_next_run_after_run, MonitorResult, MonitorRun, MonitorRunStore, MonitorService,
+    MonitorTask, MonitorTaskStore,
 };
 use platform::shared::{
     InMemoryAccountStore, InMemoryMonitorResultStore, InMemoryMonitorRunStore,
@@ -23,6 +24,7 @@ use super::ai::{
 use super::search::search_offers;
 use crate::config::ConfigStore;
 use crate::shared::state::AppState;
+use agent::ToolTraceEntry;
 
 pub struct MonitorEngine {
     pub tasks: Arc<InMemoryMonitorTaskStore>,
@@ -88,8 +90,10 @@ impl MonitorEngine {
             .run_task_inner(owner_id, &mut task, &run_id, &mut run.steps)
             .await;
         task.is_running = false;
-        task.last_run_at = Some(Utc::now().to_rfc3339());
-        task.updated_at = Utc::now().to_rfc3339();
+        let finished_at = Utc::now();
+        task.last_run_at = Some(finished_at.to_rfc3339());
+        task.updated_at = finished_at.to_rfc3339();
+        bump_next_run_after_run(&mut task, finished_at);
         match &result {
             Ok(summary) => {
                 run.status = "success".to_string();
@@ -194,6 +198,13 @@ impl MonitorEngine {
             let generated = generate_keywords(&ai_config, &mut ai_failover, &prompt)
                 .await
                 .map_err(common::DingDaError::wrap)?;
+            self.emit_tool_trace(
+                task,
+                run_id,
+                MonitorProgressStage::Keywords,
+                &generated.tool_trace,
+                steps,
+            );
             task.keywords = generated.keywords;
             task.updated_at = Utc::now().to_rfc3339();
             self.tasks.put_task(task)?;
@@ -341,6 +352,13 @@ impl MonitorEngine {
                 let decided = decide_item(&ai_config, &mut ai_failover, &prompt)
                     .await
                     .map_err(common::DingDaError::wrap)?;
+                self.emit_tool_trace(
+                    task,
+                    run_id,
+                    MonitorProgressStage::Decide,
+                    &decided.tool_trace,
+                    steps,
+                );
                 let decision = decided.decision;
                 self.emit_content(
                     task,
@@ -392,6 +410,7 @@ impl MonitorEngine {
         steps: &mut Vec<MonitorProgressEvent>,
     ) {
         let payload = MonitorProgressEvent {
+            step_id: Some(Uuid::new_v4().to_string()),
             run_id: run_id.to_string(),
             task_id: task.id.clone(),
             task_name: task.name.clone(),
@@ -412,6 +431,33 @@ impl MonitorEngine {
 
     /// 内容步骤（发送给 AI / AI 返回 / 爬虫）— 同样写入运行记录步骤。
     #[allow(clippy::too_many_arguments)]
+    fn emit_tool_trace(
+        &self,
+        task: &MonitorTask,
+        run_id: &str,
+        stage: MonitorProgressStage,
+        trace: &[ToolTraceEntry],
+        steps: &mut Vec<MonitorProgressEvent>,
+    ) {
+        for entry in trace {
+            let args = entry.call.arguments.chars().take(200).collect::<String>();
+            let header = format!(
+                "tool_call {} → {}({})",
+                entry.call.id, entry.call.name, args
+            );
+            self.emit_content(
+                task,
+                run_id,
+                stage.clone(),
+                header,
+                "tool",
+                "text",
+                truncate(&entry.result.content, 2000),
+                steps,
+            );
+        }
+    }
+
     fn emit_content(
         &self,
         task: &MonitorTask,
@@ -424,6 +470,7 @@ impl MonitorEngine {
         steps: &mut Vec<MonitorProgressEvent>,
     ) {
         let payload = MonitorProgressEvent {
+            step_id: Some(Uuid::new_v4().to_string()),
             run_id: run_id.to_string(),
             task_id: task.id.clone(),
             task_name: task.name.clone(),

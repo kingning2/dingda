@@ -8,16 +8,20 @@
 import { type ComponentType, useEffect, useState } from "react";
 import { CHANNEL_MANAGE_ROOT, managePath } from "@desk/platform/compile";
 import { pageLoaders } from "@platform-routes";
-
-import { HomePage } from "./pages/home-page";
+import { DISCOVERY_AVAILABLE } from "@feature/discovery";
+import { isLicensedRoute, UnlockPage, useLicenseGateContext } from "@license";
+import { logFirstScreenRender } from "./first-screen-metric";
 
 type PageLoader = () => Promise<ComponentType>;
 
 const PAGE_LOADERS: Record<string, PageLoader> = {
-  "/": async () => HomePage,
-  "/features/agent": async () => {
-    const { AgentPage } = await import("@feature/agent/agent-page");
-    return AgentPage;
+  // `/` 与侧栏「首页」一致：渠道管理仪表盘（非空欢迎页）
+  "/": async () => {
+    const loader = pageLoaders[CHANNEL_MANAGE_ROOT];
+    if (!loader) {
+      throw new Error("CHANNEL_MANAGE_ROOT page loader missing");
+    }
+    return loader();
   },
   "/features/ai": async () => {
     const { AiPage } = await import("@feature/agent/ai-page");
@@ -31,6 +35,14 @@ const PAGE_LOADERS: Record<string, PageLoader> = {
     const { KnowledgePage } = await import("@feature/knowledge/knowledge-page");
     return KnowledgePage;
   },
+  ...(DISCOVERY_AVAILABLE
+    ? ({
+        "/features/discovery": async () => {
+          const { DiscoveryPage } = await import("@feature/discovery/discovery-page");
+          return DiscoveryPage;
+        },
+      } satisfies Record<string, PageLoader>)
+    : {}),
   ...pageLoaders,
 };
 
@@ -79,7 +91,29 @@ export interface WorkspaceOutletProps {
  * @param props.activePath - 当前激活路径
  */
 export function WorkspaceOutlet({ activePath }: WorkspaceOutletProps) {
+  const { gateBlocks } = useLicenseGateContext();
   const [Page, setPage] = useState<ComponentType | null>(() => pageCache.get(activePath) ?? null);
+
+  useEffect(() => {
+    if (!Page) {
+      return;
+    }
+
+    // 等待当前提交真正进入浏览器绘制阶段，再记录首屏耗时。
+    let nestedFrame = 0;
+    const frame = window.requestAnimationFrame(() => {
+      nestedFrame = window.requestAnimationFrame(() => {
+        logFirstScreenRender(activePath);
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (nestedFrame) {
+        window.cancelAnimationFrame(nestedFrame);
+      }
+    };
+  }, [Page, activePath]);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +134,10 @@ export function WorkspaceOutlet({ activePath }: WorkspaceOutletProps) {
       cancelled = true;
     };
   }, [activePath]);
+
+  if (gateBlocks && isLicensedRoute(activePath)) {
+    return <UnlockPage inline />;
+  }
 
   if (!Page) {
     return (

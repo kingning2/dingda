@@ -101,7 +101,10 @@ export function AiPage() {
   }
 
   return (
-    <PageScaffold title="AI 配置" subtitle="按平台管理账号。API Key 保存在本机。">
+    <PageScaffold
+      title="AI 配置"
+      subtitle="管理客服自动回复与商品监控使用的 AI 账号，密钥仅保存在本机"
+    >
       {loadError ? (
         <p className="mb-4 text-[length:var(--text-sm)] text-red-600 dark:text-red-400">
           {loadError}
@@ -156,7 +159,7 @@ export function AiPage() {
         })}
 
         {ollama ? (
-          <OllamaSection
+          <LocalAiSection
             provider={ollama}
             model={ollamaModel}
             error={ollamaError}
@@ -193,12 +196,9 @@ export function AiPage() {
 }
 
 /**
- * 本地 Ollama 配置区块。
- *
- * @author Xiaoman
- * @created 2026-08-20
+ * 本地 AI 配置区块。
  */
-function OllamaSection({
+function LocalAiSection({
   provider,
   model,
   error,
@@ -226,18 +226,15 @@ function OllamaSection({
         </div>
       </div>
       <PageGlowCard className="max-w-md border border-border/70 bg-card p-4 shadow-sm">
-        <p className="break-all font-mono text-[length:var(--text-xs)] text-muted-foreground">
-          {provider.base_url}
-        </p>
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="flex flex-col gap-2">
           <label
-            htmlFor="ollama-default-model"
+            htmlFor="local-ai-default-model"
             className="text-[length:var(--text-sm)] font-medium text-foreground"
           >
-            默认模型
+            常用模型
           </label>
           <Input
-            id="ollama-default-model"
+            id="local-ai-default-model"
             value={model}
             onChange={(event) => onModelChange(event.target.value)}
             onBlur={onSave}

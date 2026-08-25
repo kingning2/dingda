@@ -9,7 +9,7 @@ import { MessageSquare } from "@desk/ui/icons";
 
 export { ChatPage } from "./chat-page";
 export { InboxPanel } from "./inbox-panel";
-export type { InboxGroup, InboxPanelProps } from "./inbox-panel";
+export type { InboxPanelProps } from "./inbox-panel";
 export { ThreadPanel } from "./thread-panel";
 export type { ThreadPanelProps } from "./thread-panel";
 export { CustomerPanel } from "./customer-panel";

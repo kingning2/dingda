@@ -26,13 +26,17 @@ DingDa 架构文档与 ADR 存放目录。
 
 ## 代码布局
 
-- `crates/` — 只放**基建代码**（与业务无关的基础设施）：`adapter` · `common` · `kernel` · `ports` · `runtime` · `storage`
-- `apps/desktop/src-tauri/` — 业务代码与 Tauri 组装：`agent` · `license` · `commands` · `state` · `platform` · `logging`
+- `crates/` — 自包含能力包与共享叶子：`agent` · `platform` · `infra`（能力包）+ `common` · `ports` · `macros`（共享叶子）+ `adapter`
+- `business/` — 应用胶水 crate：日志 / 配置 / 渠道存储 / 事件桥 / 耗时计时（不依赖 Tauri，领域在 `crates/platform`）
+- `apps/desktop/src-tauri/` — Tauri 应用壳：IPC 命令、状态注册、Builder、平台装配
 - `apps/desktop/src/` — React 前端（`features/` + `route/` + `i18n/`）
+- `packages/` — 前端共享包：`ui` · `platform` · `store` · `contracts` · `utils`
 - `python/` — 例外 Sidecar（仅 Rust 生态不够时编写）
 - `contracts/` — 跨端契约生成源
+- `subscription/` — 独立激活/授权工具，**不属于** workspace
 
-业务代码直接放在 `src-tauri`，不放入 `crates/`。
+依赖方向：`src-tauri → business → crates/**`；`crates/**` 不依赖 Tauri 与 `business`。
+详见 [`package-taxonomy.md`](package-taxonomy.md) 与 [`module-dependency-graph.md`](module-dependency-graph.md)。
 
 ## 设计原则
 
@@ -48,7 +52,7 @@ DingDa 架构文档与 ADR 存放目录。
 
 ## Feature 列表（互相独立）
 
-`chat` · `agent` · `knowledge`
+`agent` · `chat` · `knowledge` · `platform` · `manage` · `license` · `plugin` · `setting`（另有横切的 `component` / `error`）
 
 跨 Feature 通信只允许：
 

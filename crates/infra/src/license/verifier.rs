@@ -16,8 +16,8 @@ use tokio::process::Command;
 
 use super::host_security::LicenseHostSecurity;
 
-/// ensure_licensed 短缓存 TTL，降低频繁 spawn 开销。
-const LICENSE_CACHE_TTL: Duration = Duration::from_secs(30);
+/// 授权状态缓存 10 分钟后过期，触发下一次真实校验。
+const LICENSE_CACHE_TTL: Duration = Duration::from_secs(10 * 60);
 
 /// 通过 license-verifier 子进程完成机器码与验签的闸门。
 ///
@@ -26,7 +26,7 @@ const LICENSE_CACHE_TTL: Duration = Duration::from_secs(30);
 /// - 校验 verifier 二进制 SHA-256
 /// - 异步 spawn + nonce 挑战应答
 /// - 激活成功后落盘 `.key` 或 `license.token`
-/// - 短 TTL 缓存 `ensure_licensed` 结果
+/// - 缓存校验结果并在 10 分钟后过期，兼顾性能与状态同步
 ///
 /// 作者：coisini
 /// 创建时间：2026-07-16
@@ -38,10 +38,10 @@ pub struct VerifierProcessLicense {
     cache: Mutex<Option<CachedLicense>>,
 }
 
+#[derive(Clone)]
 struct CachedLicense {
     checked_at: Instant,
-    activated: bool,
-    reason: Option<String>,
+    status: LicenseStatus,
 }
 
 impl VerifierProcessLicense {
@@ -315,25 +315,20 @@ impl VerifierProcessLicense {
         }
     }
 
-    fn read_cache(&self) -> Option<CachedLicense> {
+    fn read_cache(&self) -> Option<LicenseStatus> {
         let guard = self.cache.lock().ok()?;
         let cached = guard.as_ref()?;
         if cached.checked_at.elapsed() > LICENSE_CACHE_TTL {
             return None;
         }
-        Some(CachedLicense {
-            checked_at: cached.checked_at,
-            activated: cached.activated,
-            reason: cached.reason.clone(),
-        })
+        Some(cached.status.clone())
     }
 
-    fn write_cache(&self, activated: bool, reason: Option<String>) {
+    fn write_cache(&self, status: LicenseStatus) {
         if let Ok(mut guard) = self.cache.lock() {
             *guard = Some(CachedLicense {
                 checked_at: Instant::now(),
-                activated,
-                reason,
+                status,
             });
         }
     }
@@ -358,10 +353,17 @@ struct VerifierJson {
 #[async_trait]
 impl LicenseGate for VerifierProcessLicense {
     async fn status(&self) -> Result<LicenseStatus, LicenseError> {
+        if let Some(cached) = self.read_cache() {
+            return Ok(cached);
+        }
         let nonce = self.security.generate_nonce();
         let args = match self.verify_args(&nonce) {
             Ok(args) => args,
-            Err(reason) => return Ok(self.status_without_artifact(reason).await),
+            Err(reason) => {
+                let status = self.status_without_artifact(reason).await;
+                self.write_cache(status.clone());
+                return Ok(status);
+            }
         };
         let (exit, stdout, stderr) = self.run_verifier(&args).await?;
         if exit == 2 {
@@ -369,7 +371,7 @@ impl LicenseGate for VerifierProcessLicense {
             return Err(LicenseError::VerifierRuntime { exit, detail });
         }
         let status = self.parse_verify(&stdout, exit, &nonce)?;
-        self.write_cache(status.activated, status.reason.clone());
+        self.write_cache(status.clone());
         Ok(status)
     }
 

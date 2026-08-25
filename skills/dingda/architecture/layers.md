@@ -14,12 +14,12 @@
 ┌────────────────────────────▼─────────────────────────────┐
 │ Layer 2: Rust（Application Core，默认实现含 AI）           │
 │                                                          │
-│  apps/desktop/src-tauri/    Tauri commands · 业务 · LLM   │
-│  crates/infra/src/            基础设施适配器（sidecar gateway）│
-│  crates/infra/             event bus · task scheduler    │
-│  crates/ports/              共享 Port trait               │
-│  crates/platform/src/storage/            SQLite 实现                   │
-│  crates/infra/            例外 Sidecar 生命周期          │
+│  business/                  应用胶水（日志/配置/渠道存储/事件桥）│
+│  apps/desktop/src-tauri/    Tauri 壳：IPC 命令 · 状态 · Builder │
+│  crates/agent/              AI 编排（model/knowledge/prompt/intent/reply）│
+│  crates/platform/           渠道平台（协议+领域+Provider+SQLite）│
+│  crates/infra/              事件总线 · sidecar 运行时 · license │
+│  crates/common · ports · macros · adapter    共享叶子          │
 └────────────────────────────┬─────────────────────────────┘
                              │ 仅当 Rust 生态不够（ADR-0009）
 ┌────────────────────────────▼─────────────────────────────┐
@@ -27,7 +27,7 @@
 │                                                          │
 │  python/                    单一项目（无 uv workspace）    │
 │    sidecar/                 进程入口 · 管理面 API          │
-│    gateway/                 浏览器例外（续期 / 扫码等）      │
+│    channels/                渠道浏览器例外（闲鱼 / 1688 等）│
 │    shared/ · contracts/     共享工具 · codegen 类型        │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -47,7 +47,7 @@
 | 负责 | 禁止 |
 |------|------|
 | 业务编排、权限、缓存 | `unwrap()` / `panic!()` |
-| SQLite 读写（经 storage） | Feature 间直接 `use` |
+| SQLite 读写（经 platform::storage / ports） | Feature 间直接 `use` |
 | Agent / LLM（默认） | 把新 AI 能力默认丢给 Python |
 | Python sidecar 生命周期 | 阻塞 UI 线程 |
 | 结构化日志（tracing） | Python 直连前端事件 |

@@ -6,7 +6,7 @@ import { ExternalLink } from "@desk/ui/icons";
 import {
   PlatformSearchPage,
   type PlatformSearchPageConfig,
-} from "@feature/component/platform-search";
+} from "@components/platform-search";
 import {
   xianyuSearch,
   type XianyuSearchItem,
@@ -80,7 +80,7 @@ const config: PlatformSearchPageConfig<XianyuSearchItem, XianyuSearchResponse> =
   platform: "xianyu",
   search: (params) => xianyuSearch(params),
   pageTitle: "闲鱼商品搜索",
-  pageSubtitle: "使用指纹浏览器在闲鱼搜索二手商品（会弹出浏览器窗口）",
+  pageSubtitle: "在闲鱼搜索二手商品（会弹出浏览器窗口完成搜索）",
   accountLabel: "闲鱼账号",
   keywordPlaceholder: "例如：iPhone 15",
   searchLabel: "搜索",

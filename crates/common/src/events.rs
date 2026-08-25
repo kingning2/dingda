@@ -242,6 +242,9 @@ pub struct MonitorProgressSummary {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MonitorProgressEvent {
+    /// 步骤唯一 id（前端稳定 key + 去重）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub step_id: Option<String>,
     /// 所属运行记录 id（前端据此把实时步骤关联到具体一次执行）。
     pub run_id: String,
     pub task_id: String,

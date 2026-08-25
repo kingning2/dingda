@@ -6,7 +6,7 @@ import { ExternalLink } from "@desk/ui/icons";
 import {
   PlatformSearchPage,
   type PlatformSearchPageConfig,
-} from "@feature/component/platform-search";
+} from "@components/platform-search";
 import {
   ali1688Search,
   type Ali1688SearchOffer,
@@ -88,7 +88,7 @@ const config: PlatformSearchPageConfig<Ali1688SearchOffer, Ali1688SearchResponse
   platform: "ali1688",
   search: (params) => ali1688Search(params),
   pageTitle: "商品搜索",
-  pageSubtitle: "使用 Camoufox 指纹浏览器在 1688 搜索批发商品（会弹出浏览器窗口）",
+  pageSubtitle: "在 1688 搜索批发商品（会弹出浏览器窗口完成搜索）",
   accountLabel: "1688 账号",
   keywordPlaceholder: "例如：苹果17pro",
   accountEmptyText: "请先在「账号管理」扫码登录 1688 账号。",

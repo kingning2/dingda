@@ -65,3 +65,8 @@ export const mergedPlatformRoutes: PlatformRouteContribution = {
   platformCapabilities: mergeCapabilities(PLATFORM_ROUTE_STEPS),
   manageTitleFromPath: mergeTitleResolver(PLATFORM_ROUTE_STEPS),
 };
+
+/** 所有标记了 `locked: true` 的路由路径（前缀匹配用）。 */
+export const lockedRoutePaths: readonly string[] = mergedPlatformRoutes.routeSegments
+  .filter((seg) => seg.locked)
+  .map((seg) => `/${seg.path}`);

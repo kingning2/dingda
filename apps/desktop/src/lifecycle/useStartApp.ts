@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from "react";
 
-import { logWrite } from "@desk/platform/ipc/log";
+import { logStartupPhase } from "./startup-log";
 
 /**
  * 桌面应用前端启动钩子（幂等；StrictMode 下只上报一次）。
@@ -23,6 +23,6 @@ export function useStartApp(): void {
       return;
     }
     started.current = true;
-    void logWrite("应用前端已启动", "INFO").catch(() => {});
+    logStartupPhase("frontend.shell.ready");
   }, []);
 }

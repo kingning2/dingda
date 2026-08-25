@@ -24,6 +24,16 @@
 
 详见 [ui-design-system.md](ui-design-system.md)。
 
+## UI 参考（强制 — 写 UI 前必读）
+
+**任何 UI 任务先读** [ui-reference.md](ui-reference.md)：
+
+- **Shadcn Admin** — Layout / Sidebar / Header 结构参考（增量迁移，禁止整库覆盖）
+- **@desk/ui shadcn** — Table / Form / Dialog 等业务组件
+- **Aceternity UI** — `packages/ui/src/components/aceternity/` 视觉增强层
+
+完整规格：[docs/shadcn-admin-aceternity-migration-prompt.md](../../../docs/shadcn-admin-aceternity-migration-prompt.md)
+
 ## 设计工程 Skill（强制）
 
 UI / 动效必须遵循 Emil Kowalski Skill（`npx skills add emilkowalski/skill`）：
@@ -71,9 +81,12 @@ Glass · Blur · Backdrop · Motion · Spring · Dynamic Color · Radius · Typo
 
 ```
 apps/desktop/src/
-├── app/              # 根组件 + globals.css + 窗口壳
+├── app/              # 根组件、窗口壳、设置弹窗、401/503
+├── components/       # 跨 Feature 共享组合
+├── license/          # 授权闸门与激活组件
+├── lifecycle/        # 启动 / 错误 / 插件生命周期
 ├── route/
-└── features/<name>/  # 业务 Feature（含 xxxStore）
+└── features/<name>/  # 业务 Feature 页面
 
 packages/ui/src/      # 通用 UI
 packages/store/src/   # Zustand 底座（createDeskStore）
@@ -144,6 +157,7 @@ apps/desktop
 
 ## 相关
 
+- [ui-reference.md](ui-reference.md) — **UI 参考首选**
 - [ui-design-system.md](ui-design-system.md)
 - [ipc.md](ipc.md)
 - [../../packages/ui/README.md](../../packages/ui/README.md)

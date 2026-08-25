@@ -7,8 +7,8 @@
  * @created 2026-08-22
  */
 
-import { AccountsHubPage } from "@feature/component/accounts";
-import type { AccountPanelDeps, AccountsTab } from "@feature/component/accounts";
+import { AccountsHubPage } from "@components/accounts";
+import type { AccountPanelDeps, AccountsTab } from "@components/accounts";
 
 const ali1688Deps: AccountPanelDeps = {
   platform: "ali1688",

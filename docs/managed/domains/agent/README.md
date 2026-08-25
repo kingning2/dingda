@@ -51,4 +51,12 @@ PingAgent → AgentSidecarGateway → Python gateway（agent_ping handler）
 
 ## 当前状态
 
-PingAgent 骨架已实现，应用可通过 IPC 探活 Python sidecar。后续 AI 能力（LLM 推理、只读 Query 工具、纠错记忆等）默认按新 Change 在 Rust 实施；仅生态缺口才扩展 Python。
+PingAgent 骨架已实现；`crates/agent` 已提供：
+
+- `web` / `sandbox` / `tools` — 联网搜索 Capability Seam
+- `tool_loop` — OpenAI-compatible `tool_calls` 多轮循环（max_rounds，沙盒工具执行，回填 assistant/tool 消息）
+- 监控 AI：`openai_compatible` 走 tool loop；其它 provider 回退为预搜索注入 + 单次 complete
+- 关闭联网：`DINGDA_MONITOR_WEB_SEARCH=0`
+
+后续可扩展 Anthropic/Gemini 原生 tool 协议与更多 Search Provider。
+

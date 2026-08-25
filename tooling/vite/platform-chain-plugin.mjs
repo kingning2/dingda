@@ -32,8 +32,8 @@ const ROUTE_CONTRIBUTION = {
 
 /** 平台 id → 设置分区链步骤文件。 */
 const SETTINGS_STEP = {
-  xianyu: "apps/desktop/src/features/setting/platform-sections/xianyu.ts",
-  ali1688: "apps/desktop/src/features/setting/platform-sections/ali1688.ts",
+  xianyu: "apps/desktop/src/app/settings/platform-sections/xianyu.ts",
+  ali1688: "apps/desktop/src/app/settings/platform-sections/ali1688.ts",
 };
 
 /** 平台 id → IPC 平台 barrel。 */
@@ -200,7 +200,7 @@ function generateShellLifecyclesFixed(enabled) {
     return "export function PlatformShellLifecycles() { return null; }";
   }
   return [
-    'import { useAccountAutoConnect } from "@feature/component/accounts/use-auto-connect";',
+    'import { useAccountAutoConnect } from "@components/accounts/use-auto-connect";',
     "export function PlatformShellLifecycles() {",
     "  useAccountAutoConnect();",
     "  return null;",

@@ -51,7 +51,7 @@ export function AiAccountDialog({
   async function handleTest() {
     const trimmedKey = apiKey.trim();
     if (!trimmedKey) {
-      setError("请输入 API Key");
+      setError("请输入访问密钥");
       return;
     }
     setTesting(true);
@@ -77,7 +77,7 @@ export function AiAccountDialog({
       return;
     }
     if (!trimmedKey) {
-      setError("请输入 API Key");
+      setError("请输入访问密钥");
       return;
     }
     setSaving(true);
@@ -141,7 +141,7 @@ export function AiAccountDialog({
               htmlFor="ai-account-key"
               className="text-[length:var(--text-sm)] font-medium text-foreground"
             >
-              API Key
+              访问密钥
             </label>
             <div className="flex items-center gap-2">
               <Input
@@ -152,7 +152,7 @@ export function AiAccountDialog({
                   setApiKey(event.target.value);
                   setTestResult(null);
                 }}
-                placeholder="粘贴 API Key"
+                placeholder="粘贴从平台复制的密钥"
                 className="min-w-0 flex-1"
               />
               {provider && !provider.authless ? (
@@ -175,7 +175,7 @@ export function AiAccountDialog({
                     : "text-[length:var(--text-sm)] text-red-600 dark:text-red-400"
                 }
               >
-                {testResult.ok ? "API Key 可用" : "API Key 不可用"}
+                {testResult.ok ? "密钥有效，可以保存" : "密钥无效，请检查后重试"}
               </p>
             ) : null}
           </div>
@@ -184,7 +184,7 @@ export function AiAccountDialog({
               htmlFor="ai-account-model"
               className="text-[length:var(--text-sm)] font-medium text-foreground"
             >
-              默认模型
+              常用模型
             </label>
             <Input
               id="ai-account-model"

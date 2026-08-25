@@ -1,6 +1,8 @@
 # UI Design System
 
-DingDa 采用 **Apple 风** 视觉语言，全部封装在 `@desk/ui`。
+DingDa 采用 **Modern SaaS + AI Platform + Enterprise Admin** 视觉语言（Apple 风令牌 + Shadcn Admin 结构 + Aceternity 增强），全部封装在 `@desk/ui`。
+
+> **做 UI 前先读** [`ui-reference.md`](ui-reference.md) — Shadcn Admin + Aceternity UI 参考体系与页面优先级。
 
 ## 核心原则
 
@@ -26,8 +28,11 @@ import { Card } from "@desk/ui";
 
 | 需求 | 封装位置 |
 |------|----------|
+| Layout / Sidebar / 页头结构 | 参考 Shadcn Admin → 落地 `apps/desktop/src/app/layout` + `@desk/ui/layout` |
+| Dashboard KPI / Bento / Spotlight | `@desk/ui` `components/aceternity/` |
+| 光晕边框 / 聚光灯背景 | `@desk/ui` `effects/` + `aceternity/` |
 | 按钮 / 输入 / 对话框 | `@desk/ui` shadcn + Radix |
-| 毛玻璃卡片 | `Card variant="glass"` |
+| 毛玻璃卡片 | `Card variant="glass"` / `PageGlowCard` |
 | 页面过渡 | `motion` + `spring.default` |
 | 深色模式 | `ThemeProvider`（next-themes） |
 | 数据表 | `DataTable`（shadcn Table + TanStack Table + 可选 Query） |
@@ -73,6 +78,8 @@ import { spring } from "@desk/ui/tokens/motion";
 
 ## 相关
 
+- [ui-reference.md](ui-reference.md) — **UI 参考首选**
+- [../../../docs/shadcn-admin-aceternity-migration-prompt.md](../../../docs/shadcn-admin-aceternity-migration-prompt.md)
 - [frontend.md](frontend.md)
 - [../../packages/ui/README.md](../../packages/ui/README.md)
 - [../../.cursor/skills/emil-design-eng/SKILL.md](../../.cursor/skills/emil-design-eng/SKILL.md)

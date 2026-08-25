@@ -38,6 +38,7 @@ uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
 dirs = "5"
 rand = "0.8"
+schemars = "1"
 enigo = "0.3"
 screenshots = "0.8"
 imageproc = "0.25"

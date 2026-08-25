@@ -1,18 +1,19 @@
 /**
- * 应用根组件：Query 上下文、路由与授权状态。
+ * 应用根组件：主题、授权闸门、错误生命周期与路由。
  *
  * @author coisini
  * @created 2026-07-20
  */
 
 import { RouterProvider } from "react-router";
-import { QueryProvider, Toaster } from "@desk/ui";
+import { QueryProvider, ThemeProvider, Toaster } from "@desk/ui";
+import { LicenseGateProvider, useLicenseGate } from "@license";
 import { appRouter } from "../route";
-import { LicenseGateProvider, useLicenseGate } from "@feature/license";
+import { useErrorLifecycle } from "../lifecycle";
 import "./globals.css";
 
 /**
- * 授权状态 Provider 与路由壳（无全屏激活遮罩）。
+ * 授权状态 Provider 与路由壳。
  *
  * @author coisini
  * @created 2026-07-20
@@ -21,14 +22,17 @@ import "./globals.css";
  */
 function AppChrome() {
   const gate = useLicenseGate();
+  useErrorLifecycle();
 
   return (
-    <LicenseGateProvider value={gate}>
-      <div className="relative h-screen w-full overflow-hidden">
-        <RouterProvider router={appRouter} />
-        <Toaster position="top-center" richColors closeButton />
-      </div>
-    </LicenseGateProvider>
+    <ThemeProvider defaultTheme="dark">
+      <LicenseGateProvider value={gate}>
+        <div className="relative h-screen w-full overflow-hidden">
+          <RouterProvider router={appRouter} />
+          <Toaster position="top-center" richColors closeButton />
+        </div>
+      </LicenseGateProvider>
+    </ThemeProvider>
   );
 }
 

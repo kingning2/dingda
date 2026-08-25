@@ -2,7 +2,7 @@
 
 企业级 AI 智能客服桌面平台的长期维护知识库，供 Cursor Skill、Claude Code Memory、Codex Knowledge 与团队 onboarding 使用。
 
-> **当前阶段：Architecture Skeleton** — 仅允许骨架、契约、规范与工具链；禁止业务逻辑与 Demo。
+> **当前阶段：** 基础切片已落地（UI Shell、Rust Agent 组装、渠道接入、Python Sidecar）。新增能力仍须先走契约。
 
 ---
 
@@ -17,12 +17,13 @@
 ┌───────────────────────────▼─────────────────────────────────┐
 │  Rust Application Core（唯一协调者，默认实现含 AI）            │
 │  crates/* · apps/desktop/src-tauri                           │
-│  kernel · ports · storage · runtime · feature crates         │
+│  crates/{agent,platform,infra,common,ports,macros,adapter}   │
+│  business（应用胶水）· apps/desktop/src-tauri（应用壳）        │
 └───────────────────────────┬─────────────────────────────────┘
                             │ 仅当 Rust 生态不够（ADR-0009）
 ┌───────────────────────────▼─────────────────────────────────┐
 │  Python Sidecar（例外，不是 AI Runtime）                       │
-│  python/sidecar · python/packages/*                          │
+│  python/sidecar · python/channels                            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -34,7 +35,7 @@
 | **Contracts First** | `contracts/` 是跨端唯一真相源 |
 | **Hexagonal Architecture** | UseCase → Ports → Infrastructure |
 | **Feature Boundary** | Feature 垂直独立，禁止互相 import |
-| **Event Driven** | 跨模块写操作走 Pub/Sub（`kernel::event`） |
+| **Event Driven** | 跨模块写操作走 Pub/Sub（`infra::event`） |
 | **Local / Offline First** | 默认本地 SQLite，核心能力可离线 |
 | **Dependency Inward** | 依赖指向内层，Infrastructure 不反向依赖 UseCase |
 
@@ -76,8 +77,8 @@ skills/dingda/
 
 ### 对于 AI 助手
 
-1. **识别任务** — 新增 Feature？改 Contract？加 IPC？
-2. **读 Recipe** — `recipes/<task>.md` 含步骤、禁止项、Checklist
+1. **识别任务** — 新增 Feature？改 Contract？加 IPC？**改 UI？**
+2. **读 Recipe / Guide** — UI 任务先读 `guides/ui-reference.md`；其他见 `recipes/<task>.md`
 3. **用 Template** — 从 `templates/` 复制骨架，不凭空造结构
 4. **跑 Script** — `python skills/dingda/scripts/create_*.py` 生成标准目录
 5. **验证** — `check_architecture.py` + `lint_all.py`
@@ -117,6 +118,9 @@ python skills/dingda/scripts/generate_tree.py
 
 | 指南 | 用途 |
 |------|------|
+| [`guides/ui-reference.md`](guides/ui-reference.md) | **UI 首选参考** — Shadcn Admin + Aceternity UI + `@desk/ui` 三层 |
+| [`guides/ui-design-system.md`](guides/ui-design-system.md) | 设计令牌、组件映射、Emil 动效 |
+| [`guides/frontend.md`](guides/frontend.md) | 前端技术栈与目录约定 |
 | [`guides/xianyu-mtop-discovery.md`](guides/xianyu-mtop-discovery.md) | 闲鱼 Web 接口抓包、登记、Rust 接入 |
 
 ---

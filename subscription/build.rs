@@ -76,7 +76,7 @@ fn write_key_file_salt(out_dir: &PathBuf, pem_bytes: &[u8]) {
     fs::write(out_dir.join("key_file_salt.rs"), rust).expect("write key_file_salt.rs");
 }
 
-/// 派生 attestation HMAC 密钥，并同步到 adapter/generated 供主程序嵌入。
+/// 派生 attestation HMAC 密钥，并同步到 infra/generated 供主程序嵌入。
 fn write_attestation_key(out_dir: &PathBuf, manifest_dir: &PathBuf, pem_bytes: &[u8]) {
     let digest = sha256_bytes(b"dingda.license.attest.v1", pem_bytes);
     let hex: String = digest.iter().map(|b| format!("{b:02x}")).collect();
@@ -92,13 +92,13 @@ fn write_attestation_key(out_dir: &PathBuf, manifest_dir: &PathBuf, pem_bytes: &
     fs::write(out_dir.join("attestation_key.rs"), rust).expect("write attestation_key.rs");
     write_activation_code_key(out_dir, pem_bytes);
 
-    let adapter_generated = manifest_dir
+    let infra_generated = manifest_dir
         .join("..")
         .join("crates")
-        .join("adapter")
+        .join("infra")
         .join("generated");
-    let _ = fs::create_dir_all(&adapter_generated);
-    let attest_path = adapter_generated.join("license_attest_key.hex");
+    let _ = fs::create_dir_all(&infra_generated);
+    let attest_path = infra_generated.join("license_attest_key.hex");
     if let Err(error) = fs::write(&attest_path, format!("{hex}\n")) {
         // subscription 可能被单独检出；写失败不阻断 verifier 构建。
         eprintln!(

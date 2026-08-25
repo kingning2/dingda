@@ -24,7 +24,7 @@ Presentation → Application → Domain → Ports ← Infrastructure
 
 ### 4. Event Driven
 
-跨 Feature 的写操作与状态传播通过 `kernel::event` Pub/Sub。禁止 Feature A 直接调用 Feature B 的 UseCase 或 Repository。
+跨 Feature 的写操作与状态传播通过 `infra::event` Pub/Sub。禁止 Feature A 直接调用 Feature B 的 UseCase 或 Repository。
 
 ### 5. Local First
 

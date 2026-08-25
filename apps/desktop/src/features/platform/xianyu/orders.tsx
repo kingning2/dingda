@@ -5,7 +5,7 @@
  * 数据访问走 Tauri IPC（`@desk/platform/ipc/order`），复用 crates/app OrderService。
  */
 
-import { ORDER_STATUS_LABELS as STATUS_LABEL } from "@feature/component/order-status";
+import { ORDER_STATUS_LABELS as STATUS_LABEL } from "@components/order-status";
 import { OWNER_ID } from "@desk/platform/constants";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -139,13 +139,13 @@ export function XianyuOrdersPage() {
   }
 
   return (
-    <PageScaffold subtitle="闲鱼订单管理 — 列表 / 筛选 / 状态更新">
+    <PageScaffold subtitle="查看订单、按状态筛选，并更新发货与售后进度">
       <div className="space-y-4">
         {/* 工具栏 */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Input
-              placeholder="搜索订单号 / 商品 ID / 买家 ID"
+              placeholder="搜索订单号、商品或买家"
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
               onKeyDown={(event) => {

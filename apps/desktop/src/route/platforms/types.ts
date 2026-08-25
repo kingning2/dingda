@@ -11,6 +11,8 @@ export type PageLoader = () => Promise<ComponentType>;
 /** 路由段。 */
 export interface RouteSegment {
   path: string;
+  /** 标记为 true 时该路由需要有效 license 才能访问。 */
+  locked?: true;
 }
 
 /** 管理子页 key（各站 manage-nav 并集；具体校验见 `isManageView`）。 */

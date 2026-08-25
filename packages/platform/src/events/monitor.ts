@@ -40,6 +40,8 @@ export interface MonitorProgressSummary {
 
 /** 单条运行步骤（已持久化的运行记录 steps 使用，无 category）。 */
 export interface MonitorStepPayload {
+  /** 步骤唯一 id — Rust 流式事件携带，用于前端稳定渲染与去重。 */
+  stepId?: string;
   runId: string;
   taskId: string;
   taskName: string;

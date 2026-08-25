@@ -1,11 +1,11 @@
 # Event Bus
 
-DingDa 使用 Rust `kernel::event` 作为跨 Feature 通信的事件总线。
+DingDa 使用 Rust `infra::event` 作为跨 Feature 通信的事件总线。
 
 ## 架构位置
 
 ```
-Feature A (publish)  →  kernel::event  →  Feature B (subscribe)
+Feature A (publish)  →  infra::event  →  Feature B (subscribe)
                               ↑
                         contracts/event/
                         （payload 定义）
@@ -70,13 +70,13 @@ pub trait EventBus: Send + Sync {
 
 ## 与 Tauri Events 的区别
 
-| | kernel::event | Tauri Events |
+| | infra::event | Tauri Events |
 |---|---------------|--------------|
 | 范围 | Rust 进程内跨 Feature | Rust → React |
 | 定义 | contracts/schema event | contracts IPC event forward |
 | 消费者 | Rust Subscriber | React listener |
 
-流式 AI token：**默认 Rust → Tauri Events → React**。仅 sidecar 例外时才是 Python → Rust → Tauri Events → React。不经过 kernel event bus 直达前端。
+流式 AI token：**默认 Rust → Tauri Events → React**。仅 sidecar 例外时才是 Python → Rust → Tauri Events → React。不经过 infra event bus 直达前端。
 
 ## 相关文档
 

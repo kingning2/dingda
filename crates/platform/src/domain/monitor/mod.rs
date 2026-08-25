@@ -2,6 +2,13 @@
 //!
 //! 定时调度 / Sidecar 搜索 / AI 决策由 Tauri 壳层编排；本模块仅持久化与查询。
 
+mod schedule;
+
+pub use schedule::{
+    bump_next_run_after_run, ensure_next_run_on_enable, is_schedule_due, pause_schedule,
+    reset_and_pause_schedule_for_manual_run, resume_schedule, schedule_remaining_secs,
+};
+
 use chrono::Utc;
 use common::events::MonitorProgressEvent;
 use common::DingDaResult;
@@ -32,6 +39,15 @@ pub struct MonitorTask {
     /// 定时间隔（分钟）。
     pub interval_minutes: u32,
     pub enabled: bool,
+    /// 定时调度是否暂停（冻结剩余倒计时）。
+    #[serde(default)]
+    pub schedule_paused: bool,
+    /// 暂停时冻结的剩余秒数。
+    #[serde(default)]
+    pub schedule_remaining_secs: Option<u64>,
+    /// 下次定时运行时间（RFC3339）。
+    #[serde(default)]
+    pub next_run_at: Option<String>,
     /// AI 决策标准（自然语言）。
     pub ai_criteria: String,
     pub max_results: u32,

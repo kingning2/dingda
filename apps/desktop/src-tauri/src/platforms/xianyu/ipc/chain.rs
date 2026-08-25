@@ -39,6 +39,8 @@ macro_rules! platform_ipc_step_xianyu {
             monitor_task_list,
             monitor_task_save,
             monitor_task_delete,
+            monitor_task_pause_schedule,
+            monitor_task_resume_schedule,
             monitor_task_run,
             monitor_result_list,
             monitor_run_list,

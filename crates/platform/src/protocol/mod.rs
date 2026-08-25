@@ -26,6 +26,7 @@
 pub mod capabilities;
 pub mod compile;
 pub mod dispatcher;
+#[allow(clippy::module_inception)] // protocol::protocol 是渠道协议 seam 的核心模块名，保留
 pub mod protocol;
 pub mod registry;
 

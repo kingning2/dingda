@@ -21,7 +21,6 @@ import { Home } from "@desk/ui/icons";
 import { manageNavGroups, type ManageNavItem } from "@platform-routes";
 import { aiFeature } from "@feature/agent";
 import { chatFeature } from "@feature/chat";
-import { LicensePlanBadge } from "@feature/license";
 
 const GROUP_STORAGE_KEY = "desk.sidebar.groups";
 /** 首次使用默认展开的分组（其余默认收起）。 */
@@ -73,7 +72,11 @@ export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarPro
           <SidebarLink
             label="首页"
             icon={<Home className="size-[1.125rem]" aria-hidden />}
-            active={activePath === CHANNEL_MANAGE_ROOT}
+            active={
+              activePath === CHANNEL_MANAGE_ROOT ||
+              activePath === managePath("dashboard") ||
+              activePath === "/"
+            }
             onClick={() => onNavigate(CHANNEL_MANAGE_ROOT)}
           />
           <SidebarLink
@@ -129,7 +132,6 @@ export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarPro
             active={isNavActive(activePath, aiFeature.path)}
             onClick={() => onNavigate(aiFeature.path)}
           />
-          <LicensePlanBadge />
           <SidebarToggle placement="footer" />
         </SidebarFooter>
       </div>

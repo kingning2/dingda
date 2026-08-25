@@ -27,9 +27,15 @@ function buildXianyuRoutes(): PlatformRouteContribution {
   return {
     routeSegments: [
       { path: toRouteSegment(CHANNEL_MANAGE_ROOT) },
-      ...MANAGE_NAV.map((item) => ({ path: toRouteSegment(managePath(item.key)) })),
+      ...MANAGE_NAV.map((item) => {
+        const locked = item.key === "accounts" || item.key === "monitor";
+        return locked
+          ? { path: toRouteSegment(managePath(item.key)), locked: true as const }
+          : { path: toRouteSegment(managePath(item.key)) };
+      }),
       { path: `${toRouteSegment(managePath("items"))}/:itemId` },
-      { path: `${toRouteSegment(managePath("monitor"))}/runs/:runId` },
+      { path: `${toRouteSegment(managePath("monitor"))}/tasks/:taskId`, locked: true as const },
+      { path: `${toRouteSegment(managePath("monitor"))}/runs/:runId`, locked: true as const },
     ],
     pageLoaders: {
       [CHANNEL_MANAGE_ROOT]: loadManageConsole,
@@ -55,6 +61,9 @@ function buildXianyuRoutes(): PlatformRouteContribution {
       const rest = pathname.slice(prefix.length);
       if (rest.startsWith("items/") && rest.split("/").length >= 2) {
         return "商品详情";
+      }
+      if (rest.startsWith("monitor/tasks/") && rest.split("/").length >= 3) {
+        return "监控详情";
       }
       if (rest.startsWith("monitor/runs/") && rest.split("/").length >= 3) {
         return "运行详情";

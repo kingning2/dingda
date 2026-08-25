@@ -2,7 +2,7 @@
  * 监控运行转录渲染 — JSON / Markdown 解析 + agent 式步骤动画。
  */
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { cn, motion } from "@desk/ui";
 import {
@@ -24,7 +24,7 @@ export type MonitorStepKind = "running" | "success" | "error" | "info";
 export function stepKindFor(stage: MonitorProgressStage): MonitorStepKind {
   if (stage === "finished") return "success";
   if (stage === "failed") return "error";
-  if (stage === "started") return "running";
+  // 「任务开始运行」是已发生的日志节点，不是进行态；进行态由列表底部 ThinkingDots 表示。
   return "info";
 }
 
@@ -107,7 +107,7 @@ export function JsonBlock({ content }: { content: string }) {
   }, [content]);
 
   return (
-    <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-[11px] leading-relaxed">
+    <pre className="max-w-full overflow-x-auto rounded-md bg-muted/40 p-2 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">
       {tokens === null
         ? content
         : tokens.map((token, index) => (
@@ -120,28 +120,42 @@ export function JsonBlock({ content }: { content: string }) {
 }
 
 const MARKDOWN_COMPONENTS: Components = {
-  p: ({ children }) => <p className="my-1 leading-relaxed">{children}</p>,
-  a: ({ href, children }) => (
+  p: ({ children }: { children?: ReactNode }) => (
+    <p className="my-1 leading-relaxed">{children}</p>
+  ),
+  a: ({ href, children }: { href?: string; children?: ReactNode }) => (
     <a href={href} target="_blank" rel="noreferrer" className="text-primary underline">
       {children}
     </a>
   ),
-  code: ({ children }) => (
+  code: ({ children }: { children?: ReactNode }) => (
     <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">{children}</code>
   ),
-  pre: ({ children }) => (
+  pre: ({ children }: { children?: ReactNode }) => (
     <pre className="my-1 overflow-x-auto rounded bg-muted/50 p-2 font-mono text-[10px]">
       {children}
     </pre>
   ),
-  ul: ({ children }) => <ul className="my-1 list-disc space-y-0.5 pl-4">{children}</ul>,
-  ol: ({ children }) => <ol className="my-1 list-decimal space-y-0.5 pl-4">{children}</ol>,
-  li: ({ children }) => <li>{children}</li>,
-  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-  h1: ({ children }) => <h1 className="my-1 text-sm font-semibold">{children}</h1>,
-  h2: ({ children }) => <h2 className="my-1 text-[13px] font-semibold">{children}</h2>,
-  h3: ({ children }) => <h3 className="my-1 text-xs font-semibold">{children}</h3>,
-  blockquote: ({ children }) => (
+  ul: ({ children }: { children?: ReactNode }) => (
+    <ul className="my-1 list-disc space-y-0.5 pl-4">{children}</ul>
+  ),
+  ol: ({ children }: { children?: ReactNode }) => (
+    <ol className="my-1 list-decimal space-y-0.5 pl-4">{children}</ol>
+  ),
+  li: ({ children }: { children?: ReactNode }) => <li>{children}</li>,
+  strong: ({ children }: { children?: ReactNode }) => (
+    <strong className="font-semibold text-foreground">{children}</strong>
+  ),
+  h1: ({ children }: { children?: ReactNode }) => (
+    <h1 className="my-1 text-sm font-semibold">{children}</h1>
+  ),
+  h2: ({ children }: { children?: ReactNode }) => (
+    <h2 className="my-1 text-[13px] font-semibold">{children}</h2>
+  ),
+  h3: ({ children }: { children?: ReactNode }) => (
+    <h3 className="my-1 text-xs font-semibold">{children}</h3>
+  ),
+  blockquote: ({ children }: { children?: ReactNode }) => (
     <blockquote className="my-1 border-l-2 border-primary/40 pl-2 text-muted-foreground">
       {children}
     </blockquote>
@@ -169,11 +183,24 @@ function renderContent(step: MonitorStepPayload) {
 
 const SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
 
-/** 单条转录步骤 — 按 role 渲染为气泡 / 工具块 / 流程行。 */
-export function TranscriptStep({ step }: { step: MonitorStepPayload }) {
-  const [expanded, setExpanded] = useState(false);
-  const long = (step.content?.length ?? 0) > 320;
+function formatToolStepMessage(message: string): string {
+  const webSearchMatch = message.match(/web_search\((\{.*\})\)/);
+  if (webSearchMatch) {
+    try {
+      const args = JSON.parse(webSearchMatch[1]) as { query?: string };
+      if (args.query?.trim()) {
+        return `搜索「${args.query.trim()}」`;
+      }
+    } catch {
+      // fall through
+    }
+    return "联网搜索";
+  }
+  return message.replace(/^tool_call\s+\S+\s+→\s*\S+\(/, "").replace(/\)\s*$/, "") || message;
+}
 
+/** 单条转录步骤 — 按 role 渲染为气泡 / 工具块 / 流程行。 */
+export const TranscriptStep = memo(function TranscriptStep({ step }: { step: MonitorStepPayload }) {
   if (step.role === "user" || step.role === "assistant") {
     const isUser = step.role === "user";
     return (
@@ -196,20 +223,11 @@ export function TranscriptStep({ step }: { step: MonitorStepPayload }) {
             {isUser ? "→ 发送给 AI" : "← AI 返回"}
           </span>
         </div>
-        <p className="mt-1 text-xs text-foreground">{step.message}</p>
+        <p className="mt-1 break-words text-xs text-foreground">{step.message}</p>
         {step.content ? (
-          <div className={cn("mt-1.5", long && !expanded && "max-h-28 overflow-hidden")}>
+          <div className="mt-1.5 min-w-0 break-words">
             {renderContent(step)}
           </div>
-        ) : null}
-        {long ? (
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="mt-1 text-[10px] text-primary hover:underline"
-          >
-            {expanded ? "收起" : "展开全文"}
-          </button>
         ) : null}
       </motion.div>
     );
@@ -226,22 +244,13 @@ export function TranscriptStep({ step }: { step: MonitorStepPayload }) {
         <div className="flex items-center gap-1.5">
           <Terminal className="size-3 shrink-0 text-muted-foreground" />
           <span className="truncate text-[10px] font-medium tracking-wide text-muted-foreground">
-            爬虫 · {step.message}
+            联网查询 · {formatToolStepMessage(step.message)}
           </span>
         </div>
         {step.content ? (
-          <div className={cn("mt-1.5", long && !expanded && "max-h-28 overflow-hidden")}>
+          <div className="mt-1.5 min-w-0 break-words">
             {renderContent(step)}
           </div>
-        ) : null}
-        {long ? (
-          <button
-            type="button"
-            onClick={() => setExpanded((value) => !value)}
-            className="mt-1 text-[10px] text-primary hover:underline"
-          >
-            {expanded ? "收起" : "展开全文"}
-          </button>
         ) : null}
       </motion.div>
     );
@@ -258,9 +267,7 @@ export function TranscriptStep({ step }: { step: MonitorStepPayload }) {
       <div className="min-w-0 flex-1 space-y-0.5 pb-1">
         <p className="text-xs text-foreground">{step.message}</p>
         {step.detail ? (
-          <p className="truncate text-[10px] text-muted-foreground" title={step.detail}>
-            {step.detail}
-          </p>
+          <p className="break-words text-[10px] text-muted-foreground">{step.detail}</p>
         ) : null}
         {step.summary ? (
           <p className="text-[10px] font-medium text-primary">
@@ -271,7 +278,7 @@ export function TranscriptStep({ step }: { step: MonitorStepPayload }) {
       </div>
     </motion.div>
   );
-}
+});
 
 /** AI 处理中指示（Aceternity 风格三点弹跳）。 */
 export function ThinkingDots() {

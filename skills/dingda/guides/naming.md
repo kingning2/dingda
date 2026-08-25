@@ -16,7 +16,7 @@ Manager · Service · System · Engine · Processor · Helper · Util
 
 | 类型 | ✅ | ❌ |
 |------|----|----|
-| Crate | `chat`, `kernel`, `storage` | `chatService`, `mailManager` |
+| Crate | `chat`, `platform`, `infra` | `chatService`, `mailManager` |
 | IPC | `chat_list_threads` | `getChatThreads` |
 | Event | `chat.message.sent` | `ChatMessageSentEvent` |
 | React Feature | `features/chat/` | `features/chat-module/` |

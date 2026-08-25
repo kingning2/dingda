@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 
 import { listenPluginProgress } from "@desk/platform/events/plugin";
-import { usePluginStore } from "@feature/plugin";
+import { usePluginStore } from "../app/settings/plugin";
 
 function toError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

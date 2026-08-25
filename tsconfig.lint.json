@@ -28,6 +28,9 @@
       "@desk/utils": ["packages/utils/src"],
       "@desk/utils/*": ["packages/utils/src/*"],
       "@feature/*": ["apps/desktop/src/features/*"],
+      "@components/*": ["apps/desktop/src/components/*"],
+      "@license": ["apps/desktop/src/license/index.ts"],
+      "@license/*": ["apps/desktop/src/license/*"],
       "@platform-routes": ["apps/desktop/src/route/platforms/index.ts"]
     }
   },

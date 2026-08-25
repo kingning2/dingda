@@ -31,7 +31,8 @@ pub use dashboard::dashboard_stats;
 pub use item::{item_detail_fetch, item_get, item_list, item_sync, item_update};
 pub use monitor::{
     monitor_generate_keywords, monitor_result_list, monitor_run_get, monitor_run_list,
-    monitor_stats, monitor_task_delete, monitor_task_list, monitor_task_run, monitor_task_save,
+    monitor_stats, monitor_task_delete, monitor_task_list, monitor_task_pause_schedule,
+    monitor_task_resume_schedule, monitor_task_run, monitor_task_save,
 };
 pub use order::{
     order_create, order_delete, order_get, order_list, order_update_delivery, order_update_status,

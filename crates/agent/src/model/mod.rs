@@ -12,6 +12,7 @@ pub mod openai;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use thiserror::Error;
 
 /// LLM 调用错误。
@@ -23,13 +24,37 @@ pub enum LlmError {
     Transport(String),
     #[error("llm empty response")]
     EmptyResponse,
+    #[error("tool loop exceeded max rounds ({0})")]
+    ToolLoopExhausted(usize),
 }
 
-/// 对话消息（与契约 `LlmMessage` 对齐）。
+/// 模型发起的一次函数调用（OpenAI `tool_calls[]` 语义）。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct AssistantToolCall {
+    pub id: String,
+    pub name: String,
+    /// 模型返回的原始 JSON 字符串（可能非法，执行前再解析）。
+    pub arguments: String,
+}
+
+/// 注册给模型的工具规格（OpenAI `tools[].function`）。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ToolSpec {
+    pub name: String,
+    pub description: String,
+    pub parameters: Value,
+}
+
+/// 对话消息（支持 tool_calls / tool 回填）。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: String,
+    #[serde(default)]
     pub content: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<AssistantToolCall>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 impl ChatMessage {
@@ -37,6 +62,8 @@ impl ChatMessage {
         Self {
             role: "system".to_string(),
             content: content.into(),
+            tool_calls: None,
+            tool_call_id: None,
         }
     }
 
@@ -44,6 +71,8 @@ impl ChatMessage {
         Self {
             role: "user".to_string(),
             content: content.into(),
+            tool_calls: None,
+            tool_call_id: None,
         }
     }
 
@@ -51,6 +80,26 @@ impl ChatMessage {
         Self {
             role: "assistant".to_string(),
             content: content.into(),
+            tool_calls: None,
+            tool_call_id: None,
+        }
+    }
+
+    pub fn assistant_tools(content: impl Into<String>, tool_calls: Vec<AssistantToolCall>) -> Self {
+        Self {
+            role: "assistant".to_string(),
+            content: content.into(),
+            tool_calls: Some(tool_calls),
+            tool_call_id: None,
+        }
+    }
+
+    pub fn tool(tool_call_id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            role: "tool".to_string(),
+            content: content.into(),
+            tool_calls: None,
+            tool_call_id: Some(tool_call_id.into()),
         }
     }
 }
@@ -64,14 +113,46 @@ pub struct ChatRequest {
     pub temperature: f32,
     /// 是否禁用思考（部分模型支持）。
     pub disable_thinking: bool,
+    /// OpenAI-compatible function tools；`None` 表示不下发。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tools: Option<Vec<ToolSpec>>,
+    /// `auto` / `none` / 或具体工具名；`None` 表示由服务端默认。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<String>,
+}
+
+impl Default for ChatRequest {
+    fn default() -> Self {
+        Self {
+            model: String::new(),
+            messages: Vec::new(),
+            max_tokens: 512,
+            temperature: 0.2,
+            disable_thinking: false,
+            tools: None,
+            tool_choice: None,
+        }
+    }
 }
 
 /// 补全响应。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatResponse {
     pub reply: String,
-    /// 截断原因（`length` 表示输出被截断，可重试）。
+    /// 截断原因（`length` 表示输出被截断，可重试）；`tool_calls` 表示需执行工具。
     pub finish_reason: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Vec<AssistantToolCall>,
+}
+
+impl ChatResponse {
+    pub fn has_tool_calls(&self) -> bool {
+        !self.tool_calls.is_empty()
+            || self
+                .finish_reason
+                .as_deref()
+                .is_some_and(|r| r == "tool_calls")
+    }
 }
 
 /// Provider 连接配置（从业务设置中提取）。
@@ -89,6 +170,11 @@ pub struct ProviderSettings {
 pub trait LlmProvider: Send + Sync {
     /// provider 类型标识（openai_compatible / anthropic / gemini / dashscope_app）。
     fn kind(&self) -> &'static str;
+
+    /// 是否支持 OpenAI-style tools / tool_calls（tool loop 前置条件）。
+    fn supports_tools(&self) -> bool {
+        false
+    }
 
     async fn complete(&self, request: &ChatRequest) -> Result<ChatResponse, LlmError>;
 }
@@ -204,5 +290,6 @@ mod tests {
         };
         let provider = provider_from_settings(&settings).expect("provider");
         assert_eq!(provider.kind(), "openai_compatible");
+        assert!(provider.supports_tools());
     }
 }

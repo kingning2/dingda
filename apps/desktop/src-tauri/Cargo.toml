@@ -43,6 +43,7 @@ ports = { path = "../../../crates/ports" }
 rand = { workspace = true }
 reqwest = { workspace = true }
 rmpv = { workspace = true }
+schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tauri = { workspace = true }

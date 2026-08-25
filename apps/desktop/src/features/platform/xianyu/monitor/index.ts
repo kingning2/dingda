@@ -1,8 +1,12 @@
-// 闲鱼商品监控（页面编排 + 子面板）。
+// 闲鱼商品监控（project-list-1 列表 + project-detail-2 详情页）。
 export { XianyuMonitorPage } from "./monitor-page";
 export { StatsSection } from "./stats";
-export { TaskList } from "./task-list";
-export type { TaskListProps } from "./task-list";
+export { MonitorToolbar } from "./monitor-toolbar";
+export { TaskFlowCard } from "./task-flow-card";
+export type { TaskFlowCardProps } from "./task-flow-card";
+export { XianyuMonitorTaskDetailPage } from "../monitor-task-detail";
+export type { XianyuMonitorTaskDetailPageProps } from "../monitor-task-detail";
+export { MonitorFlowPipeline } from "./monitor-flow-pipeline";
 export { RunRecordsSection, RunRecordRow } from "./run-records";
 export type { RunRecordsSectionProps } from "./run-records";
 export { TaskForm, EMPTY_FORM } from "./task-form";

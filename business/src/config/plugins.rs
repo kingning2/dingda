@@ -17,9 +17,6 @@ pub const PLUGIN_ID_OCR: &str = "ocr";
 /// Camoufox 指纹浏览器插件稳定 id。
 pub const PLUGIN_ID_CAMOUFOX: &str = "camoufox";
 
-/// 钉死的 Camoufox Release tag（避免 latest 漂移）。
-const CAMOUFOX_RELEASE: &str = "v152.0.4-beta.28";
-
 /// 插件需下载的单个资源。
 ///
 /// 作者：Xiaoman
@@ -172,10 +169,9 @@ pub fn ocr_item(plugins_dir: &Path, legacy_ocr_dir: &Path, error: Option<String>
     };
     PluginItem {
         id: PLUGIN_ID_OCR.to_string(),
-        name: "OCR".to_string(),
-        description:
-            "本地 Tesseract 文字识别（简体中文 + 英文语言模型），按需下载，不随安装包分发。"
-                .to_string(),
+        name: "文字识别".to_string(),
+        description: "图片文字识别语言包（简体中文 + 英文），按需下载，不随安装包分发。"
+            .to_string(),
         status: status.to_string(),
         error,
     }
@@ -203,10 +199,8 @@ pub fn camoufox_item(plugins_dir: &Path, error: Option<String>) -> PluginItem {
     };
     PluginItem {
         id: PLUGIN_ID_CAMOUFOX.to_string(),
-        name: "Camoufox".to_string(),
-        description: format!(
-            "开源指纹浏览器（{CAMOUFOX_RELEASE}），用于闲鱼 Cookie 续期滑块；约 500MB，按需下载。"
-        ),
+        name: "浏览器辅助".to_string(),
+        description: format!("用于闲鱼登录验证与滑块处理（约 500MB），按需下载，不随安装包分发。"),
         status: status.to_string(),
         error,
     }

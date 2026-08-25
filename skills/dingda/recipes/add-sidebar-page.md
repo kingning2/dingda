@@ -1,5 +1,7 @@
 # Recipe: Add Sidebar Page
 
+> UI 结构与视觉：先读 [../guides/ui-reference.md](../guides/ui-reference.md)（Shadcn Admin + Aceternity UI）。
+
 ## 修改顺序
 
 1. `features/<feature>/pages/<page>.tsx` — 骨架组件

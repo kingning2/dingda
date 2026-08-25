@@ -1,18 +1,18 @@
 /**
- * 1688 管理子页面导航配置 — 类型与助手来自共享 `features/manage/nav/`，
+ * 1688 管理子页面导航配置 — 类型与助手来自共享 `components/manage/nav/`，
  * 本文件只提供 1688 侧配置。
  *
  * 1688 站点仅提供账号管理（Cookie 扫码登录），无闲鱼业务子页。
  */
-import type { ManageNavGroup, ManageNavItem } from "@feature/manage/nav";
+import type { ManageNavGroup, ManageNavItem } from "@components/manage/nav";
 import {
   isManageView as isManageViewFor,
   manageNavItemsForGroup as itemsForGroup,
   navTitles,
-} from "@feature/manage/nav";
+} from "@components/manage/nav";
 import { Search, ShoppingCart, Users } from "@desk/ui/icons";
 
-export type { ManageNavGroup, ManageNavItem } from "@feature/manage/nav";
+export type { ManageNavGroup, ManageNavItem } from "@components/manage/nav";
 export { managePath } from "@desk/platform/compile";
 
 /** 1688 管理子页面标识（URL 片段，如 `/manage/accounts`）。 */
@@ -24,14 +24,14 @@ export const MANAGE_NAV: ManageNavItem<ManageView>[] = [
     key: "accounts",
     label: "账号管理",
     icon: Users,
-    description: "1688 / 手机淘宝 Cookie 扫码登录与账号状态",
+    description: "1688 / 手机淘宝扫码登录与连接状态",
     ready: true,
   },
   {
     key: "search",
     label: "商品搜索",
     icon: Search,
-    description: "Camoufox 指纹浏览器搜索 1688 批发商品",
+    description: "关键词搜索 1688 批发商品",
     ready: true,
   },
 ];

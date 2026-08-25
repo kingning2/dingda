@@ -5,8 +5,13 @@
 //!
 //! 推理模型（DeepSeek R1 / 豆包 Seed 等）默认思考会把 token 预算耗尽，
 //! 导致 `content` 为空；调用方显式要求关闭思考时下发 `thinking` 字段。
+//!
+//! 支持 OpenAI-style `tools` / `tool_calls`（供 [`crate::tool_loop`] 使用）。
 
-use super::{ChatRequest, ChatResponse, LlmError, LlmProvider, ProviderSettings};
+use super::{
+    AssistantToolCall, ChatMessage, ChatRequest, ChatResponse, LlmError, LlmProvider,
+    ProviderSettings, ToolSpec,
+};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
@@ -39,16 +44,58 @@ impl OpenAiCompatibleProvider {
     }
 }
 
+fn message_to_json(msg: &ChatMessage) -> Value {
+    let mut obj = json!({ "role": msg.role });
+    if let Some(tool_call_id) = &msg.tool_call_id {
+        obj["tool_call_id"] = json!(tool_call_id);
+    }
+    if let Some(tool_calls) = &msg.tool_calls {
+        let calls: Vec<Value> = tool_calls
+            .iter()
+            .map(|call| {
+                json!({
+                    "id": call.id,
+                    "type": "function",
+                    "function": {
+                        "name": call.name,
+                        "arguments": call.arguments,
+                    }
+                })
+            })
+            .collect();
+        obj["tool_calls"] = Value::Array(calls);
+        if msg.content.is_empty() {
+            obj["content"] = Value::Null;
+        } else {
+            obj["content"] = json!(msg.content);
+        }
+    } else {
+        obj["content"] = json!(msg.content);
+    }
+    obj
+}
+
+fn tools_to_json(tools: &[ToolSpec]) -> Value {
+    Value::Array(
+        tools
+            .iter()
+            .map(|tool| {
+                json!({
+                    "type": "function",
+                    "function": {
+                        "name": tool.name,
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    }
+                })
+            })
+            .collect(),
+    )
+}
+
 /// 构建 `/chat/completions` 请求体。
-///
-/// - 官方 OpenAI 用 `max_completion_tokens`；DeepSeek / 豆包 / Ollama 等用 `max_tokens`。
-/// - `disable_thinking` 时下发 `thinking: {"type": "disabled"}`，避免推理模型 content 为空。
 fn build_payload(request: &ChatRequest, is_openai_official: bool) -> Value {
-    let messages: Vec<Value> = request
-        .messages
-        .iter()
-        .map(|msg| json!({ "role": msg.role, "content": msg.content }))
-        .collect();
+    let messages: Vec<Value> = request.messages.iter().map(message_to_json).collect();
     let mut payload = json!({
         "model": request.model,
         "messages": messages,
@@ -62,13 +109,72 @@ fn build_payload(request: &ChatRequest, is_openai_official: bool) -> Value {
     if request.disable_thinking {
         payload["thinking"] = json!({ "type": "disabled" });
     }
+    if let Some(tools) = &request.tools {
+        if !tools.is_empty() {
+            payload["tools"] = tools_to_json(tools);
+            match request.tool_choice.as_deref() {
+                None | Some("auto") => payload["tool_choice"] = json!("auto"),
+                Some("none") => payload["tool_choice"] = json!("none"),
+                Some(name) => {
+                    payload["tool_choice"] = json!({
+                        "type": "function",
+                        "function": { "name": name }
+                    });
+                }
+            }
+        }
+    }
     payload
+}
+
+fn parse_tool_calls(message: &Value) -> Vec<AssistantToolCall> {
+    let Some(Value::Array(calls)) = message.get("tool_calls") else {
+        return Vec::new();
+    };
+    calls
+        .iter()
+        .filter_map(|call| {
+            let id = call
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            let function = call.get("function")?;
+            let name = function
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+            if name.is_empty() {
+                return None;
+            }
+            let arguments = match function.get("arguments") {
+                Some(Value::String(s)) => s.clone(),
+                Some(other) => other.to_string(),
+                None => "{}".to_string(),
+            };
+            let id = if id.is_empty() {
+                format!("call_{name}")
+            } else {
+                id
+            };
+            Some(AssistantToolCall {
+                id,
+                name,
+                arguments,
+            })
+        })
+        .collect()
 }
 
 #[async_trait]
 impl LlmProvider for OpenAiCompatibleProvider {
     fn kind(&self) -> &'static str {
         "openai_compatible"
+    }
+
+    fn supports_tools(&self) -> bool {
+        true
     }
 
     async fn complete(&self, request: &ChatRequest) -> Result<ChatResponse, LlmError> {
@@ -101,13 +207,20 @@ impl LlmProvider for OpenAiCompatibleProvider {
             .and_then(|choices| choices.first())
             .ok_or(LlmError::EmptyResponse)?;
         let message = choice.get("message").ok_or(LlmError::EmptyResponse)?;
+        let tool_calls = parse_tool_calls(message);
         let reply = message
             .get("content")
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|content| !content.is_empty())
+            .map(str::to_string)
+            .unwrap_or_default();
+        let finish_reason = choice
+            .get("finish_reason")
+            .and_then(Value::as_str)
             .map(str::to_string);
-        let Some(reply) = reply else {
+
+        if reply.is_empty() && tool_calls.is_empty() {
             let thinking = message
                 .get("reasoning_content")
                 .and_then(Value::as_str)
@@ -120,14 +233,12 @@ impl LlmProvider for OpenAiCompatibleProvider {
             } else {
                 LlmError::EmptyResponse
             });
-        };
-        let finish_reason = choice
-            .get("finish_reason")
-            .and_then(Value::as_str)
-            .map(str::to_string);
+        }
+
         Ok(ChatResponse {
             reply,
             finish_reason,
+            tool_calls,
         })
     }
 }
@@ -144,6 +255,7 @@ mod tests {
             max_tokens: 512,
             temperature: 0.2,
             disable_thinking,
+            ..Default::default()
         }
     }
 
@@ -189,5 +301,50 @@ mod tests {
         assert!(payload.get("max_completion_tokens").is_some());
         assert!(payload.get("max_tokens").is_none());
         assert!(payload.get("thinking").is_none());
+    }
+
+    #[test]
+    fn serializes_tools_and_tool_messages() {
+        let mut req = request(false);
+        req.tools = Some(vec![ToolSpec {
+            name: "web_search".into(),
+            description: "search".into(),
+            parameters: json!({"type":"object","properties":{"query":{"type":"string"}}}),
+        }]);
+        req.tool_choice = Some("auto".into());
+        req.messages.push(ChatMessage::assistant_tools(
+            "",
+            vec![AssistantToolCall {
+                id: "c1".into(),
+                name: "web_search".into(),
+                arguments: r#"{"query":"iphone"}"#.into(),
+            }],
+        ));
+        req.messages
+            .push(ChatMessage::tool("c1", "Sources:\n- [a](https://ex.com)"));
+        let payload = build_payload(&req, false);
+        assert_eq!(payload["tools"][0]["function"]["name"], "web_search");
+        assert_eq!(payload["tool_choice"], "auto");
+        assert!(payload["messages"][1]["content"].is_null());
+        assert_eq!(payload["messages"][1]["tool_calls"][0]["id"], "c1");
+        assert_eq!(payload["messages"][2]["role"], "tool");
+        assert_eq!(payload["messages"][2]["tool_call_id"], "c1");
+    }
+
+    #[test]
+    fn parses_tool_calls_from_message() {
+        let message = json!({
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [{
+                "id": "call_1",
+                "type": "function",
+                "function": { "name": "web_search", "arguments": "{\"query\":\"x\"}" }
+            }]
+        });
+        let calls = parse_tool_calls(&message);
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].name, "web_search");
+        assert_eq!(calls[0].arguments, r#"{"query":"x"}"#);
     }
 }

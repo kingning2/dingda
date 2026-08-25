@@ -106,6 +106,7 @@ impl LlmProvider for DashScopeAppProvider {
         Ok(ChatResponse {
             reply,
             finish_reason: None,
+            tool_calls: Vec::new(),
         })
     }
 }

@@ -62,7 +62,7 @@ export function AiAccountCard({ account, provider, onEdit, onDelete }: AiAccount
   const loadBalance = useCallback(async () => {
     if (!provider.supportsBalance) {
       setBalanceText("—");
-      setBalanceHint("该平台无余额接口");
+      setBalanceHint(null);
       return;
     }
 
@@ -70,21 +70,21 @@ export function AiAccountCard({ account, provider, onEdit, onDelete }: AiAccount
     try {
       const result = await aiAccountBalance(provider.base_url ?? "", account.api_key);
       if (!result.ok) {
-        setBalanceText("查询失败");
-        setBalanceHint(result.message);
+        setBalanceText("—");
+        setBalanceHint("暂时无法查询余额");
         return;
       }
       const primary = pickBalance(result.balances);
       if (!primary) {
-        setBalanceText("暂无余额");
+        setBalanceText("—");
         setBalanceHint(null);
         return;
       }
       setBalanceText(formatMoney(primary.currency, primary.total_balance));
-      setBalanceHint(result.is_available ? "余额可用" : "余额不足");
-    } catch (error) {
-      setBalanceText("查询失败");
-      setBalanceHint(error instanceof Error ? error.message : String(error));
+      setBalanceHint(result.is_available ? null : "余额可能不足，请及时充值");
+    } catch {
+      setBalanceText("—");
+      setBalanceHint("暂时无法查询余额");
     } finally {
       setLoadingBalance(false);
     }
@@ -134,7 +134,7 @@ export function AiAccountCard({ account, provider, onEdit, onDelete }: AiAccount
         {provider.supportsBalance ? (
           <div>
             <p className="text-[length:var(--text-xs)] text-muted-foreground">剩余余额</p>
-            <p className="mt-0.5 font-mono text-[length:var(--text-lg)] font-semibold tracking-tight">
+            <p className="mt-0.5 text-[length:var(--text-lg)] font-semibold tracking-tight">
               {balanceText}
             </p>
             {balanceHint ? (
@@ -143,8 +143,8 @@ export function AiAccountCard({ account, provider, onEdit, onDelete }: AiAccount
           </div>
         ) : null}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-[length:var(--text-xs)] text-muted-foreground">
-          <span>Key {maskKey(account.api_key)}</span>
-          {account.default_model ? <span>模型 {account.default_model}</span> : null}
+          <span>密钥 {maskKey(account.api_key)}</span>
+          {account.default_model ? <span>常用模型 {account.default_model}</span> : null}
         </div>
       </div>
     </PageGlowCard>

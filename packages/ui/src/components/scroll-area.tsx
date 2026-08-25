@@ -3,6 +3,12 @@
  *
  * 工作区页面与分栏内容应使用本组件，不要写 `overflow-auto`。
  *
+ * Radix Viewport 会在 children 外自动插入一层 wrapper div，并设 `display: table`
+ *（用于滚动条 thumb 尺寸计算）。table 布局会按内容 intrinsic 宽度撑开，导致
+ * 分栏内 `truncate` / `min-w-0` 失效。下方 `[&>div]:*` 仅覆盖该内部 wrapper。
+ *
+ * @see https://github.com/radix-ui/primitives/issues/2722
+ *
  * @author Xiaoman
  * @created 2026-07-20
  */
@@ -45,7 +51,10 @@ export function ScrollArea({
     <ScrollAreaPrimitive.Root className={cn("relative overflow-hidden", className)} {...props}>
       <ScrollAreaPrimitive.Viewport
         ref={viewportRef}
-        className={cn("size-full rounded-[inherit]", viewportClassName)}
+        className={cn(
+          "size-full rounded-[inherit] *:!block",
+          viewportClassName,
+        )}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>

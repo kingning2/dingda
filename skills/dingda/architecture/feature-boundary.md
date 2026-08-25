@@ -5,8 +5,10 @@ Feature 是 DingDa 的最小业务垂直单元。每个 Feature 在 Rust、React
 ## Feature 列表
 
 ```
-chat · agent · knowledge · workflow · browser · ocr · mcp · plugin · tenant · user · channel
+agent · chat · knowledge · platform · discovery
 ```
+
+横切能力不进 `features/`：共享组合在 `src/components/`，授权在 `src/license/`，错误与启动在 `src/lifecycle/`，设置弹窗在 `src/app/settings/`。
 
 ## 隔离模型
 
@@ -22,7 +24,7 @@ flowchart LR
         K_DOM[domain]
     end
 
-    subgraph kernel["crates/infra"]
+    subgraph eb["crates/infra::event"]
         EB[event bus]
     end
 
@@ -40,10 +42,10 @@ flowchart LR
 
 | ✅ 允许 | ❌ 禁止 |
 |---------|---------|
-| Feature → `kernel::event`（发布/订阅） | `use knowledge::` inside `chat` |
+| Feature → `infra::event`（发布/订阅） | `use knowledge::` inside `chat` |
 | Feature → `ports` trait（Query Port） | `chat` crate 依赖 `knowledge` crate |
 | Feature → `contracts` DTO | Feature UI import 另一 Feature 内部模块 |
-| Feature → `common` / `kernel` | 共享可变全局状态 |
+| Feature → `common`（DTO/事件） | 共享可变全局状态 |
 
 ## 每个 Feature 的标准结构
 
@@ -52,12 +54,16 @@ flowchart LR
 业务 UseCase 与 Tauri commands 放在 `src-tauri`；`crates/` 仅放基础设施。
 
 ```
-apps/desktop/src-tauri/src/
-├── agent.rs          # Agent UseCase
-├── license.rs        # License UseCase
-├── commands/         # Tauri commands
-├── state.rs          # AppState 组装
-└── lib.rs            # builder / invoke_handler
+crates/<ability>/src/           # 能力包（agent / platform / infra）
+├── <module>/                   # 功能文件夹（如 agent::model）
+└── lib.rs                      # lib 编排
+
+business/src/                   # 应用胶水（logging / config / channel / event_sink / timing）
+
+apps/desktop/src-tauri/src/     # Tauri 应用壳
+├── platforms/                  # 平台装配
+├── shared/                     # 共享 IPC 基建
+└── lib.rs                      # builder / invoke_handler
 ```
 
 ### React (`apps/desktop/src/features/<feature>/`)
@@ -85,7 +91,7 @@ contracts/schema/v1/<feature>/
 ### 模式 A：Event（写操作 / 状态变更）
 
 ```
-chat 发布 MessageSent  →  kernel::event  →  knowledge 订阅索引
+chat 发布 MessageSent  →  infra::event  →  knowledge 订阅索引
 ```
 
 ### 模式 B：Query Port（只读查询）

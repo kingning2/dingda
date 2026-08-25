@@ -1,11 +1,13 @@
 //! 闲鱼监控 AI — 关键词生成与商品决策（Rust LLM + 余额不足自动切换）。
 
 use agent::{
-    normalize_provider_type, provider_from_settings, ChatMessage, ChatRequest, ProviderSettings,
+    inject_web_context, normalize_provider_type, provider_from_settings, run_tool_loop,
+    ChatMessage, ChatRequest, ProviderSettings, ToolLoopConfig, ToolTraceEntry, WebSearchBundle,
 };
 use common::contracts::{AiAccount, AiIpcConfigResponse, AiProvider};
 use serde::Deserialize;
 use std::collections::HashSet;
+use tracing::warn;
 
 /// 无账号平台（如 Ollama）在任务上的 id 前缀。
 pub const PROVIDER_ACCOUNT_PREFIX: &str = "provider:";
@@ -20,12 +22,14 @@ pub struct MonitorAiDecision {
 pub struct KeywordGenResult {
     pub keywords: Vec<String>,
     pub raw: String,
+    pub tool_trace: Vec<ToolTraceEntry>,
 }
 
 /// 单条商品决策结果（含 AI 原始返回，供转录展示）。
 pub struct DecideResult {
     pub decision: MonitorAiDecision,
     pub raw: String,
+    pub tool_trace: Vec<ToolTraceEntry>,
 }
 
 /// 单次任务运行内的 AI 账号切换上下文（成功后 sticky，避免每条商品重试已失败的账号）。
@@ -203,9 +207,9 @@ pub async fn generate_keywords(
     failover: &mut AiFailoverContext,
     prompt: &str,
 ) -> Result<KeywordGenResult, String> {
-    let raw = complete_json_with_failover(config, failover, prompt).await?;
-    let parsed: Vec<String> = serde_json::from_str(&extract_json_array(&raw))
-        .map_err(|error| format!("AI 关键词 JSON 解析失败: {error}; raw={raw}"))?;
+    let completed = complete_json_with_failover(config, failover, prompt).await?;
+    let parsed: Vec<String> = serde_json::from_str(&extract_json_array(&completed.raw))
+        .map_err(|error| format!("AI 关键词 JSON 解析失败: {error}; raw={}", completed.raw))?;
     let keywords: Vec<String> = parsed
         .into_iter()
         .map(|item| item.trim().to_string())
@@ -214,7 +218,11 @@ pub async fn generate_keywords(
     if keywords.is_empty() {
         return Err("AI 未生成有效关键词".to_string());
     }
-    Ok(KeywordGenResult { keywords, raw })
+    Ok(KeywordGenResult {
+        keywords,
+        raw: completed.raw,
+        tool_trace: completed.tool_trace,
+    })
 }
 
 pub fn build_decision_prompt(criteria: &str, item_json: &str) -> String {
@@ -231,18 +239,53 @@ pub async fn decide_item(
     failover: &mut AiFailoverContext,
     prompt: &str,
 ) -> Result<DecideResult, String> {
-    let raw = complete_json_with_failover(config, failover, prompt).await?;
-    let json_text = extract_json_object(&raw);
+    let completed = complete_json_with_failover(config, failover, prompt).await?;
+    let json_text = extract_json_object(&completed.raw);
     let decision = serde_json::from_str(&json_text)
-        .map_err(|error| format!("AI 决策 JSON 解析失败: {error}; raw={raw}"))?;
-    Ok(DecideResult { decision, raw })
+        .map_err(|error| format!("AI 决策 JSON 解析失败: {error}; raw={}", completed.raw))?;
+    Ok(DecideResult {
+        decision,
+        raw: completed.raw,
+        tool_trace: completed.tool_trace,
+    })
+}
+
+/// 是否启用监控 AI 联网搜索（默认开；`DINGDA_MONITOR_WEB_SEARCH=0` 关闭）。
+pub fn monitor_web_search_enabled() -> bool {
+    match std::env::var("DINGDA_MONITOR_WEB_SEARCH") {
+        Ok(value) => {
+            let v = value.trim().to_lowercase();
+            !matches!(v.as_str(), "0" | "false" | "off" | "no")
+        }
+        Err(_) => true,
+    }
+}
+
+/// 非 tool-loop 回退：用意图/标准拼一次搜索（失败则跳过）。
+async fn fetch_monitor_web_context_raw(prompt: &str) -> Option<String> {
+    let query = prompt.chars().take(80).collect::<String>();
+    if query.trim().is_empty() {
+        return None;
+    }
+    let bundle = WebSearchBundle::default_bundle();
+    let result = bundle.search(&query).await;
+    if result.is_error {
+        warn!(error = %result.content, "监控联网搜索回退失败（已跳过）");
+        return None;
+    }
+    Some(result.content)
+}
+
+struct CompletedJson {
+    raw: String,
+    tool_trace: Vec<ToolTraceEntry>,
 }
 
 async fn complete_json_with_failover(
     config: &AiIpcConfigResponse,
     failover: &mut AiFailoverContext,
     prompt: &str,
-) -> Result<String, String> {
+) -> Result<CompletedJson, String> {
     let candidates = list_ai_account_candidates(
         config,
         &failover.primary_id,
@@ -295,8 +338,52 @@ async fn complete_json_with_failover(
     })
 }
 
-async fn complete_json(settings: &ProviderSettings, prompt: &str) -> Result<String, String> {
+const TOOL_LOOP_HINT: &str = "\n\n你可以使用 web_search 工具查询公开网页上的行情/参考信息。\
+最终只输出任务要求的 JSON，不要输出其它说明文字。";
+
+async fn complete_json(settings: &ProviderSettings, prompt: &str) -> Result<CompletedJson, String> {
     let provider = provider_from_settings(settings).map_err(|error| error.to_string())?;
+
+    if provider.supports_tools() && monitor_web_search_enabled() {
+        let bundle = WebSearchBundle::default_bundle();
+        let request = ChatRequest {
+            model: settings.model.clone(),
+            messages: vec![
+                ChatMessage::system(TOOL_LOOP_HINT.trim()),
+                ChatMessage::user(prompt),
+            ],
+            max_tokens: 768,
+            temperature: 0.2,
+            disable_thinking: true,
+            ..Default::default()
+        };
+        let outcome = run_tool_loop(
+            provider.as_ref(),
+            &bundle.tools,
+            request,
+            ToolLoopConfig {
+                max_rounds: 4,
+                tool_choice: Some("auto".into()),
+            },
+        )
+        .await
+        .map_err(|error| error.to_string())?;
+        return Ok(CompletedJson {
+            raw: outcome.reply.trim().to_string(),
+            tool_trace: outcome.tool_trace,
+        });
+    }
+
+    // 非 OpenAI-compatible：可选预搜索注入后单次 complete。
+    let prompt = if monitor_web_search_enabled() {
+        match fetch_monitor_web_context_raw(prompt).await {
+            Some(ctx) => inject_web_context(prompt, &ctx),
+            None => prompt.to_string(),
+        }
+    } else {
+        prompt.to_string()
+    };
+
     let response = provider
         .complete(&ChatRequest {
             model: settings.model.clone(),
@@ -304,10 +391,14 @@ async fn complete_json(settings: &ProviderSettings, prompt: &str) -> Result<Stri
             max_tokens: 512,
             temperature: 0.2,
             disable_thinking: true,
+            ..Default::default()
         })
         .await
         .map_err(|error| error.to_string())?;
-    Ok(response.reply.trim().to_string())
+    Ok(CompletedJson {
+        raw: response.reply.trim().to_string(),
+        tool_trace: Vec::new(),
+    })
 }
 
 /// 余额不足、配额耗尽、限流等可切换账号重试的错误。

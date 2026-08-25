@@ -1,11 +1,11 @@
 /**
- * 闲鱼监控运行详情页 — agent 式转录（左：发送给 AI / AI 返回 / 爬虫内容） + 右：商品。
- * 双面板内部滚动（DOM 级），页面不滚动。
+ * 闲鱼监控运行详情页 — agent 式转录（左：流式步骤 / 右：商品）。
+ * 步骤仅通过 Rust 事件增量追加，运行中不整页 refetch。
  */
 
 import { OWNER_ID } from "@desk/platform/constants";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Loading, PageScaffold, motion, toast } from "@desk/ui";
+import { Button, Loading, PageScaffold, ScrollArea, motion, toast } from "@desk/ui";
 import { ArrowLeft, ExternalLink, Play } from "@desk/ui/icons";
 import { managePath } from "@desk/platform/compile";
 import {
@@ -16,12 +16,13 @@ import {
   type MonitorResult,
   type MonitorRun,
 } from "@desk/platform/ipc/xianyu-monitor";
-import { listenMonitorProgress } from "@desk/platform/events";
+import { listenMonitorMatch, listenMonitorProgress } from "@desk/platform/events";
 import { useWorkspaceNav } from "../../../app/use-workspace-tabs";
 import { formatRunTime, ThinkingDots, TranscriptStep } from "./monitor-console";
-
+import { monitorStepKey, patchMonitorRunFromProgress } from "./monitor/run-stream";
 
 const RESULT_SPRING = { type: "spring", stiffness: 360, damping: 30 } as const;
+const STICK_THRESHOLD_PX = 96;
 
 export interface XianyuMonitorRunDetailPageProps {
   runId: string;
@@ -51,16 +52,16 @@ function ResultCard({ item }: { item: MonitorResult }) {
             href={item.url}
             target="_blank"
             rel="noreferrer"
-            className="line-clamp-2 text-sm font-medium hover:underline"
+            className="line-clamp-2 break-words text-sm font-medium hover:underline"
           >
             {item.title}
           </a>
           <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{item.priceText || "—"}</span>
-            {item.sellerName ? <span>{item.sellerName}</span> : null}
+            {item.sellerName ? <span className="break-all">{item.sellerName}</span> : null}
             {item.location ? <span>{item.location}</span> : null}
           </div>
-          <p className="text-xs text-muted-foreground">{item.aiReason}</p>
+          <p className="break-words text-xs leading-relaxed text-muted-foreground">{item.aiReason}</p>
         </div>
         <a
           href={item.url}
@@ -75,25 +76,35 @@ function ResultCard({ item }: { item: MonitorResult }) {
   );
 }
 
-/**
- * 闲鱼监控运行详情页。
- *
- * @author Xiaoman
- * @created 2026-08-22
- */
+/** 闲鱼监控运行详情页。 */
 export function XianyuMonitorRunDetailPage({ runId }: XianyuMonitorRunDetailPageProps) {
   const { selectTab } = useWorkspaceNav();
   const [run, setRun] = useState<MonitorRun | null>(null);
   const [results, setResults] = useState<MonitorResult[]>([]);
   const [taskName, setTaskName] = useState("");
   const [loading, setLoading] = useState(true);
-  const logRef = useRef<HTMLDivElement>(null);
+  const transcriptViewportRef = useRef<HTMLDivElement>(null);
+  const resultsViewportRef = useRef<HTMLDivElement>(null);
+  const stickToBottomRef = useRef(true);
   const taskIdRef = useRef<string | null>(null);
+  const stepCountRef = useRef(0);
 
-  const loadResults = useCallback(async (taskId: string) => {
-    const list = await monitorResultList(OWNER_ID, taskId);
-    setResults(list);
+  const scrollTranscriptToBottom = useCallback((force = false) => {
+    const el = transcriptViewportRef.current;
+    if (!el || (!force && !stickToBottomRef.current)) return;
+    el.scrollTop = el.scrollHeight;
   }, []);
+
+  useEffect(() => {
+    const el = transcriptViewportRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const distance = el.scrollHeight - el.scrollTop - el.clientHeight;
+      stickToBottomRef.current = distance <= STICK_THRESHOLD_PX;
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [loading, run?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +112,9 @@ export function XianyuMonitorRunDetailPage({ runId }: XianyuMonitorRunDetailPage
     setRun(null);
     setResults([]);
     taskIdRef.current = null;
+    stepCountRef.current = 0;
+    stickToBottomRef.current = true;
+
     void (async () => {
       try {
         const found = await monitorRunGet(OWNER_ID, runId);
@@ -111,6 +125,7 @@ export function XianyuMonitorRunDetailPage({ runId }: XianyuMonitorRunDetailPage
           return;
         }
         setRun(found);
+        stepCountRef.current = found.steps.length;
         taskIdRef.current = found.taskId;
         const tasks = await monitorTaskList(OWNER_ID);
         if (cancelled) return;
@@ -136,46 +151,63 @@ export function XianyuMonitorRunDetailPage({ runId }: XianyuMonitorRunDetailPage
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
   }, [runId, selectTab]);
 
   useEffect(() => {
-    let unlisten: (() => void) | undefined;
+    let unlistenProgress: (() => void) | undefined;
+    let unlistenMatch: (() => void) | undefined;
+
     void listenMonitorProgress((payload) => {
       if (payload.runId === runId) {
-        setRun((prev) => (prev ? { ...prev, steps: [...prev.steps, payload] } : prev));
-        if (payload.stage === "finished" || payload.stage === "failed") {
-          void monitorRunGet(OWNER_ID, runId)
-            .then((latest) => {
-              if (latest) setRun(latest);
-            })
-            .catch(() => undefined);
+        setRun((prev) => {
+          if (!prev) return prev;
+          return patchMonitorRunFromProgress(prev, payload);
+        });
+        if (payload.stage === "matched" || payload.stage === "finished") {
           const taskId = taskIdRef.current;
           if (taskId) {
-            void loadResults(taskId);
+            void monitorResultList(OWNER_ID, taskId)
+              .then(setResults)
+              .catch(() => undefined);
           }
         }
         return;
       }
-      // 同任务重新运行 → 跳转新 run 详情并实时流式。
       const taskId = taskIdRef.current;
       if (taskId && payload.taskId === taskId && payload.stage === "started") {
         selectTab(`${managePath("monitor")}/runs/${payload.runId}`);
       }
     }).then((fn) => {
-      unlisten = fn;
+      unlistenProgress = fn;
     });
+
+    void listenMonitorMatch((payload) => {
+      const taskId = taskIdRef.current;
+      if (!taskId || payload.taskId !== taskId) return;
+      void monitorResultList(OWNER_ID, taskId)
+        .then(setResults)
+        .catch(() => undefined);
+    }).then((fn) => {
+      unlistenMatch = fn;
+    });
+
     return () => {
-      unlisten?.();
+      unlistenProgress?.();
+      unlistenMatch?.();
     };
-  }, [runId, selectTab, loadResults]);
+  }, [runId, selectTab]);
 
   useEffect(() => {
-    const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [run?.steps.length]);
+    const count = run?.steps.length ?? 0;
+    if (count > stepCountRef.current) {
+      stepCountRef.current = count;
+      requestAnimationFrame(() => scrollTranscriptToBottom());
+    }
+  }, [run?.steps.length, scrollTranscriptToBottom]);
 
   const running = run?.status === "running";
 
@@ -186,71 +218,79 @@ export function XianyuMonitorRunDetailPage({ runId }: XianyuMonitorRunDetailPage
     );
   }
 
+  function handleBack() {
+    const taskId = taskIdRef.current;
+    if (taskId) {
+      selectTab(`${managePath("monitor")}/tasks/${encodeURIComponent(taskId)}`);
+      return;
+    }
+    selectTab(managePath("monitor"));
+  }
+
   return (
-    <PageScaffold
-      scroll={false}
-      containerPadding="none"
-      header={
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => selectTab(managePath("monitor"))}>
-              <ArrowLeft className="size-4" />
-            </Button>
-            <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold">{taskName || "运行详情"}</h2>
-              <p className="text-xs text-muted-foreground">
-                {run
-                  ? `${run.status === "running" ? "运行中" : run.status === "success" ? "成功" : "失败"} · ${formatRunTime(run.startedAt)}`
-                  : ""}
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button size="sm" onClick={handleRerun} disabled={running}>
-              <Play className="mr-1.5 size-4" />
-              立即运行
-            </Button>
-          </div>
-        </div>
-      }
-    >
+    <PageScaffold scroll={false} fill containerPadding="md" className="min-h-0">
       {loading ? (
-        <div className="flex h-full min-h-0 flex-1 items-center justify-center">
+        <div className="flex min-h-0 flex-1 items-center justify-center">
           <Loading />
         </div>
       ) : run ? (
-        <div className="flex h-full min-h-0 flex-1">
-          <section className="flex min-h-0 w-[46%] flex-col border-r border-border/60">
-            <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2">
-              <span className="text-xs font-medium">运行过程</span>
-              <span className="text-[10px] text-muted-foreground">{run.steps.length} 条</span>
-            </div>
-            <div ref={logRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-              <div className="space-y-3">
-                {run.steps.map((step, index) => (
-                  <TranscriptStep key={index} step={step} />
-                ))}
-                {running ? <ThinkingDots /> : null}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-card">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3 md:px-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={handleBack}>
+                <ArrowLeft className="size-4" />
+              </Button>
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold">{taskName || "运行详情"}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {run.status === "running" ? "运行中" : run.status === "success" ? "成功" : "失败"} ·{" "}
+                  {formatRunTime(run.startedAt)}
+                </p>
               </div>
             </div>
-          </section>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button size="sm" onClick={handleRerun} disabled={running}>
+                <Play className="mr-1.5 size-4" />
+                立即运行
+              </Button>
+            </div>
+          </header>
 
-          <section className="flex min-h-0 flex-1 flex-col">
-            <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2">
-              <span className="text-xs font-medium">商品（{results.length}）</span>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-              {results.length === 0 ? (
-                <p className="text-sm text-muted-foreground">暂无商品结果。</p>
-              ) : (
-                <ul className="space-y-3">
-                  {results.map((item) => (
-                    <ResultCard key={item.id} item={item} />
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col border-r border-border/60 bg-background">
+              <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2.5 md:px-5">
+                <span className="text-xs font-medium">运行过程</span>
+                <span className="text-[10px] text-muted-foreground">{run.steps.length} 条</span>
+              </div>
+              <ScrollArea className="min-h-0 flex-1" viewportRef={transcriptViewportRef}>
+                <div className="space-y-3 px-4 py-3 md:px-5 md:py-4">
+                  {run.steps.map((step, index) => (
+                    <TranscriptStep key={monitorStepKey(step, index)} step={step} />
                   ))}
-                </ul>
-              )}
-            </div>
-          </section>
+                  {running ? <ThinkingDots /> : null}
+                </div>
+              </ScrollArea>
+            </section>
+
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/10">
+              <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-2.5 md:px-5">
+                <span className="text-xs font-medium">商品（{results.length}）</span>
+              </div>
+              <ScrollArea className="min-h-0 flex-1" viewportRef={resultsViewportRef}>
+                <div className="px-4 py-3 md:px-5 md:py-4">
+                  {results.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">暂无商品结果。</p>
+                  ) : (
+                    <ul className="space-y-3 pb-1">
+                      {results.map((item) => (
+                        <ResultCard key={item.id} item={item} />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </ScrollArea>
+            </section>
+          </div>
         </div>
       ) : null}
     </PageScaffold>

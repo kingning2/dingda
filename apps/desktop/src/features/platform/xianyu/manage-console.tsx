@@ -1,14 +1,15 @@
 /**
  * 闲鱼管理子页出口 — 共享路由骨架 + 闲鱼配置（VIEW_PAGES / 深链）。
  *
- * 导航入口由应用主侧栏（首页 / 账号 / 商品 / 订单）提供；风控日志与免责声明在应用设置弹窗中。
+ * 导航入口由应用主侧栏提供；风控日志与免责声明在应用设置弹窗中。
  */
 import { type ComponentType } from "react";
 import { managePath } from "@desk/platform/compile";
-import { ManageConsole, type ManageConsoleConfig } from "@feature/manage/console";
+import { ManageConsole, type ManageConsoleConfig } from "@components/manage/console";
 import { Ali1688SearchPage } from "@feature/platform/ali1688/search";
 import { XianyuMonitorPage } from "./monitor";
 import { XianyuMonitorRunDetailPage } from "./monitor-run-detail";
+import { XianyuMonitorTaskDetailPage } from "./monitor-task-detail";
 import { XianyuSearchPage } from "./search";
 import { XianyuAccountsPage } from "./accounts";
 import { XianyuDashboardPage } from "./dashboard";
@@ -16,6 +17,7 @@ import { XianyuItemsPage } from "./items";
 import { XianyuItemDetailPage } from "./item-detail";
 import { XianyuOrdersPage } from "./orders";
 import { isManageView, type ManageView } from "./manage-nav";
+import { monitorTaskIdFromPathname } from "./monitor/monitor-utils";
 
 /**
  * 兼容旧路由 `/manage/accounts-1688`：打开账号管理并定位 1688 Tab。
@@ -69,6 +71,10 @@ const config: ManageConsoleConfig<ManageView> = {
     (pathname) => {
       const itemId = itemIdFromPathname(pathname);
       return itemId ? <XianyuItemDetailPage itemId={itemId} /> : null;
+    },
+    (pathname) => {
+      const taskId = monitorTaskIdFromPathname(pathname);
+      return taskId ? <XianyuMonitorTaskDetailPage taskId={taskId} /> : null;
     },
     (pathname) => {
       const runId = monitorRunIdFromPathname(pathname);

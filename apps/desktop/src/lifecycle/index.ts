@@ -8,4 +8,6 @@
 export { useRouteChange } from "./useRouteChange";
 export { useStartApp } from "./useStartApp";
 export { usePluginLifecycle } from "./usePluginLifecycle";
-export { useErrorLifecycle } from "./useErrorLifecycle";
+export { useErrorLifecycle, useErrorStore } from "./useErrorLifecycle";
+export { logStartupPhase, logFirstScreenRender } from "./startup-log";
+export type { ErrorState } from "./useErrorLifecycle";

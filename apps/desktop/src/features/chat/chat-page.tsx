@@ -1,11 +1,11 @@
 /**
- * 客户会话收件箱 — 会话列表、消息记录、人工发送与客户信息侧栏。
+ * 客户会话收件箱 — 三栏布局，参考 Shadcn Admin inbox-1。
  *
- * 本文件只做编排：数据加载 + 组合三面板（InboxPanel / ThreadPanel / CustomerPanel）。
+ * @see https://shadcnblocks-admin.vercel.app/project-management/inbox-1
  */
+
 import { useEffect, useMemo, useState } from "react";
-import { Button, PageScaffold, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@desk/ui";
-import { RefreshCw } from "@desk/ui/icons";
+import { PageScaffold } from "@desk/ui";
 import { OWNER_ID } from "@desk/platform/constants";
 import { accountList, type XianyuAccount } from "@desk/platform/ipc/account";
 import {
@@ -13,22 +13,16 @@ import {
   type ProductHeadInfo,
 } from "@desk/platform/ipc/channel";
 import { orderList, type Order } from "@desk/platform/ipc/order";
-import type { ChannelConversation } from "@desk/contracts";
 import { formatAmount } from "@desk/utils";
 import { managePath } from "@desk/platform/compile";
 import { useWorkspaceNav } from "../../app/use-workspace-tabs";
-import { conversationNeedsReply, useChannelInbox } from "./use-channel-inbox";
-import { InboxPanel, type InboxGroup } from "./inbox-panel";
+import { conversationNeedsReply, lastMessagePreview, useChannelInbox } from "./use-channel-inbox";
+import { InboxPanel } from "./inbox-panel";
 import { ThreadPanel } from "./thread-panel";
 import { CustomerPanel } from "./customer-panel";
 import { formatChatTime } from "./format";
 
-/**
- * 客户会话页。
- *
- * @author Xiaoman
- * @created 2026-08-20
- */
+/** 客户会话页。 */
 export function ChatPage() {
   const { selectTab } = useWorkspaceNav();
   const {
@@ -48,15 +42,13 @@ export function ChatPage() {
 
   const [accounts, setAccounts] = useState<XianyuAccount[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [replyDraft, setReplyDraft] = useState("");
   const [buyerOrders, setBuyerOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [headInfo, setHeadInfo] = useState<ProductHeadInfo | null>(null);
-  /** 折叠的账号 id 集合（未列入则展开）。 */
-  const [collapsedAccountIds, setCollapsedAccountIds] = useState<Set<string>>(
-    () => new Set(),
-  );
 
   useEffect(() => {
     void accountList(OWNER_ID)
@@ -75,40 +67,45 @@ export function ChatPage() {
     return map;
   }, [accounts]);
 
-  // 会话按账号分组，侧栏一眼看出归属账号。
-  const groupedConversations = useMemo<InboxGroup[]>(() => {
-    const groups = new Map<string, ChannelConversation[]>();
-    for (const conversation of filteredConversations) {
-      const list = groups.get(conversation.account_id) ?? [];
-      list.push(conversation);
-      groups.set(conversation.account_id, list);
+  const inboxConversations = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const sorted = [...filteredConversations].sort(
+      (a, b) => Number(b.updated_at) - Number(a.updated_at),
+    );
+    if (!query) {
+      return sorted;
     }
-    return [...groups.entries()].map(([accountId, list]) => {
-      const meta = accountMetaById.get(accountId);
-      return {
-        accountId,
-        label: meta?.label ?? accountId,
-        avatarUrl: meta?.avatarUrl ?? "",
-        list,
-      };
+    return sorted.filter((conversation) => {
+      const haystack = [
+        conversation.peer_name,
+        conversation.peer_id,
+        conversation.item_title,
+        conversation.item_id,
+        accountMetaById.get(conversation.account_id)?.label,
+        lastMessagePreview(conversation.id, messages),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
     });
-  }, [filteredConversations, accountMetaById]);
+  }, [filteredConversations, searchQuery, accountMetaById, messages]);
 
-  function toggleAccountGroup(accountId: string) {
-    setCollapsedAccountIds((current) => {
-      const next = new Set(current);
-      if (next.has(accountId)) {
-        next.delete(accountId);
-      } else {
-        next.add(accountId);
-      }
-      return next;
-    });
-  }
+  const previousConversations = useMemo(() => {
+    if (!selectedConversation?.peer_id) {
+      return [];
+    }
+    return filteredConversations
+      .filter(
+        (item) =>
+          item.peer_id === selectedConversation.peer_id && item.id !== selectedConversation.id,
+      )
+      .sort((a, b) => Number(b.updated_at) - Number(a.updated_at))
+      .slice(0, 5);
+  }, [filteredConversations, selectedConversation]);
 
   const selectedPeerId = selectedConversation?.peer_id ?? "";
 
-  // 展开客户信息栏时，按买家 ID 拉取该买家订单。
   useEffect(() => {
     if (!infoOpen || !selectedPeerId) {
       setBuyerOrders([]);
@@ -138,7 +135,6 @@ export function ChatPage() {
     };
   }, [infoOpen, selectedPeerId]);
 
-  // 展开客户信息栏时，拉取会话关联商品卡信息（message.headinfo）。
   useEffect(() => {
     if (!infoOpen || !selectedId) {
       setHeadInfo(null);
@@ -183,7 +179,6 @@ export function ChatPage() {
       ? formatAmount(selectedConversation.item_price)
       : undefined;
 
-  // headinfo 商品卡字段（响应结构以实际返回为准，字段做了常见名兜底）。
   const headTitle =
     (typeof headInfo?.title === "string" && headInfo.title) ||
     (typeof headInfo?.itemTitle === "string" && headInfo.itemTitle) ||
@@ -206,55 +201,21 @@ export function ChatPage() {
   }
 
   return (
-    <PageScaffold
-      title="客户会话"
-      subtitle="查看买家消息并人工回复"
-      scroll={false}
-      fill
-      extra={
-        <div className="flex items-center gap-2">
-          <Select
-            value={accountFilter || "__all__"}
-            onValueChange={(value) =>
-              setAccountFilter(value === "__all__" ? "" : value)
-            }
-          >
-            <SelectTrigger className="w-[10rem]">
-              <SelectValue placeholder="全部账号" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">全部账号</SelectItem>
-              {accounts.map((account) => (
-                <SelectItem key={account.account_id} value={account.account_id}>
-                  {account.display_name || account.account_id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label="刷新"
-            disabled={refreshing}
-            onClick={() => void handleRefresh()}
-          >
-            <RefreshCw
-              className={`size-4 ${refreshing ? "animate-spin" : ""}`}
-              aria-hidden
-            />
-          </Button>
-        </div>
-      }
-    >
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card">
+    <PageScaffold scroll={false} fill containerPadding="sm" className="min-h-0">
+      <div className="flex min-h-0 flex-1 overflow-hidden rounded-[var(--radius-xl)] border border-border/80 bg-card/80 backdrop-blur-sm">
         <InboxPanel
           loading={loading}
-          conversationsCount={filteredConversations.length}
-          groups={groupedConversations}
+          conversations={inboxConversations}
           messages={messages}
           selectedId={selectedId}
-          collapsedAccountIds={collapsedAccountIds}
-          onToggleGroup={toggleAccountGroup}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          accounts={accounts}
+          accountFilter={accountFilter}
+          onAccountFilterChange={setAccountFilter}
+          refreshing={refreshing}
+          onRefresh={() => void handleRefresh()}
+          accountMetaById={accountMetaById}
           onSelectConversation={selectConversation}
           onGoToAccounts={() => selectTab(managePath("accounts"))}
         />
@@ -265,6 +226,9 @@ export function ChatPage() {
           threadMessages={threadMessages}
           error={error}
           infoOpen={infoOpen}
+          needsReply={needsReply}
+          draft={replyDraft}
+          onDraftChange={setReplyDraft}
           onToggleInfo={() => setInfoOpen((open) => !open)}
           onSend={sendMessage}
         />
@@ -285,6 +249,9 @@ export function ChatPage() {
             buyerOrders={buyerOrders}
             ordersLoading={ordersLoading}
             ordersError={ordersError}
+            previousConversations={previousConversations}
+            onSelectConversation={selectConversation}
+            onInsertSuggestedReply={setReplyDraft}
           />
         ) : null}
       </div>

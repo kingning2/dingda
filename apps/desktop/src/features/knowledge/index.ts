@@ -6,7 +6,7 @@ export const knowledgeFeature = {
   navItem: {
     id: "knowledge",
     path: "/features/knowledge",
-    label: "Knowledge",
+    label: "知识库",
     icon: BookOpen,
   },
 };

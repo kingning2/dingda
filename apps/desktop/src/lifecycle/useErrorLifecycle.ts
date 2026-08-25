@@ -1,5 +1,5 @@
 /**
- * 错误生命周期。
+ * 错误生命周期：全局 reporter、后端不可用状态、壳层安装钩子。
  *
  * 职责：
  * - 安装全局错误 reporter（invoke.ts 的 IPC 错误经此上报）
@@ -25,8 +25,19 @@ import {
 import { listenRuntimeError, listenSidecarRestarted } from "@desk/platform/events";
 import { logWrite } from "@desk/platform/ipc/log";
 import { toast } from "@desk/ui";
+import { createDeskStore } from "@desk/store";
 
-import { useErrorStore } from "@feature/error";
+export interface ErrorState {
+  /** 后端是否不可用。 */
+  backendUnavailable: boolean;
+  /** 标记后端不可用状态。 */
+  setBackendUnavailable: (value: boolean) => void;
+}
+
+export const useErrorStore = createDeskStore<ErrorState>((set) => ({
+  backendUnavailable: false,
+  setBackendUnavailable: (value) => set({ backendUnavailable: value }),
+}));
 
 /** 日志通道自身的命令：失败不上报，防自反馈循环。 */
 const SELF_FEEDBACK_COMMANDS = new Set(["log_write", "log_recent", "log_clear"]);
@@ -86,7 +97,6 @@ function handleError(error: DeskError): void {
  */
 function wrapUncaught(error: unknown): DeskError {
   if (error instanceof IpcError) {
-    // 保持同一实例引用，便于 WeakSet 对 invoke 已上报的错误去重。
     return error;
   }
   return { kind: "code", message: stringifyError(error) };
@@ -122,7 +132,7 @@ function install(): void {
 }
 
 /**
- * 错误生命周期钩子 — 应用壳层挂载一次。
+ * 错误生命周期钩子 — 应用根挂载一次。
  *
  * @author Xiaoman
  * @created 2026-08-18

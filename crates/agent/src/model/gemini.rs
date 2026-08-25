@@ -93,6 +93,7 @@ impl LlmProvider for GeminiProvider {
         Ok(ChatResponse {
             reply,
             finish_reason,
+            tool_calls: Vec::new(),
         })
     }
 }

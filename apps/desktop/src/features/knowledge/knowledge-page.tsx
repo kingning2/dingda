@@ -18,8 +18,8 @@ import { FeaturePlaceholderPage } from "../../app/pages/feature-placeholder";
 export function KnowledgePage() {
   return (
     <FeaturePlaceholderPage
-      title="Knowledge"
-      description="知识库与检索 — 开发中。"
+      title="知识库"
+      description="沉淀商品话术与常见问题，供客服快速检索引用。"
     />
   );
 }

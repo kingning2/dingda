@@ -8,7 +8,7 @@
     "build": "node tooling/scripts/run-with-channel-platform.mjs xianyu,ali1688 pnpm --filter @desk/desktop build",
     "build:sidecar": "node tooling/scripts/build-sidecar.mjs",
     "build:license-verifier": "node tooling/scripts/build-license-verifier.mjs",
-    "activation-gen:gui": "node tooling/scripts/run-activation-gen-gui.mjs",
+    "locked:gui": "node tooling/scripts/run-activation-gen-gui.mjs",
     "preview": "pnpm --filter @desk/desktop preview",
     "tauri": "node tooling/scripts/tauri.mjs",
     "prepare": "husky",

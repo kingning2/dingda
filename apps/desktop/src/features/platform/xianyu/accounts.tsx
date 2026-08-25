@@ -8,8 +8,8 @@
  * @created 2026-08-13
  */
 
-import { AccountsHubPage } from "@feature/component/accounts";
-import type { AccountPanelDeps, AccountsTab } from "@feature/component/accounts";
+import { AccountsHubPage } from "@components/accounts";
+import type { AccountPanelDeps, AccountsTab } from "@components/accounts";
 import type { AccountPlatform } from "@desk/platform/ipc/account";
 import {
   accountConnect,
@@ -21,7 +21,7 @@ import {
   runAutoConnectNow,
   setAccountAutoConnect,
   setAutoConnectOnStartEnabled,
-} from "@feature/component/accounts/use-auto-connect";
+} from "@components/accounts/use-auto-connect";
 import { ali1688AccountTab } from "@feature/platform/ali1688/accounts";
 
 const xianyuDeps: AccountPanelDeps = {

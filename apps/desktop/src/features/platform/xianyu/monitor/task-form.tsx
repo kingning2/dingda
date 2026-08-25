@@ -165,7 +165,7 @@ export function TaskForm({
           </Select>
           {aiAccountOptions.length === 0 ? (
             <p className="text-xs text-muted-foreground">
-              请先在「AI 配置」中添加 DeepSeek / 豆包账号，或使用本地 Ollama。
+              请先在「AI 配置」中添加 DeepSeek / 豆包账号，或使用本地 AI。
             </p>
           ) : null}
         </div>
@@ -290,7 +290,7 @@ export function TaskForm({
             checked={form.enabled}
             onCheckedChange={(checked) => setForm({ ...form, enabled: checked })}
           />
-          <span className="text-sm">启用定时监控</span>
+          <span className="text-sm">启用定时爬取（按间隔自动运行）</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">

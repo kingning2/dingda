@@ -97,6 +97,7 @@ impl LlmProvider for AnthropicProvider {
         Ok(ChatResponse {
             reply,
             finish_reason,
+            tool_calls: Vec::new(),
         })
     }
 }

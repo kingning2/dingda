@@ -4,15 +4,17 @@ DingDa 设计系统与 **通用** UI 组件库。Feature 层的视觉与交互�
 
 > Feature 层禁止裸用 `bg-white`、`rounded-lg` 等 Tailwind 原子类；使用语义组件与 variant。
 
+**UI 参考首选：** [skills/dingda/guides/ui-reference.md](../skills/dingda/guides/ui-reference.md)（Shadcn Admin 结构 + shadcn 组件 + Aceternity 视觉层）。
+
 ## 边界
 
 | 放在 `@desk/ui` | 不放在 `@desk/ui` |
 |-----------------|-------------------|
 | Button / Input / Select / Card / ScrollArea | 窗口 TitleBar |
 | IconButton / ThemeToggle / Toaster | NavRail / AppLayout / MainPanel |
-| PageScaffold / PageContainer | 工作区 TabBar |
-| DataTable / Form / FormInput / QueryProvider | 任何 DingDa 桌面壳装配 |
-| tokens / theme / motion 原语 | IPC / 业务请求 |
+| PageScaffold / PageContainer / PageGlowCard | 工作区 TabBar |
+| `components/aceternity/` · `components/effects/` | 任何 DingDa 桌面壳装配 |
+| DataTable / Form / FormInput / QueryProvider | IPC / 业务请求 |
 
 桌面窗口壳在 `apps/desktop/src/app/`。
 
@@ -95,9 +97,11 @@ src/
 ├── theme/           # ThemeProvider（next-themes）
 ├── motion/          # 可复用动效原语
 └── components/      # shadcn 风格通用组件（variant 驱动）
+    ├── aceternity/  # Aceternity 视觉封装（Dashboard / AI 等）
+    ├── effects/     # GlowingEffect / AmbientSpotlight
     ├── data-table.tsx
     ├── form.tsx
-    └── layout/      # PageContainer / PageScaffold
+    └── layout/      # PageContainer / PageScaffold / Sidebar
 ```
 
 ## 禁止
