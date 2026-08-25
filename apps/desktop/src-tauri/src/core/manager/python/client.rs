@@ -1,18 +1,17 @@
-//! Sidecar 共享内存客户端（Rust → Python）— 归属 Python Runtime 生命周期层。
+//! Sidecar IPC 客户端（Rust → Python）— 长连接 Named Pipe / Unix Socket。
 //!
 //! 对外 API（[`SidecarClient::post_json`] / `get_json` / `get_text` /
-//! `health_check`）与原 HTTP 实现保持一致，业务调用点无需改动；
-//! 传输层已替换为共享内存邮箱（见 [`super::shm`]）。
+//! `health_check` / `request`）保持稳定；传输层为 [`super::pipe_ipc`]。
 
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Instant;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Value};
+use tokio::sync::Mutex;
 
-use super::shm::{ShmTransport, ShmTransportError};
+use super::pipe_ipc::{IpcEndpoint, IpcError, IpcSession};
 
 #[derive(Debug, thiserror::Error)]
 pub enum SidecarClientError {
@@ -22,21 +21,22 @@ pub enum SidecarClientError {
     Sidecar(String),
 }
 
-impl From<ShmTransportError> for SidecarClientError {
-    fn from(value: ShmTransportError) -> Self {
+impl From<IpcError> for SidecarClientError {
+    fn from(value: IpcError) -> Self {
         match value {
-            ShmTransportError::SidecarRestarted => Self::Transport(value.to_string()),
+            IpcError::RpcFailed(msg) => Self::Sidecar(msg),
             other => Self::Transport(other.to_string()),
         }
     }
 }
 
-/// 高频探测/轮询路径：正常且够快时只打 DEBUG。
+/// 高频探测/轮询路径：正常且够快时不打 INFO/DEBUG（仅 TRACE）。
 const QUIET_PATHS: &[&str] = &[
     "/health",
     "/v1/agent/ping",
     "/v1/channel/qr_check",
     "/v1/runtime/status",
+    "/v1/ws/events/poll",
 ];
 const QUIET_SLOW_MS: u128 = 500;
 
@@ -57,69 +57,99 @@ fn sidecar_path_label(path: &str) -> &'static str {
     }
 }
 
-/// 本地 Python Sidecar 共享内存客户端；段文件在首次使用时创建，
-/// 路径经 `--shm` 参数传给 Python 进程。构造永不失败（懒初始化），
-/// 共享内存段不可用时在首次调用/健康检查时返回错误。
+/// 本地 Python Sidecar IPC 客户端；端点经 `--ipc` 传给 Python。
+/// 构造仅保存端点，[`Self::connect`] 建立长连接并等待 `runtime.ready`。
 #[derive(Clone)]
 pub struct SidecarClient {
-    shm_path: PathBuf,
-    transport: Arc<Mutex<Option<ShmTransport>>>,
+    endpoint: IpcEndpoint,
+    session: Arc<Mutex<Option<IpcSession>>>,
 }
 
 impl SidecarClient {
-    /// 构建客户端（仅保存段路径，实际建段延迟到首次使用）。
-    pub fn new(shm_path: &Path) -> Self {
+    /// 构建客户端（不立即连线）。
+    #[must_use]
+    pub fn new(endpoint: IpcEndpoint) -> Self {
         Self {
-            shm_path: shm_path.to_path_buf(),
-            transport: Arc::new(Mutex::new(None)),
+            endpoint,
+            session: Arc::new(Mutex::new(None)),
         }
     }
 
-    /// 共享内存段文件路径。
-    pub fn shm_path(&self) -> &Path {
-        &self.shm_path
+    #[must_use]
+    pub fn endpoint(&self) -> &IpcEndpoint {
+        &self.endpoint
     }
 
-    /// 获取（或首次创建）共享内存传输端点。创建失败会在重试时再次尝试。
-    fn transport(&self) -> Result<ShmTransport, SidecarClientError> {
-        let mut guard = self.transport.lock().map_err(|error| {
-            SidecarClientError::Transport(format!("shm transport lock: {error}"))
-        })?;
-        if guard.is_none() {
-            *guard = Some(ShmTransport::create(&self.shm_path).map_err(SidecarClientError::from)?);
+    /// 建立长连接并等待 Python `runtime.ready`。
+    pub async fn connect(&self) -> Result<(), SidecarClientError> {
+        let session = IpcSession::connect(&self.endpoint).await?;
+        *self.session.lock().await = Some(session);
+        Ok(())
+    }
+
+    /// 断开并清理会话（幂等）。
+    pub async fn disconnect(&self) -> Result<(), SidecarClientError> {
+        let session = self.session.lock().await.take();
+        if let Some(session) = session {
+            session.shutdown().await?;
         }
-        Ok(guard.as_ref().expect("lazy initialized").clone())
+        Ok(())
     }
 
-    /// 健康检查：读取协议头 ready 标志与心跳时间戳，无请求往返。
+    async fn session(&self) -> Result<IpcSession, SidecarClientError> {
+        self.session
+            .lock()
+            .await
+            .clone()
+            .filter(|s| s.is_ready())
+            .ok_or_else(|| SidecarClientError::Transport("IPC session not connected".into()))
+    }
+
+    /// 通用 RPC（业务可直接用 method 名，如 `runtime.ping`）。
+    pub async fn request(&self, method: &str, params: Value) -> Result<Value, SidecarClientError> {
+        let session = self.session().await?;
+        Ok(session.request(method, params).await?)
+    }
+
+    /// 健康检查：会话就绪且 `runtime.ping` 成功。
     pub async fn health_check(&self) -> Result<bool, SidecarClientError> {
-        let transport = self.transport()?;
-        Ok(transport.is_healthy())
+        let Ok(session) = self.session().await else {
+            return Ok(false);
+        };
+        if !session.is_ready() {
+            return Ok(false);
+        }
+        match session.request("runtime.ping", json!({})).await {
+            Ok(_) => Ok(true),
+            Err(IpcError::TransportClosed) | Err(IpcError::RuntimeUnavailable(_)) => Ok(false),
+            Err(err) => Err(err.into()),
+        }
     }
 
-    async fn call(
+    async fn invoke_http(
         &self,
         method: &str,
         path: &str,
-        body: Option<serde_json::Value>,
-    ) -> Result<(u32, serde_json::Value), SidecarClientError> {
-        let envelope = json!({ "method": method, "path": path, "body": body });
-        let payload = serde_json::to_vec(&envelope)
-            .map_err(|error| SidecarClientError::Transport(error.to_string()))?;
+        body: Option<Value>,
+    ) -> Result<(u32, Value), SidecarClientError> {
         let started = Instant::now();
-        let transport = self.transport()?;
-        let result =
-            tauri::async_runtime::spawn_blocking(move || transport.call_blocking(&payload))
-                .await
-                .map_err(|error| SidecarClientError::Transport(error.to_string()))?;
-
+        let result = self
+            .request(
+                "sidecar.invoke",
+                json!({
+                    "http_method": method,
+                    "path": path,
+                    "body": body,
+                }),
+            )
+            .await;
         let label = sidecar_path_label(path);
         let duration_ms = started.elapsed().as_millis();
         match &result {
             Ok(_) => {
                 let quiet = QUIET_PATHS.contains(&path) && duration_ms < QUIET_SLOW_MS;
                 if quiet {
-                    tracing::debug!(method, command = label, duration_ms, "Sidecar 调用完成");
+                    tracing::trace!(method, command = label, duration_ms, "Sidecar 调用完成");
                 } else {
                     tracing::info!(method, command = label, duration_ms, "Sidecar 调用完成");
                 }
@@ -134,44 +164,32 @@ impl SidecarClient {
                 );
             }
         }
-
-        let response = result?;
-        if response.status != 200 && response.status != 201 {
+        let value = result?;
+        let status = value.get("status").and_then(|v| v.as_u64()).unwrap_or(500) as u32;
+        let body = value.get("body").cloned().unwrap_or(Value::Null);
+        if status != 200 && status != 201 {
             return Err(SidecarClientError::Sidecar(format!(
-                "unexpected status {}",
-                response.status
+                "unexpected status {status}"
             )));
         }
-        let value = serde_json::from_slice(&response.body)
-            .map_err(|error| SidecarClientError::Transport(error.to_string()))?;
-        Ok((response.status, value))
+        Ok((status, body))
     }
 
     pub async fn get_json<Res>(&self, path: &str) -> Result<Res, SidecarClientError>
     where
         Res: DeserializeOwned,
     {
-        let (_status, value) = self.call("GET", path, None).await?;
+        let (_status, value) = self.invoke_http("GET", path, None).await?;
         serde_json::from_value(value)
             .map_err(|error| SidecarClientError::Transport(error.to_string()))
     }
 
     pub async fn get_text(&self, path: &str) -> Result<String, SidecarClientError> {
-        let envelope = json!({ "method": "GET", "path": path, "body": serde_json::Value::Null });
-        let payload = serde_json::to_vec(&envelope)
-            .map_err(|error| SidecarClientError::Transport(error.to_string()))?;
-        let transport = self.transport()?;
-        let result =
-            tauri::async_runtime::spawn_blocking(move || transport.call_blocking(&payload))
-                .await
-                .map_err(|error| SidecarClientError::Transport(error.to_string()))??;
-        if result.status != 200 {
-            return Err(SidecarClientError::Sidecar(format!(
-                "unexpected status {}",
-                result.status
-            )));
+        let (_status, value) = self.invoke_http("GET", path, None).await?;
+        match value {
+            Value::String(s) => Ok(s),
+            other => Ok(other.to_string()),
         }
-        Ok(String::from_utf8_lossy(&result.body).into_owned())
     }
 
     pub async fn post_json<Req, Res>(
@@ -185,7 +203,7 @@ impl SidecarClient {
     {
         let value = serde_json::to_value(body)
             .map_err(|error| SidecarClientError::Transport(error.to_string()))?;
-        let (_status, response) = self.call("POST", path, Some(value)).await?;
+        let (_status, response) = self.invoke_http("POST", path, Some(value)).await?;
         serde_json::from_value(response)
             .map_err(|error| SidecarClientError::Transport(error.to_string()))
     }

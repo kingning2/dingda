@@ -5,7 +5,6 @@ use serde_json::Value;
 
 use super::super::client::{SidecarClient, SidecarClientError};
 
-/// ?? LLM ???provider ??????????
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCompleteRequest {
     #[serde(default)]
@@ -21,7 +20,6 @@ pub struct AgentCompleteRequest {
     pub user: String,
 }
 
-/// ?? LLM ???
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCompleteResponse {
     pub ok: bool,

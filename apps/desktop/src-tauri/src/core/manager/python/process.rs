@@ -1,7 +1,6 @@
 //! Python 进程生命周期 — Sidecar 进程启动 / 健康 / 停止 / 重启。
 //!
-//! 原位于 `crates/infra/src/sidecar/lifecycle.rs`，迁入 Runtime 层后归 Python 生命周期所有。
-//! 不改变启动参数、binary 名称、IPC 协议与启动顺序。
+//! 经 `--ipc` 启动 Python，建立 Named Pipe / Unix Socket 长连接后等待 `runtime.ready`。
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -9,6 +8,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use super::client::SidecarClient;
 use super::log_pipe;
+use super::pipe_ipc::IpcEndpoint;
 use crate::contracts::contracts::{RuntimeEventError, RuntimeEventSidecarRestarted};
 use crate::core::infra::event::EventBus;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -33,8 +33,8 @@ pub enum SidecarLifecycleError {
 #[derive(Debug, Clone)]
 pub struct SidecarConfig {
     pub port: u16,
-    /// 共享内存段文件路径（经 `--shm` 传给 Python）。
-    pub shm_path: PathBuf,
+    /// IPC 端点（Windows Named Pipe / Unix Domain Socket），经 `--ipc` 传给 Python。
+    pub ipc_endpoint: IpcEndpoint,
     pub sidecar_dir: PathBuf,
     pub use_uv: bool,
     pub python_executable: String,
@@ -57,7 +57,7 @@ impl SidecarConfig {
 
         Self {
             port,
-            shm_path: resolve_shm_path(),
+            ipc_endpoint: resolve_ipc_endpoint(),
             sidecar_dir: resolve_sidecar_dir(),
             use_uv: std::env::var("DINGDA_USE_UV")
                 .map(|value| value != "0")
@@ -87,8 +87,7 @@ pub struct SidecarLifecycle {
 
 impl SidecarLifecycle {
     pub fn new(config: SidecarConfig, event_bus: Arc<dyn EventBus>) -> Self {
-        // 客户端懒初始化（构造永不失败），共享内存段不可用时在首次调用/健康检查时报错。
-        let client = SidecarClient::new(&config.shm_path);
+        let client = SidecarClient::new(config.ipc_endpoint.clone());
         Self {
             config,
             client,
@@ -229,15 +228,9 @@ impl SidecarLifecycle {
         Ok(())
     }
 
-    /// 停止 Sidecar：先发优雅关闭指令，宽限等待进程退出，超时再硬杀。
+    /// 停止 Sidecar：先断开 IPC / 通知 shutdown，宽限等待进程退出，超时再硬杀。
     pub async fn stop(&self) -> Result<(), SidecarLifecycleError> {
-        // 1. best-effort 通知 Python 干净退出（短超时；Python 未启动 / 已崩溃时立即失败）。
-        let _ = tokio::time::timeout(
-            Duration::from_secs(2),
-            self.client()
-                .post_json::<_, serde_json::Value>("/v1/system/shutdown", &serde_json::json!({})),
-        )
-        .await;
+        let _ = tokio::time::timeout(Duration::from_secs(2), self.client().disconnect()).await;
 
         // 2. 宽限等待子进程退出（2s），未退出则 SIGKILL 兜底。
         let mut guard = self.child.lock().await;
@@ -352,6 +345,23 @@ impl SidecarLifecycle {
 
     async fn wait_until_healthy(&self) -> Result<(), SidecarLifecycleError> {
         let deadline = Instant::now() + self.config.startup_timeout;
+        // 先建立 IPC（Python 监听后 accept + runtime.ready），再 ping。
+        while Instant::now() < deadline {
+            match self.client.connect().await {
+                Ok(()) => break,
+                Err(err) => {
+                    if Instant::now() >= deadline {
+                        let _ = self.stop().await;
+                        let timeout =
+                            SidecarLifecycleError::StartupTimeout(self.config.startup_timeout);
+                        self.publish_error("network", "startup", format!("{timeout}; last={err}"));
+                        return Err(timeout);
+                    }
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                }
+            }
+        }
+
         while Instant::now() < deadline {
             match self.health_check().await {
                 Ok(true) => return Ok(()),
@@ -391,20 +401,20 @@ fn resolve_sidecar_dir() -> PathBuf {
     PathBuf::from("python")
 }
 
-fn resolve_shm_path() -> PathBuf {
-    if let Ok(path) = std::env::var("DINGDA_SIDECAR_SHM") {
-        return PathBuf::from(path);
+fn resolve_ipc_endpoint() -> IpcEndpoint {
+    if let Ok(path) = std::env::var("DINGDA_SIDECAR_IPC") {
+        return IpcEndpoint::from_path(path);
     }
-    std::env::temp_dir().join(format!("dingda-sidecar-{}.shm", std::process::id()))
+    IpcEndpoint::for_pid(std::process::id())
 }
 
 fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecycleError> {
-    let shm = path_to_str(&config.shm_path);
+    let ipc = config.ipc_endpoint.display();
 
     if let Some(bundled) = config.bundled_executable.as_ref() {
         if bundled.is_file() {
             let mut cmd = Command::new(bundled);
-            cmd.arg("--shm").arg(&shm);
+            cmd.arg("--ipc").arg(&ipc);
             info!(executable = %bundled.display(), "启动内置侧车");
             return Ok(configure_stdio(cmd));
         }
@@ -424,8 +434,8 @@ fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecyc
             .arg("python")
             .arg("-m")
             .arg("sidecar.main")
-            .arg("--shm")
-            .arg(&shm);
+            .arg("--ipc")
+            .arg(&ipc);
         return Ok(configure_stdio(cmd));
     }
 
@@ -442,8 +452,8 @@ fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecyc
         cmd.current_dir(&config.sidecar_dir)
             .arg("-m")
             .arg("sidecar.main")
-            .arg("--shm")
-            .arg(&shm);
+            .arg("--ipc")
+            .arg(&ipc);
         info!(executable = %candidate, "使用 python 启动侧车");
         return Ok(configure_stdio(cmd));
     }
@@ -593,7 +603,9 @@ mod tests {
         let bus = Arc::new(InMemoryEventBus::new());
         let config = SidecarConfig {
             port: 0,
-            shm_path: std::env::temp_dir().join("dingda-sidecar-test.shm"),
+            ipc_endpoint: IpcEndpoint::from_path(
+                std::env::temp_dir().join("dingda-sidecar-test.ipc"),
+            ),
             sidecar_dir: PathBuf::from("."),
             use_uv: false,
             python_executable: "python".to_string(),

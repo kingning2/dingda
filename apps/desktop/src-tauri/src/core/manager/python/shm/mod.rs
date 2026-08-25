@@ -1,7 +1,6 @@
-//! Rust ↔ Python 共享内存 IPC — 协议布局与传输层。
+//! Rust ↔ Python 共享内存 IPC（遗留；内部通道已切换为 [`super::pipe_ipc`]）。
 //!
-//! 传输协议常量见 [`protocol`]；Rust 写端实现见 [`transport`]。
-//! Python 读端镜像实现在 `python/runtime/shm_protocol.py` / `shm_server.py`。
+//! 协议见 [`protocol`]；传输见 [`transport`]。
 
 pub mod protocol;
 pub mod transport;

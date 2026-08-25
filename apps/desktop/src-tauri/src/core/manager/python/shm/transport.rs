@@ -258,8 +258,6 @@ impl ShmTransport {
         // Release 发布请求载荷。
         state.store(STATE_REQ_READY, Ordering::Release);
 
-        // 自适应退避等待响应；观察到 IDLE 说明 Python 重启时重置了槽位。
-        // 超过整体 deadline 则放弃本次调用，防止业务永久挂起。
         let timeout = call_timeout();
         let deadline = Instant::now() + timeout;
         let mut backoff = Duration::from_micros(50);
@@ -269,8 +267,6 @@ impl ShmTransport {
                 STATE_IDLE => return Err(ShmTransportError::SidecarRestarted),
                 _ => {
                     if Instant::now() >= deadline {
-                        // 超时：放弃槽位（不强行归位 IDLE，避免与并发 Python 写端竞态），
-                        // 槽位由 Sidecar 重启时的全量归位回收。
                         return Err(ShmTransportError::Timeout { timeout });
                     }
                     std::thread::sleep(backoff);

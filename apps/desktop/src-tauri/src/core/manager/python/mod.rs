@@ -6,6 +6,7 @@ pub mod health;
 pub mod ipc;
 pub mod lifecycle;
 pub mod log_pipe;
+pub mod pipe_ipc;
 pub mod process;
 pub mod routes;
 pub mod shm;

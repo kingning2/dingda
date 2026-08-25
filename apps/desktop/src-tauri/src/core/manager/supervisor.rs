@@ -5,7 +5,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::core::manager::agent::{AgentRuntime, AgentState};
 use crate::core::manager::app::startup;
@@ -81,10 +81,13 @@ impl RuntimeSupervisor {
 
     /// 后台 watchdog（Rust runtime 控制面）：每 1s 检查子进程退出 / 健康状态，
     /// 异常即触发 `ensure_running` 重启（含崩溃恢复），关闭后退出。
+    /// Sidecar 运行时快照每 10s 同步一次，避免高频 IPC 刷日志。
     pub fn spawn_observation_loop(self: &Arc<Self>) {
         let supervisor = Arc::clone(self);
         tauri::async_runtime::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
+            let mut last_snapshot = Instant::now();
+            const SNAPSHOT_INTERVAL: Duration = Duration::from_secs(10);
             loop {
                 interval.tick().await;
                 let state = supervisor.state();
@@ -103,7 +106,8 @@ impl RuntimeSupervisor {
                     if let Err(error) = supervisor.python.ensure_running().await {
                         warn!(target: RUNTIME_TARGET, %error, "[runtime] watchdog.restart.failed");
                     }
-                } else {
+                } else if last_snapshot.elapsed() >= SNAPSHOT_INTERVAL {
+                    last_snapshot = Instant::now();
                     let _ = supervisor.sync_python().await;
                 }
             }
