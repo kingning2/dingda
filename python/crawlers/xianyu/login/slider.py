@@ -9,11 +9,7 @@
 参考 XianYuPilo sliderSolver.ts：三种轨迹方案按尝试轮换，对抗
 Baxia FireyeJS 的 ML 轨迹检测；默认优先最小急动度剖面（Hogan 1984）。
 Camoufox 路径关闭包内 humanize，由本模块控制拖动节奏，避免逐步 mouse.move
-被拉到秒级。
-
-作者：Xiaoman
-创建时间：2026-08-20
-"""
+被拉到秒级。"""
 
 from __future__ import annotations
 

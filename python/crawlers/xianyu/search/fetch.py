@@ -1,4 +1,6 @@
-"""闲鱼关键词搜索（Camoufox/Chromium + MTOP idlemtopsearch 拦截）。"""
+"""闲鱼关键词搜索 — Camoufox/Chromium + MTOP idlemtopsearch 拦截。
+
+打开搜索页捕获 MTOP 响应，解析为统一商品列表；支持有头模式加长超时。"""
 
 from __future__ import annotations
 

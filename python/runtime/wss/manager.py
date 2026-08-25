@@ -1,4 +1,6 @@
-"""WebSocket 连接管理 — 多账号并行 + auto_reply + 风控续期（Python 内完成）。"""
+"""WebSocket 连接管理 — 多账号并行 + auto_reply + 风控续期。
+
+维护账号级 ``ManagedConnection``，在 Python 内完成推送消费与 Cookie 续期。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""闲鱼渠道（参考 CowAgent channel/weixin/weixin_channel.py 组织方式）。"""
+"""闲鱼渠道（参考 CowAgent weixin_channel 组织方式）。
+
+组装闲鱼浏览器与扫码登录，供 ``create_channel("xianyu")`` 返回统一 Channel。"""
 
 from __future__ import annotations
 

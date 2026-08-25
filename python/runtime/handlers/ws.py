@@ -1,4 +1,6 @@
-"""WSS IPC — Rust 启停长连接、发送消息、轮询入站事件。"""
+"""WSS IPC — Rust 启停长连接、发送消息、轮询入站事件。
+
+把 connect/disconnect/send/status/events/history 委托给 ``WssManager``。"""
 
 from __future__ import annotations
 

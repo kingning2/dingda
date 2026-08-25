@@ -1,4 +1,6 @@
-"""闲鱼 Camoufox/Chromium 会话辅助 — Cookie 注入、profile 目录、登录/风控 URL 判定。"""
+"""闲鱼 Camoufox/Chromium 会话辅助 — Cookie 注入、profile 目录、登录/风控 URL 判定。
+
+搜索、续期与扫码登录在启动浏览器前复用本模块准备目录与 Cookie。"""
 
 from __future__ import annotations
 

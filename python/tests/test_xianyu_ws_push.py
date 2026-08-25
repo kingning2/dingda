@@ -1,4 +1,6 @@
-"""闲鱼 WSS push 解析测试 — 对齐 Rust push.rs。"""
+"""闲鱼 WSS push 解析测试 — 对齐 Rust push.rs。
+
+校验 syncPushPackage 解码、会话聚合与入站文本提取。"""
 
 from __future__ import annotations
 

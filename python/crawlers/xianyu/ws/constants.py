@@ -1,4 +1,6 @@
-"""闲鱼 IM WebSocket 协议常量。"""
+"""闲鱼 IM WebSocket 协议常量。
+
+集中维护 WS URL、UA、心跳/token 刷新间隔、历史分页与 APP_KEY 等协议参数。"""
 
 WS_URL = "wss://wss-goofish.dingtalk.com/"
 WEB_ORIGIN = "https://www.goofish.com/"
@@ -9,7 +11,11 @@ USER_AGENT = (
 )
 
 HEARTBEAT_INTERVAL_SEC = 15
-TOKEN_REFRESH_INTERVAL_SEC = 3600
+LOGIN_REFRESH_INTERVAL_SEC = 600
+TOKEN_CACHE_TTL_SEC = 30 * 60
+RECONNECT_BACKOFF_INITIAL_SEC = 1.0
+RECONNECT_BACKOFF_MAX_SEC = 30.0
+RECONNECT_NORMAL_EXIT_DELAY_SEC = 3.0
 VULCAN_WAIT_SEC = 8
 
 HISTORY_PAGE_LIMIT = 50

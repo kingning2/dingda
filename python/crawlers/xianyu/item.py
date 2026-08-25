@@ -1,4 +1,6 @@
-"""闲鱼在售商品 / 详情拉取（mtop）。"""
+"""闲鱼在售商品 / 详情拉取（mtop）。
+
+调用 H5 mtop 拉取卖家在售列表与单品详情，并解析为统一字段供 IPC 返回。"""
 
 from __future__ import annotations
 

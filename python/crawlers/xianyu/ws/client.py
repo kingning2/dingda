@@ -1,4 +1,6 @@
-"""闲鱼 WebSocket 长连接客户端。"""
+"""闲鱼 WebSocket 长连接客户端。
+
+负责注册、心跳、收发 LWP 帧，并将 syncPush 解析为入站消息回调给 WSS 管理器。"""
 
 from __future__ import annotations
 
@@ -6,6 +8,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -20,7 +23,10 @@ from crawlers.xianyu.ws.constants import (
     HISTORY_MAX_PAGES,
     HISTORY_PAGE_LIMIT,
     HISTORY_RESPONSE_TIMEOUT_SEC,
-    TOKEN_REFRESH_INTERVAL_SEC,
+    LOGIN_REFRESH_INTERVAL_SEC,
+    RECONNECT_BACKOFF_INITIAL_SEC,
+    RECONNECT_BACKOFF_MAX_SEC,
+    RECONNECT_NORMAL_EXIT_DELAY_SEC,
     USER_AGENT,
     VULCAN_WAIT_SEC,
     WEB_ORIGIN,
@@ -31,11 +37,12 @@ from crawlers.xianyu.ws.cookies import (
     cookies_to_header,
     device_id_from_cookie,
     my_id,
+    now_ms,
     parse_cookies,
 )
 from crawlers.xianyu.ws.history import parse_history_message
 from crawlers.xianyu.ws.push import PushBatch, parse_sync_push_package
-from crawlers.xianyu.ws.token import TokenError, fetch_ws_token
+from crawlers.xianyu.ws.token import TokenError, fetch_ws_token, refresh_login
 
 logger = logging.getLogger("dingda.crawlers.xianyu.ws.client")
 
@@ -124,52 +131,99 @@ class XianyuWsClient:
         return all_messages
 
     async def run(self) -> None:
-        while not self._stop.is_set():
-            try:
-                await self._run_once()
-            except TokenError as error:
-                await self._emit(
-                    {"type": "auth_expired", "account_id": self.account_id, "detail": str(error)},
-                )
-                self.state.status = "auth_expired"
-                break
-            except RiskControlError as error:
-                logger.warning("WS 风控拦截 account=%s detail=%s", self.account_id, error.detail)
-                self.state.status = "risk"
-                renewed: list[dict[str, Any]] | None = None
-                if self.on_risk_renew is not None:
-                    try:
-                        renewed = await self.on_risk_renew(error)
-                    except Exception:  # noqa: BLE001
-                        logger.exception("风控续期回调失败 account=%s", self.account_id)
-                if renewed:
-                    self.cookies = renewed
+        keepalive = asyncio.create_task(self._keepalive_loop())
+        backoff = RECONNECT_BACKOFF_INITIAL_SEC
+        try:
+            while not self._stop.is_set():
+                try:
+                    await self._run_once()
+                    logger.info(
+                        "WS 正常退出，%ss 后重连 account=%s",
+                        RECONNECT_NORMAL_EXIT_DELAY_SEC,
+                        self.account_id,
+                    )
+                    backoff = RECONNECT_BACKOFF_INITIAL_SEC
+                    await asyncio.sleep(RECONNECT_NORMAL_EXIT_DELAY_SEC)
+                except TokenError as error:
+                    await self._emit(
+                        {
+                            "type": "auth_expired",
+                            "account_id": self.account_id,
+                            "detail": str(error),
+                        },
+                    )
+                    self.state.status = "auth_expired"
+                    break
+                except RiskControlError as error:
+                    logger.warning(
+                        "WS 风控拦截 account=%s detail=%s",
+                        self.account_id,
+                        error.detail,
+                    )
+                    self.state.status = "risk"
+                    renewed: list[dict[str, Any]] | None = None
+                    if self.on_risk_renew is not None:
+                        try:
+                            renewed = await self.on_risk_renew(error)
+                        except Exception:  # noqa: BLE001
+                            logger.exception("风控续期回调失败 account=%s", self.account_id)
+                    if renewed:
+                        self.cookies = renewed
+                        self.state.status = "connecting"
+                        backoff = RECONNECT_BACKOFF_INITIAL_SEC
+                        continue
+                    await self._emit(
+                        {
+                            "type": "error",
+                            "account_id": self.account_id,
+                            "detail": error.detail,
+                        },
+                    )
+                    break
+                except websockets.exceptions.ConnectionClosed as error:
+                    logger.warning(
+                        "WS 断连 account=%s detail=%s backoff=%.1fs",
+                        self.account_id,
+                        error,
+                        backoff,
+                    )
                     self.state.status = "connecting"
-                    continue
-                await self._emit(
-                    {
-                        "type": "error",
-                        "account_id": self.account_id,
-                        "detail": error.detail,
-                    },
-                )
-                break
-            except Exception as error:  # noqa: BLE001
-                logger.exception("WS 连接异常 account=%s", self.account_id)
-                await self._emit(
-                    {
-                        "type": "error",
-                        "account_id": self.account_id,
-                        "detail": str(error),
-                    },
-                )
-                self.state.status = "error"
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 2, RECONNECT_BACKOFF_MAX_SEC)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as error:  # noqa: BLE001
+                    logger.exception("WS 会话异常 account=%s detail=%s", self.account_id, error)
+                    await self._emit(
+                        {
+                            "type": "error",
+                            "account_id": self.account_id,
+                            "detail": str(error),
+                        },
+                    )
+                    self.state.status = "error"
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 2, RECONNECT_BACKOFF_MAX_SEC)
+                if self._stop.is_set():
+                    break
+        finally:
+            keepalive.cancel()
+            with suppress(asyncio.CancelledError):
+                await keepalive
+            self.state.status = "disconnected"
+            await self._emit({"type": "disconnected", "account_id": self.account_id})
+
+    async def _keepalive_loop(self) -> None:
+        while not self._stop.is_set():
+            await asyncio.sleep(LOGIN_REFRESH_INTERVAL_SEC)
             if self._stop.is_set():
                 break
-            await asyncio.sleep(5)
-
-        self.state.status = "disconnected"
-        await self._emit({"type": "disconnected", "account_id": self.account_id})
+            try:
+                _, updated = await asyncio.to_thread(refresh_login, self.cookies)
+                self.cookies = updated
+                logger.debug("login refreshed account=%s", self.account_id)
+            except Exception as error:  # noqa: BLE001
+                logger.warning("login refresh failed account=%s detail=%s", self.account_id, error)
 
     async def _run_once(self) -> None:
         header = clean_cookie_header(cookies_to_header(self.cookies))
@@ -190,62 +244,72 @@ class XianyuWsClient:
             WS_URL,
             additional_headers={
                 "Cookie": header,
+                "Host": "wss-goofish.dingtalk.com",
+                "Connection": "Upgrade",
+                "Pragma": "no-cache",
+                "Cache-Control": "no-cache",
                 "Origin": WEB_ORIGIN,
                 "User-Agent": USER_AGENT,
+                "Accept-Encoding": "gzip, deflate, br, zstd",
+                "Accept-Language": "zh-CN,zh;q=0.9",
             },
             open_timeout=30,
+            ping_interval=None,
+            max_size=4 * 1024 * 1024,
         ) as ws:
             self.state.status = "connected"
             self.state.connected_at = asyncio.get_event_loop().time()
             await self._emit({"type": "connected", "account_id": self.account_id})
 
             await ws.send(json.dumps(frames.register_frame(device_id, token)))
-            await ws.send(json.dumps(frames.sync_ack_frame()))
+            await ws.send(json.dumps(frames.sync_ack_frame(pts=now_ms() * 1000)))
 
             vulcan_deadline = asyncio.get_event_loop().time() + VULCAN_WAIT_SEC
-            last_heartbeat = asyncio.get_event_loop().time()
-            last_token = last_heartbeat
+            heartbeat = asyncio.create_task(self._heartbeat_loop(ws))
+            try:
+                while not self._stop.is_set():
+                    now = asyncio.get_event_loop().time()
+                    if not self._vulcan_ready and now >= vulcan_deadline:
+                        self._vulcan_ready = True
 
-            while not self._stop.is_set():
-                now = asyncio.get_event_loop().time()
-                if now - last_heartbeat >= HEARTBEAT_INTERVAL_SEC:
-                    await ws.send(json.dumps(frames.heartbeat_frame()))
-                    last_heartbeat = now
-                if now - last_token >= TOKEN_REFRESH_INTERVAL_SEC:
-                    logger.info("WS token 到期，重连 account=%s", self.account_id)
-                    break
-                if not self._vulcan_ready and now >= vulcan_deadline:
-                    self._vulcan_ready = True
-
-                timeout = max(0.1, HEARTBEAT_INTERVAL_SEC - (now - last_heartbeat))
-                try:
-                    incoming = await asyncio.wait_for(self._recv_or_send(ws), timeout=timeout)
-                except TimeoutError:
-                    continue
-                if incoming is None:
-                    break
-                if incoming == "__sent__":
-                    continue
-
-                msg = incoming
-                headers = msg.get("headers") or {}
-                if isinstance(headers, dict) and headers:
-                    mid = str(headers.get("mid") or "")
-                    pending = self._pending.pop(mid, None) if mid else None
-                    if pending is not None and not pending.done():
-                        body = msg.get("body")
-                        if isinstance(body, dict):
-                            pending.set_result(body)
-                        else:
-                            pending.set_result(msg if isinstance(msg, dict) else {})
+                    incoming = await self._recv_or_send(ws)
+                    if incoming is None:
+                        break
+                    if incoming == "__sent__":
                         continue
-                    await ws.send(json.dumps(frames.ack_frame(headers)))
 
-                if msg.get("lwp") == "/s/vulcan":
-                    self._vulcan_ready = True
+                    msg = incoming
+                    headers = msg.get("headers") or {}
+                    if isinstance(headers, dict) and headers:
+                        mid = str(headers.get("mid") or "")
+                        pending = self._pending.pop(mid, None) if mid else None
+                        if pending is not None and not pending.done():
+                            body = msg.get("body")
+                            if isinstance(body, dict):
+                                pending.set_result(body)
+                            else:
+                                pending.set_result(msg if isinstance(msg, dict) else {})
+                            continue
+                        await ws.send(json.dumps(frames.ack_frame(headers)))
 
-                batch = parse_sync_push_package(msg)
-                await self._handle_push(batch)
+                    if msg.get("lwp") == "/s/vulcan":
+                        self._vulcan_ready = True
+
+                    batch = parse_sync_push_package(msg)
+                    await self._handle_push(batch)
+            finally:
+                heartbeat.cancel()
+                with suppress(asyncio.CancelledError):
+                    await heartbeat
+
+    async def _heartbeat_loop(self, ws: ClientConnection) -> None:
+        while True:
+            try:
+                await ws.send(json.dumps(frames.heartbeat_frame()))
+            except Exception as error:  # noqa: BLE001
+                logger.debug("heartbeat send failed account=%s detail=%s", self.account_id, error)
+                return
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SEC)
 
     async def _recv_or_send(self, ws: ClientConnection) -> dict[str, Any] | str | None:
         send_task = asyncio.create_task(self._outbound.get())

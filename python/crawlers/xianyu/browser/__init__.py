@@ -1,4 +1,6 @@
-"""闲鱼 Playwright 配置与会话辅助。"""
+"""闲鱼 Playwright 配置与会话辅助。
+
+``XianyuBrowser`` 注入反检测脚本，并再导出 session 层 Cookie/profile 工具。"""
 
 from __future__ import annotations
 

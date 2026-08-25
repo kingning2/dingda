@@ -1,4 +1,6 @@
-"""闲鱼扫码登录。"""
+"""闲鱼扫码登录。
+
+基于核心 ``QrcodeLogin``，绑定闲鱼浏览器配置完成取码、轮询与 Cookie 导出。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""mtop 签名。"""
+"""mtop 签名 — ``token&timestamp&appKey&data`` 的 MD5。
+
+WebSocket token 请求与其它 H5 mtop 调用复用本函数生成 sign 参数。"""
 
 from __future__ import annotations
 

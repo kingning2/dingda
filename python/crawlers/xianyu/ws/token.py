@@ -1,20 +1,24 @@
-"""mtop login token — WebSocket /reg 前置。"""
+"""mtop login token — WebSocket ``/reg`` 前置。
+
+用 Cookie 拉取登录 token，必要时探测/合并 Set-Cookie，失败时抛出 TokenError。"""
 
 from __future__ import annotations
 
 import contextlib
 import json
 import logging
+import time
 import urllib.parse
 import urllib.request
 from http.cookiejar import CookieJar
 from typing import Any
 
 from crawlers.xianyu.risk import RiskControlError, extract_punish_url, is_risk_control_text
-from crawlers.xianyu.ws.constants import APP_KEY, LOGIN_TOKEN_URL, REG_APP_KEY
+from crawlers.xianyu.ws.constants import APP_KEY, LOGIN_TOKEN_URL, REG_APP_KEY, TOKEN_CACHE_TTL_SEC
 from crawlers.xianyu.ws.cookies import (
     cookies_to_header,
     device_id_from_cookie,
+    merge_cookie_header,
     my_id,
     parse_cookies,
     sign_token,
@@ -23,16 +27,62 @@ from crawlers.xianyu.ws.sign import generate_sign
 
 logger = logging.getLogger("dingda.crawlers.xianyu.ws.token")
 
+_token_cache: dict[str, tuple[str, float]] = {}
+
 
 class TokenError(Exception):
     pass
 
 
-def fetch_ws_token(cookies: str | list[dict[str, Any]]) -> str:
-    """获取 WebSocket 注册 token。"""
+def fetch_ws_token(cookies: str | list[dict[str, Any]], *, force_refresh: bool = False) -> str:
+    """获取 WebSocket 注册 token（带 unb 级内存缓存，默认 TTL 30 分钟）。"""
     header = cookies_to_header(cookies)
-    jar = CookieJar()
     parsed = parse_cookies(cookies)
+    unb = my_id(parsed)
+    if not unb:
+        raise TokenError("cookie 缺少 unb")
+
+    if not force_refresh:
+        cached = _token_cache.get(unb)
+        if cached is not None:
+            token, saved_at = cached
+            if time.time() - saved_at < TOKEN_CACHE_TTL_SEC:
+                return token
+
+    token = _fetch_ws_token_uncached(header)
+    _token_cache[unb] = (token, time.time())
+    return token
+
+
+def refresh_login(
+    cookies: str | list[dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """长连保活：调用 ``mtop.taobao.idlemessage.pc.loginuser.get``。"""
+    from crawlers.xianyu.mtop import MtopClient, MtopRequest
+
+    header = cookies_to_header(cookies)
+    client = MtopClient(header)
+    response = client.call(
+        MtopRequest(
+            api="mtop.taobao.idlemessage.pc.loginuser.get",
+            version="1.0",
+            data={},
+            extra_params={"spm_cnt": "a21ybx.im.0.0"},
+        ),
+    )
+    base = (
+        cookies
+        if isinstance(cookies, list)
+        else [{"name": name, "value": value} for name, value in parse_cookies(cookies).items()]
+    )
+    updated = merge_cookie_header(client.cookie, base)
+    return response.json, updated
+
+
+def _fetch_ws_token_uncached(header: str) -> str:
+    """获取 WebSocket 注册 token（无缓存）。"""
+    jar = CookieJar()
+    parsed = parse_cookies(header)
 
     if not my_id(parsed):
         raise TokenError("cookie 缺少 unb")

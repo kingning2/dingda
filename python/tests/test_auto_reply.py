@@ -1,4 +1,6 @@
-"""auto_reply / LangGraph 单元测试。"""
+"""auto_reply / LangGraph 买家回复单元测试。
+
+覆盖意图路由与 buyer_reply 图在守卫/生成路径上的行为。"""
 
 from __future__ import annotations
 

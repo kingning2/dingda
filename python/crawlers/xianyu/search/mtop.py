@@ -1,4 +1,6 @@
-"""闲鱼搜索 MTOP 解析（对齐 ai-goofish-monitor parsers._parse_search_results_json）。"""
+"""闲鱼搜索 MTOP 解析（对齐 ai-goofish-monitor parsers）。
+
+从搜索结果 JSON 提取商品 id、标题、价格、发布时间与链接并规范化。"""
 
 from __future__ import annotations
 

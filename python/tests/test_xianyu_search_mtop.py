@@ -1,4 +1,6 @@
-"""闲鱼搜索 MTOP 解析单元测试。"""
+"""闲鱼搜索 MTOP 解析单元测试。
+
+用 fixture JSON 校验 ``parse_search_items`` / ``map_item`` 边界行为。"""
 
 from __future__ import annotations
 

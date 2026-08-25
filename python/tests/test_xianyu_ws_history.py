@@ -1,4 +1,6 @@
-"""历史消息解析单元测试。"""
+"""历史消息解析单元测试。
+
+覆盖 base64/json 内容解码与文本提取路径。"""
 
 from __future__ import annotations
 

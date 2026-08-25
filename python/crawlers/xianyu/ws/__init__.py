@@ -1,4 +1,6 @@
-"""`__init__` for xianyu ws package."""
+"""闲鱼 WebSocket 包 — 长连接客户端与推送解析。
+
+对外导出 ``XianyuWsClient``、``PushBatch`` / ``PushedMessage`` 与 ``parse_sync_push_package``。"""
 
 from crawlers.xianyu.ws.client import XianyuWsClient
 from crawlers.xianyu.ws.push import PushBatch, PushedMessage, parse_sync_push_package

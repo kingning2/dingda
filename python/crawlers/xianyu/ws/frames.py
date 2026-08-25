@@ -1,4 +1,6 @@
-"""WebSocket LWP 帧构造 — 对齐 Rust `message/frames.rs`。"""
+"""WebSocket LWP 帧构造 — 对齐 Rust ``message/frames.rs``。
+
+生成注册、心跳、ACK、发消息与历史拉取等帧，以及 mid/uuid/cid 辅助函数。"""
 
 from __future__ import annotations
 
@@ -40,7 +42,8 @@ def register_frame(device_id: str, token: str) -> dict[str, Any]:
     }
 
 
-def sync_ack_frame() -> dict[str, Any]:
+def sync_ack_frame(*, pts: int | None = None) -> dict[str, Any]:
+    current_ms = now_ms()
     return {
         "lwp": "/r/SyncStatus/ackDiff",
         "headers": {"mid": generate_mid()},
@@ -51,9 +54,9 @@ def sync_ack_frame() -> dict[str, Any]:
                 "channel": "sync",
                 "topic": "sync",
                 "highPts": 0,
-                "pts": 0,
+                "pts": pts if pts is not None else 0,
                 "seq": 0,
-                "timestamp": now_ms(),
+                "timestamp": current_ms,
             },
         ],
     }

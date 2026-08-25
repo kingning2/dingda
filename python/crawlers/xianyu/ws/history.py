@@ -1,4 +1,6 @@
-"""历史消息解析 — 对齐 Rust `message/history.rs`。"""
+"""历史消息解析 — 对齐 Rust ``message/history.rs``。
+
+解码历史接口返回内容，提取可读文本供 IPC ``ws/history`` 与测试使用。"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""闲鱼 mtop 爬虫 IPC — 商品列表/详情、用户资料、会话头信息。"""
+"""闲鱼 mtop 爬虫 IPC — 商品列表/详情、用户资料、会话头信息。
+
+从 payload 取 Cookie，调用 crawlers.xianyu.item/profile 并包装为 IPC 响应。"""
 
 from __future__ import annotations
 

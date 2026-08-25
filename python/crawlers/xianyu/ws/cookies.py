@@ -1,4 +1,6 @@
-"""Cookie 解析 — 对齐 Rust `shared::cookies` 子集。"""
+"""Cookie 解析 — 对齐 Rust ``shared::cookies`` 子集。
+
+从 Cookie 串提取用户 id、签名 token、设备 id，并生成请求头用 Cookie 字符串。"""
 
 from __future__ import annotations
 
@@ -79,3 +81,20 @@ def device_id_from_cookie(cookie_header: str) -> str | None:
 
 def clean_cookie_header(value: str) -> str:
     return "".join(ch for ch in value if ch == "\t" or (" " <= ch <= "~"))
+
+
+def merge_cookie_header(header: str, cookies: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """将 Cookie Header 合并回 Playwright 风格的 cookie 列表。"""
+    parsed = parse_cookies(header)
+    known = {str(item.get("name") or "") for item in cookies}
+    merged: list[dict[str, Any]] = []
+    for item in cookies:
+        name = str(item.get("name") or "")
+        if name in parsed:
+            merged.append({**item, "value": parsed[name]})
+        else:
+            merged.append(item)
+    for name, value in parsed.items():
+        if name not in known:
+            merged.append({"name": name, "value": value})
+    return merged

@@ -1,4 +1,6 @@
-"""WSS 入站消息自动回复 — 触发 buyer_reply graph 并经 WS 发出。"""
+"""WSS 入站消息自动回复 — 触发 buyer_reply graph 并经 WS 发出。
+
+在收到买家文本后按 AiSettings 决定是否生成并发送回复。"""
 
 from __future__ import annotations
 

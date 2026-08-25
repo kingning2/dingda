@@ -3,11 +3,7 @@
 对齐 xianyu-auto-reply：
 - 稳态不常驻浏览器；
 - 风控页优先自动拖滑块；
-- 自动失败再回退有头人工完成。
-
-作者：Xiaoman
-创建时间：2026-08-19
-"""
+- 自动失败再回退有头人工完成。"""
 
 from __future__ import annotations
 

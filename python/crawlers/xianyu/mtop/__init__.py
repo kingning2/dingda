@@ -1,4 +1,6 @@
-"""闲鱼 H5 mtop HTTP 客户端（对齐 Rust `platform::xianyu::core::mtop`）。"""
+"""闲鱼 H5 mtop HTTP 客户端（对齐 Rust ``platform::xianyu::core::mtop``）。
+
+封装签名请求与响应解析，供商品、资料与 WebSocket token 等调用方使用。"""
 
 from __future__ import annotations
 

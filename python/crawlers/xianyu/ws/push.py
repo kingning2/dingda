@@ -1,4 +1,6 @@
-"""syncPushPackage 解析 — 对齐 Rust `message/push.rs`。"""
+"""syncPushPackage 解析 — 对齐 Rust ``message/push.rs``。
+
+将推送包解码为会话与消息批次，供长连接客户端识别入站文本与会话 cid。"""
 
 from __future__ import annotations
 

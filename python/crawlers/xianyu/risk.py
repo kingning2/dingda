@@ -1,4 +1,6 @@
-"""闲鱼风控文案判定 — token / mtop 验证码拦截关键字。"""
+"""闲鱼风控文案判定 — token / mtop 验证码拦截关键字。
+
+识别风控页文本、提取处罚 URL，并抛出 ``RiskControlError`` 触发续期流程。"""
 
 from __future__ import annotations
 
