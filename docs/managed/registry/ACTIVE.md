@@ -4,3 +4,4 @@
 
 | Change ID | 状态 | 优先级 | 主领域 | 负责人 | 父任务 | 阻塞 |
 |---|---|---|---|---|---|---|
+| CHG-20260825-002-sidecar-shm-ipc | in_progress | P1 | desktop-tauri | buffy | — | — |

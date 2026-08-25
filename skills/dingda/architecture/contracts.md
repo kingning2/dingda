@@ -55,7 +55,7 @@ contracts/
 | 目标 | 路径 |
 |------|------|
 | TypeScript | `packages/contracts/src/` |
-| Rust | `crates/common/src/contracts/`（规划） |
+| Rust | `apps/desktop/src-tauri/src/contracts/contracts/` |
 | Python | `python/contracts/` |
 
 ## PR 要求

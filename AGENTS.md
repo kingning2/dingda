@@ -14,9 +14,9 @@ pnpm branch:sync                                # 切换分支后刷新规则
 
 | 分支模式 | 职责 |
 |----------|------|
-| `frontend/<kind>/<slug>` | React · UI · Tauri · `crates/**` |
+| `frontend/<kind>/<slug>` | React · UI · Tauri · `apps/desktop/src-tauri/**` |
 | `python/<kind>/<slug>` | 例外 Sidecar（仅 Rust 生态不够）· `python/**` |
-| `contract/<kind>/<slug>` | `contracts/` + codegen |
+| `contract/<kind>/<slug>` | `contracts/` + codegen（Rust 生成物在 src-tauri `contracts/`） |
 | `main` | 集成分支 |
 
 配置源：[`skills/dingda/config/branch_roles.json`](skills/dingda/config/branch_roles.json)

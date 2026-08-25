@@ -34,8 +34,7 @@
         "apps/desktop/**",
         "packages/ui/**",
         "packages/platform/**",
-        "packages/contracts/**",
-        "crates/**"
+        "packages/contracts/**"
       ],
       "optional_globs": ["contracts/**"],
       "forbidden_globs": ["python/**"],
@@ -50,8 +49,7 @@
       "forbidden_globs": [
         "apps/desktop/**",
         "packages/ui/**",
-        "packages/platform/**",
-        "crates/**"
+        "packages/platform/**"
       ],
       "rule_files": ["python.md"]
     },
@@ -63,8 +61,17 @@
         "contracts/**",
         "skills/dingda/scripts/sync_contracts.py"
       ],
-      "optional_globs": [],
-      "forbidden_globs": ["apps/**", "crates/**", "python/**", "packages/**"],
+      "optional_globs": [
+        "apps/desktop/src-tauri/src/contracts/**"
+      ],
+      "forbidden_globs": [
+        "apps/desktop/src/**",
+        "apps/desktop/src-tauri/src/platforms/**",
+        "apps/desktop/src-tauri/src/runtime/**",
+        "apps/desktop/src-tauri/src/crawlers/**",
+        "python/**",
+        "packages/**"
+      ],
       "rule_files": []
     },
     "integration": {

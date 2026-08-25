@@ -1,24 +1,20 @@
 //! Example: Rust sidecar HTTP client (Rust → Python).
 //!
-//! Real code lives in `crates/infra/src/sidecar/`.
+//! Real code lives in `apps/desktop/src-tauri/src/runtime/python/client.rs`.
 //! This file documents the pattern only.
 
 /*
-use runtime::sidecar::client::SidecarClient;
-use runtime::sidecar::routes::agent_ping::{agent_ping, AgentPingRequest};
+use crate::runtime::python::client::SidecarClient;
+use crate::runtime::python::routes::agent_ping::call;
 
-async fn example(runtime_port: u16, trace_id: String) -> Result<(), Box<dyn std::error::Error>> {
+async fn example(runtime_port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let client = SidecarClient::new(runtime_port);
-    let response = agent_ping(
-        &client,
-        AgentPingRequest { trace_id },
-    )
-    .await?;
+    let response = call(&client).await?;
     assert!(response.ok);
     Ok(())
 }
 */
 
 fn main() {
-    // documentation-only example; see crates/infra/src/sidecar/
+    // documentation-only example; see apps/desktop/src-tauri/src/runtime/python/
 }
