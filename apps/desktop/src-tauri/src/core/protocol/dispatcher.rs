@@ -1,9 +1,7 @@
-//! 渠道调度器 — 协议工厂 + 多账号并行生命周期 + 入站管线。
+//! 渠道调度器 — 多账号并行生命周期 + 入站管线。
 //!
-//! 业务层通过 dispatcher 操作各平台协议，不直接依赖具体实现。
-//!
-//! 作者：Xiaoman
-//! 创建时间：2026-08-18
+//! 当前闲鱼连接由 Python Sidecar WSS 负责，进程内协议工厂从未注册
+//! （`register_factory` 无调用方），本模块仅保留连接 / 断开 / 状态查询占位。
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -16,17 +14,6 @@ use crate::contracts::DingDaResult;
 
 /// 协议实例工厂 — 每次连接创建独立 [`ChannelProtocol`]（支持多账号并行）。
 pub type ChannelProtocolFactory = Arc<dyn Fn() -> Arc<dyn ChannelProtocol> + Send + Sync>;
-
-/// 调度器错误。
-#[derive(Debug, thiserror::Error)]
-pub enum DispatcherError {
-    #[error("unsupported channel kind: {0}")]
-    UnsupportedKind(String),
-    #[error("channel not registered: {0}")]
-    NotRegistered(String),
-    #[error("channel error: {0}")]
-    Channel(String),
-}
 
 /// 多渠道调度器。
 #[derive(Clone)]
@@ -45,28 +32,11 @@ impl Default for ChannelDispatcher {
 
 impl ChannelDispatcher {
     /// 创建空调度器。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-18
     pub fn new() -> Self {
         Self {
             factories: Arc::new(RwLock::new(HashMap::new())),
             active: Arc::new(RwLock::new(HashMap::new())),
         }
-    }
-
-    /// 注册平台协议工厂。新平台接入点：实现 trait 后在此登记。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-20
-    ///
-    /// # 参数
-    ///
-    /// * `kind` — 渠道类型
-    /// * `factory` — 每次连接时创建新的协议实例
-    pub fn register_factory(&self, kind: ChannelKind, factory: ChannelProtocolFactory) {
-        let mut map = self.factories.blocking_write();
-        map.insert(kind, factory);
     }
 
     async fn factory_for(&self, kind: ChannelKind) -> DingDaResult<ChannelProtocolFactory> {
@@ -77,9 +47,6 @@ impl ChannelDispatcher {
     }
 
     /// 连接账号；每个账号持有独立协议实例，可与其他账号并行在线。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-20
     pub async fn connect(&self, account: &ChannelAccount) -> DingDaResult<()> {
         if let Some(existing) = self.active.read().await.get(&account.id) {
             if existing.connection_state() == ConnectionState::Connected {
@@ -106,9 +73,6 @@ impl ChannelDispatcher {
     }
 
     /// 断开账号并释放其协议实例。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-18
     pub async fn disconnect(&self, account_id: &str) -> DingDaResult<()> {
         if let Some(protocol) = self.active.write().await.remove(account_id) {
             protocol.disconnect().await?;
@@ -116,10 +80,17 @@ impl ChannelDispatcher {
         Ok(())
     }
 
+    /// 查询指定账号的连接状态。
+    pub async fn connection_state(&self, account_id: &str) -> ConnectionState {
+        self.active
+            .read()
+            .await
+            .get(account_id)
+            .map(|protocol| protocol.connection_state())
+            .unwrap_or(ConnectionState::Disconnected)
+    }
+
     /// 发送消息；`cid` 为平台侧会话 id，`peer_id` 为会话对端 id。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-18
     pub async fn send(
         &self,
         account_id: &str,
@@ -139,53 +110,7 @@ impl ChannelDispatcher {
         protocol.send(cid, peer_id, text).await
     }
 
-    /// 查询指定账号的连接状态。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-20
-    pub async fn connection_state(&self, account_id: &str) -> ConnectionState {
-        self.active
-            .read()
-            .await
-            .get(account_id)
-            .map(|protocol| protocol.connection_state())
-            .unwrap_or(ConnectionState::Disconnected)
-    }
-
-    /// 列出当前已登记的账号及其连接状态。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-21
-    ///
-    /// # 返回值
-    ///
-    /// `(account_id, state)` 列表。
-    pub async fn list_sessions(&self) -> Vec<(String, ConnectionState)> {
-        self.active
-            .read()
-            .await
-            .iter()
-            .map(|(id, protocol)| (id.clone(), protocol.connection_state()))
-            .collect()
-    }
-
-    /// 将已有协议实例挂入调度器（不触发 `connect`，用于开发态复用 Host 会话）。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-21
-    ///
-    /// # 参数
-    ///
-    /// * `account_id` — 账号 id
-    /// * `protocol` — 已绑定账号的协议实例
-    pub async fn adopt(&self, account_id: String, protocol: Arc<dyn ChannelProtocol>) {
-        self.active.write().await.insert(account_id, protocol);
-    }
-
     /// 拉取某会话的完整消息历史（透传平台实现）。
-    ///
-    /// 作者：Xiaoman
-    /// 创建时间：2026-08-20
     pub async fn fetch_history(
         &self,
         account_id: &str,

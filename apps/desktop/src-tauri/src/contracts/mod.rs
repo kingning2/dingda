@@ -5,6 +5,7 @@
 
 pub mod channel_inbound_message;
 pub mod constants;
+#[allow(clippy::module_inception)]
 pub mod contracts;
 pub mod errors;
 pub mod events;

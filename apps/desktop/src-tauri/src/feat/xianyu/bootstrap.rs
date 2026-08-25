@@ -9,12 +9,10 @@ use crate::cmd::{
     ItemHandle, MonitorHandle, OrderHandle, PostQrLoginHook, RiskHandle, UserSettingHandle,
 };
 use crate::contracts::DingDaResult;
-use crate::core::channel::coordinator::ChannelCoordinator;
 use crate::core::manager::python::wss_bridge::connect_channel;
 use crate::core::manager::python::PythonWssBridge;
-use crate::core::protocol::dispatcher::ChannelDispatcher;
 use crate::core::store::{
-    InMemoryAccountStore, InMemoryItemStore, InMemoryMonitorResultStore, InMemoryMonitorRunStore,
+    InMemoryItemStore, InMemoryMonitorResultStore, InMemoryMonitorRunStore,
     InMemoryMonitorTaskStore, InMemoryOrderStore, InMemoryRiskStore, InMemoryUserSettingStore,
     SqliteBusinessDb,
 };
@@ -125,14 +123,4 @@ pub fn register_business(
         .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(post_login);
 
     Ok(())
-}
-
-/// 闲鱼连接由 Python Sidecar WSS 负责（未注册进程内 XianyuChannel）。
-pub fn register_active_platform(
-    dispatcher: &Arc<ChannelDispatcher>,
-    coordinator: &Arc<ChannelCoordinator>,
-    account_store: Option<Arc<InMemoryAccountStore>>,
-) {
-    let _ = (dispatcher, coordinator, account_store);
-    tracing::info!("闲鱼连接由 Python Sidecar WSS 负责（未注册进程内 XianyuChannel）");
 }

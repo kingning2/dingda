@@ -83,7 +83,7 @@ pub fn launch(
         .on_page_load(|_webview, payload| {
             lifecycle::on_page_load(payload.event(), payload.url().as_str())
         })
-        .on_window_event(|window, event| lifecycle::on_window_event(&window, &event))
+        .on_window_event(lifecycle::on_window_event)
         .setup(move |app| {
             lifecycle::on_setup_begin();
             let windows = app.webview_windows();

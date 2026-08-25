@@ -116,7 +116,7 @@ impl SidecarClient {
         let label = sidecar_path_label(path);
         let duration_ms = started.elapsed().as_millis();
         match &result {
-            Ok(response) => {
+            Ok(_) => {
                 let quiet = QUIET_PATHS.contains(&path) && duration_ms < QUIET_SLOW_MS;
                 if quiet {
                     tracing::debug!(method, command = label, duration_ms, "Sidecar 调用完成");

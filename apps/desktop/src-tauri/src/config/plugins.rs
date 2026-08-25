@@ -200,7 +200,8 @@ pub fn camoufox_item(plugins_dir: &Path, error: Option<String>) -> PluginItem {
     PluginItem {
         id: PLUGIN_ID_CAMOUFOX.to_string(),
         name: "浏览器辅助".to_string(),
-        description: format!("用于闲鱼登录验证与滑块处理（约 500MB），按需下载，不随安装包分发。"),
+        description: "用于闲鱼登录验证与滑块处理（约 500MB），按需下载，不随安装包分发。"
+            .to_string(),
         status: status.to_string(),
         error,
     }

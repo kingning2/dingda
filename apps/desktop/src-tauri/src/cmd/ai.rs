@@ -65,6 +65,7 @@ mod agent {
     }
 }
 
+#[allow(clippy::module_inception)]
 mod ai {
     // AI 配置 Tauri commands。
     //
