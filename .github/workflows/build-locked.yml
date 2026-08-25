@@ -43,6 +43,10 @@ jobs:
           "C:\Strawberry\c\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           perl -v
 
+      # release profile 不会为 externalBin 生成 stub；需先冻结真实 sidecar
+      - name: Build frozen sidecar
+        run: node tooling/scripts/build-sidecar.mjs --target x86_64-pc-windows-msvc
+
       - name: Build locked Windows x64 bundle
         run: pnpm tauri build locked --target x86_64-pc-windows-msvc
 
@@ -83,5 +87,5 @@ jobs:
           name: windows-x64-locked-build-log
           path: |
             apps/desktop/src-tauri/binaries/license-verifier-x86_64-pc-windows-msvc.exe
-            crates/adapter/generated/license_verifier.sha256
+            apps/desktop/src-tauri/generated/license_verifier.sha256
           if-no-files-found: error
