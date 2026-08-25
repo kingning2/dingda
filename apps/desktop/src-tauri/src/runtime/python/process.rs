@@ -7,10 +7,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use common::contracts::{RuntimeEventError, RuntimeEventSidecarRestarted};
-use infra::event::EventBus;
-use infra::sidecar::client::SidecarClient;
-use infra::sidecar::log_pipe;
+use super::client::SidecarClient;
+use super::log_pipe;
+use crate::contracts::contracts::{RuntimeEventError, RuntimeEventSidecarRestarted};
+use crate::infra::event::EventBus;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
@@ -33,6 +33,8 @@ pub enum SidecarLifecycleError {
 #[derive(Debug, Clone)]
 pub struct SidecarConfig {
     pub port: u16,
+    /// 共享内存段文件路径（经 `--shm` 传给 Python）。
+    pub shm_path: PathBuf,
     pub sidecar_dir: PathBuf,
     pub use_uv: bool,
     pub python_executable: String,
@@ -55,6 +57,7 @@ impl SidecarConfig {
 
         Self {
             port,
+            shm_path: resolve_shm_path(),
             sidecar_dir: resolve_sidecar_dir(),
             use_uv: std::env::var("DINGDA_USE_UV")
                 .map(|value| value != "0")
@@ -84,7 +87,12 @@ pub struct SidecarLifecycle {
 
 impl SidecarLifecycle {
     pub fn new(config: SidecarConfig, event_bus: Arc<dyn EventBus>) -> Self {
-        let client = SidecarClient::new(config.port);
+        let client = SidecarClient::new(&config.shm_path).unwrap_or_else(|error| {
+            panic!(
+                "创建 Sidecar 共享内存失败 ({}): {error}",
+                config.shm_path.display()
+            )
+        });
         Self {
             config,
             client,
@@ -335,13 +343,20 @@ fn resolve_sidecar_dir() -> PathBuf {
     PathBuf::from("python")
 }
 
+fn resolve_shm_path() -> PathBuf {
+    if let Ok(path) = std::env::var("DINGDA_SIDECAR_SHM") {
+        return PathBuf::from(path);
+    }
+    std::env::temp_dir().join(format!("dingda-sidecar-{}.shm", std::process::id()))
+}
+
 fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecycleError> {
-    let port = config.port.to_string();
+    let shm = path_to_str(&config.shm_path);
 
     if let Some(bundled) = config.bundled_executable.as_ref() {
         if bundled.is_file() {
             let mut cmd = Command::new(bundled);
-            cmd.arg("--port").arg(&port);
+            cmd.arg("--shm").arg(&shm);
             info!(executable = %bundled.display(), "启动内置侧车");
             return Ok(configure_stdio(cmd));
         }
@@ -361,8 +376,8 @@ fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecyc
             .arg("python")
             .arg("-m")
             .arg("sidecar.main")
-            .arg("--port")
-            .arg(&port);
+            .arg("--shm")
+            .arg(&shm);
         return Ok(configure_stdio(cmd));
     }
 
@@ -379,8 +394,8 @@ fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecyc
         cmd.current_dir(&config.sidecar_dir)
             .arg("-m")
             .arg("sidecar.main")
-            .arg("--port")
-            .arg(&port);
+            .arg("--shm")
+            .arg(&shm);
         info!(executable = %candidate, "使用 python 启动侧车");
         return Ok(configure_stdio(cmd));
     }
@@ -497,7 +512,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use infra::event::{EventError, EventHandler, InMemoryEventBus};
+    use crate::infra::event::{EventError, EventHandler, InMemoryEventBus};
     use std::sync::{Arc, Mutex};
 
     type Records = Arc<Mutex<Vec<(String, Vec<u8>)>>>;
@@ -530,6 +545,7 @@ mod tests {
         let bus = Arc::new(InMemoryEventBus::new());
         let config = SidecarConfig {
             port: 0,
+            shm_path: std::env::temp_dir().join("dingda-sidecar-test.shm"),
             sidecar_dir: PathBuf::from("."),
             use_uv: false,
             python_executable: "python".to_string(),

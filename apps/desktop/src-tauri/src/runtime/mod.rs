@@ -13,6 +13,7 @@
 
 pub mod agent;
 pub mod app;
+pub mod mark;
 pub mod python;
 pub mod shutdown;
 pub mod state;

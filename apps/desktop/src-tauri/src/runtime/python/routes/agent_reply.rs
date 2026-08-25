@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 /// LangGraph agent 对话请求（provider 配置由调用方携带）。
 #[derive(Debug, Clone, Serialize, Deserialize)]

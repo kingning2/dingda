@@ -1,8 +1,8 @@
 //! Sidecar route binding: /v1/channel/search (POST)
 
-use common::contracts::{ChannelSidecarSearchRequest, ChannelSidecarSearchResponse};
+use crate::contracts::contracts::{ChannelSidecarSearchRequest, ChannelSidecarSearchResponse};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 pub async fn call(
     client: &SidecarClient,

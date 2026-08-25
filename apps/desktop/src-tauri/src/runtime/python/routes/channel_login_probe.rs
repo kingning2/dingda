@@ -1,8 +1,10 @@
 //! Sidecar route binding: /v1/channel/login_probe (POST)
 
-use common::contracts::{ChannelSidecarLoginProbeRequest, ChannelSidecarLoginProbeResponse};
+use crate::contracts::contracts::{
+    ChannelSidecarLoginProbeRequest, ChannelSidecarLoginProbeResponse,
+};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 pub async fn call(
     client: &SidecarClient,

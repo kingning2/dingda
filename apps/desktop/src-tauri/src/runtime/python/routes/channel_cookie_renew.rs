@@ -3,9 +3,11 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-19
 
-use common::contracts::{ChannelSidecarCookieRenewRequest, ChannelSidecarCookieRenewResponse};
+use crate::contracts::contracts::{
+    ChannelSidecarCookieRenewRequest, ChannelSidecarCookieRenewResponse,
+};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 /// 调用 sidecar 浏览器续期 Cookie。
 ///

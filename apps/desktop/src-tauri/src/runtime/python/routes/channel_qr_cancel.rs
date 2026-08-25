@@ -1,8 +1,8 @@
 //! Sidecar route binding: /v1/channel/qr_cancel (POST)
 
-use common::contracts::{ChannelSidecarQrCancelRequest, ChannelSidecarQrCancelResponse};
+use crate::contracts::contracts::{ChannelSidecarQrCancelRequest, ChannelSidecarQrCancelResponse};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 pub async fn call(
     client: &SidecarClient,

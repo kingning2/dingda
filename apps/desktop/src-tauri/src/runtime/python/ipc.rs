@@ -1,6 +1,6 @@
 //! Rust ↔ Python 通信 — Sidecar HTTP 客户端。
 
-use infra::sidecar::client::SidecarClient;
+use crate::runtime::python::client::SidecarClient;
 
 /// Python Sidecar IPC 面 — 暴露类型化 HTTP 客户端。
 ///

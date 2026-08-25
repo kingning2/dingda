@@ -1,8 +1,8 @@
 //! Sidecar route binding: /v1/agent/ping (POST)
 
-use common::contracts::{AgentSidecarPingRequest, AgentSidecarPingResponse};
+use crate::contracts::contracts::{AgentSidecarPingRequest, AgentSidecarPingResponse};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 pub async fn call(
     client: &SidecarClient,

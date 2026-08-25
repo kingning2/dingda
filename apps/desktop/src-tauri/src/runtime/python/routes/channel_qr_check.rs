@@ -1,8 +1,8 @@
 //! Sidecar route binding: /v1/channel/qr_check (POST)
 
-use common::contracts::{ChannelSidecarQrCheckRequest, ChannelSidecarQrCheckResponse};
+use crate::contracts::contracts::{ChannelSidecarQrCheckRequest, ChannelSidecarQrCheckResponse};
 
-use infra::sidecar::client::{SidecarClient, SidecarClientError};
+use super::super::client::{SidecarClient, SidecarClientError};
 
 pub async fn call(
     client: &SidecarClient,

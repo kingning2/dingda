@@ -1,8 +1,9 @@
-//! Rust ↔ Python sidecar 业务路由绑定（从 `crates/infra` 迁入）。
+//! Rust ? Python sidecar ???????? `crates/infra` ????
 //!
-//! 只做传输适配（`post_json` / `get_json`），不含业务逻辑；
-//! 具体请求 / 响应契约来自 `common::contracts`。
+//! ???????`post_json` / `get_json`?????????
+//! ???? / ?????? `crate::contracts::contracts`?
 
+pub mod agent_complete;
 pub mod agent_ping;
 pub mod agent_reply;
 pub mod channel_cookie_renew;
@@ -11,3 +12,14 @@ pub mod channel_qr_cancel;
 pub mod channel_qr_check;
 pub mod channel_qr_start;
 pub mod channel_search;
+pub mod runtime_status;
+pub mod ws_connect;
+pub mod ws_disconnect;
+pub mod ws_events_poll;
+pub mod ws_history;
+pub mod ws_send;
+pub mod ws_status;
+pub mod xianyu_item_detail;
+pub mod xianyu_message_headinfo;
+pub mod xianyu_seller_items;
+pub mod xianyu_user_profile;

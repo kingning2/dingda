@@ -5,15 +5,17 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use crate::runtime::agent::{AgentRuntime, AgentState};
 use crate::runtime::app::startup;
-use crate::runtime::python::{PythonRuntime, PythonState, SidecarLifecycle};
+use crate::runtime::python::{
+    PythonRuntime, PythonSidecarSnapshot, PythonState, SidecarLifecycle, SidecarLifecycleError,
+};
 use crate::runtime::shutdown::{run_shutdown, ShutdownPolicy};
 use crate::runtime::state::RuntimeState;
 use crate::runtime::tasks::scheduler::TaskScheduler;
 use crate::runtime::tasks::TaskManager;
-use crate::runtime::RUNTIME_TARGET;
 
 /// Runtime 总协调器。
 ///
@@ -66,35 +68,65 @@ impl RuntimeSupervisor {
         self.agent.state()
     }
 
+    /// Python Sidecar 最近一次快照（缓存）。
+    pub fn python_snapshot(&self) -> Option<PythonSidecarSnapshot> {
+        self.python.snapshot()
+    }
+
+    /// 主动拉取 Sidecar 快照并更新 Python 生命周期状态。
+    pub async fn sync_python(&self) -> Option<PythonSidecarSnapshot> {
+        self.python.sync_snapshot().await
+    }
+
+    /// 后台轮询 Sidecar 状态（Rust runtime 控制面）。
+    pub fn spawn_observation_loop(self: &Arc<Self>) {
+        let supervisor = Arc::clone(self);
+        tauri::async_runtime::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(2));
+            loop {
+                interval.tick().await;
+                let state = supervisor.state();
+                if matches!(state, RuntimeState::Stopped | RuntimeState::ShuttingDown) {
+                    break;
+                }
+                if matches!(
+                    supervisor.python_state(),
+                    PythonState::Stopped | PythonState::Stopping
+                ) {
+                    continue;
+                }
+                supervisor.sync_python().await;
+            }
+        });
+    }
+
     /// 启动 Runtime：确保 Sidecar 运行 → Agent 就绪 → Ready / Failed。
     ///
     /// 保留现有 `rust.sidecar.ensure_running.*` 观测日志（阶段名与格式不变）。
-    pub async fn start(&self) {
-        self.set_state(RuntimeState::Initializing);
+    #[macros::runtime(runtime, start = Initializing, ok = Ready, err = Failed)]
+    pub async fn start(&self) -> Result<(), SidecarLifecycleError> {
         startup::phase("rust.sidecar.ensure_running.begin");
         match self.python.ensure_running().await {
             Ok(()) => startup::phase("rust.sidecar.ensure_running.ok"),
             Err(error) => {
                 error!(%error, "侧车启动失败");
                 startup::phase("rust.sidecar.ensure_running.fail");
-                self.set_state(RuntimeState::Failed);
-                return;
+                return Err(error);
             }
         }
-        self.agent.start().await;
+        let _ = self.agent.start().await;
         self.scheduler.start();
-        self.set_state(RuntimeState::Ready);
+        let _ = self.python.sync_snapshot().await;
+        Ok(())
     }
 
     /// 重启 Runtime：先停 Sidecar 再拉起。
-    pub async fn restart(&self) {
-        match self.python.restart().await {
-            Ok(()) => self.set_state(RuntimeState::Ready),
-            Err(error) => {
-                error!(%error, "侧车重启失败");
-                self.set_state(RuntimeState::Failed);
-            }
-        }
+    #[macros::runtime(runtime, start = Initializing, ok = Ready, err = Failed)]
+    pub async fn restart(&self) -> Result<(), SidecarLifecycleError> {
+        self.python.restart().await.map_err(|err| {
+            error!(%err, "侧车重启失败");
+            err
+        })
     }
 
     /// 关闭 Runtime — 幂等：重复调用直接返回。
@@ -103,6 +135,7 @@ impl RuntimeSupervisor {
             return;
         }
         self.set_state(RuntimeState::ShuttingDown);
+        crate::runtime::mark::phase("runtime", "shutting_down");
         self.scheduler.stop();
         run_shutdown(
             &ShutdownPolicy::default(),
@@ -112,17 +145,13 @@ impl RuntimeSupervisor {
         )
         .await;
         self.set_state(RuntimeState::Stopped);
+        crate::runtime::mark::phase("runtime", "stopped");
     }
 
     fn set_state(&self, new: RuntimeState) {
-        let previous = {
-            let mut guard = self.state.write().expect("runtime state lock");
-            let previous = *guard;
+        let mut guard = self.state.write().expect("runtime state lock");
+        if *guard != new {
             *guard = new;
-            previous
-        };
-        if previous != new {
-            info!(target: RUNTIME_TARGET, "[runtime] state={}", new.as_str());
         }
     }
 }
