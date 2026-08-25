@@ -90,9 +90,15 @@ pub fn register_business(app: &tauri::AppHandle) -> DingDaResult<()> {
     });
     // 清理上次中断残留的 is_running / running 运行记录，避免「立即运行」被卡死。
     engine.recover_interrupted_runs(1)?;
+    let task_manager = app
+        .state::<crate::shared::state::AppState>()
+        .supervisor
+        .tasks()
+        .clone();
     let scheduler = Arc::new(crate::platforms::xianyu::monitor::MonitorScheduler::new(
         engine.clone(),
         1,
+        task_manager,
     ));
     scheduler.clone().start();
     app.manage(ipc::monitor::MonitorHandle {
@@ -163,16 +169,16 @@ pub fn build_risk_handler(
     });
 
     let account_store: Arc<dyn AccountStore> = app.state::<AccountHandle>().store.clone();
+    let app_state = app.state::<crate::shared::state::AppState>();
     let renewer = Arc::new(
         crate::platforms::xianyu::cookie_renew::RiskCookieRenewer::new(
-            app.state::<crate::shared::state::AppState>()
-                .lifecycle
-                .clone(),
+            app_state.lifecycle.clone(),
             account_store,
             dispatcher.clone(),
             Some(risk_store.clone()),
             event_sink.clone(),
             1,
+            app_state.supervisor.tasks().clone(),
         ),
     );
     app.manage(renewer.clone());

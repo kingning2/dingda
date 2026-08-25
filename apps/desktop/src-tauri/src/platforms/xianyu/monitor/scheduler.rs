@@ -1,13 +1,17 @@
 //! 闲鱼监控定时调度 — 多任务并发（Semaphore 限流）。
+//!
+//! 每次到期的监控运行经 Runtime `TaskManager` 创建并执行，
+//! 复用通用任务生命周期（`[runtime] task.*` 观测 + 关闭时取消）。
 
-use chrono::{DateTime, Utc};
-use platform::domain::monitor::{MonitorTask, MonitorTaskStore};
+use chrono::Utc;
+use platform::domain::monitor::{is_schedule_due, MonitorTaskStore};
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::{Mutex, Semaphore};
 use tokio::time::{sleep, Duration};
 
 use super::engine::MonitorEngine;
+use crate::runtime::tasks::{TaskKind, TaskManager};
 
 const TICK_SECONDS: u64 = 30;
 const MAX_CONCURRENT: usize = 2;
@@ -15,15 +19,17 @@ const MAX_CONCURRENT: usize = 2;
 pub struct MonitorScheduler {
     engine: Arc<MonitorEngine>,
     owner_id: i64,
+    manager: Arc<TaskManager>,
     running: Arc<Mutex<HashSet<String>>>,
     semaphore: Arc<Semaphore>,
 }
 
 impl MonitorScheduler {
-    pub fn new(engine: Arc<MonitorEngine>, owner_id: i64) -> Self {
+    pub fn new(engine: Arc<MonitorEngine>, owner_id: i64, manager: Arc<TaskManager>) -> Self {
         Self {
             engine,
             owner_id,
+            manager,
             running: Arc::new(Mutex::new(HashSet::new())),
             semaphore: Arc::new(Semaphore::new(MAX_CONCURRENT)),
         }
@@ -44,9 +50,12 @@ impl MonitorScheduler {
         let tasks = self.engine.tasks.list_tasks(self.owner_id)?;
         for task in tasks
             .into_iter()
-            .filter(|task| task.enabled && !task.is_running)
+            .filter(|task| task.enabled && !task.schedule_paused)
         {
-            if !self.is_due(&task) {
+            if task.is_running {
+                continue;
+            }
+            if !is_schedule_due(&task, Utc::now()) {
                 continue;
             }
             if self.running.lock().await.contains(&task.id) {
@@ -57,31 +66,22 @@ impl MonitorScheduler {
         Ok(())
     }
 
-    fn is_due(&self, task: &MonitorTask) -> bool {
-        let interval = task.interval_minutes.max(1) as i64;
-        let Some(last_run) = task.last_run_at.as_deref() else {
-            return true;
-        };
-        let Ok(parsed) = DateTime::parse_from_rfc3339(last_run) else {
-            return true;
-        };
-        let elapsed = Utc::now().signed_duration_since(parsed.with_timezone(&Utc));
-        elapsed.num_minutes() >= interval
-    }
-
     fn spawn_run(&self, task_id: String) {
+        let run_id = self.manager.create(TaskKind::Monitor);
+        let monitor_task_id = task_id.clone();
         let engine = self.engine.clone();
         let running = self.running.clone();
         let semaphore = self.semaphore.clone();
         let owner_id = self.owner_id;
-        tauri::async_runtime::spawn(async move {
-            running.lock().await.insert(task_id.clone());
+        let future = async move {
+            running.lock().await.insert(monitor_task_id.clone());
             let _permit = semaphore.acquire().await.ok();
-            let result = engine.run_task(owner_id, &task_id).await;
-            if let Err(error) = result {
-                warn!(task_id = %task_id, %error, "监控任务执行失败");
-            }
-            running.lock().await.remove(&task_id);
-        });
+            let result = engine.run_task(owner_id, &monitor_task_id).await;
+            running.lock().await.remove(&monitor_task_id);
+            result.map(|_| ()).map_err(|error| error.to_string())
+        };
+        if let Err(error) = self.manager.start(run_id, future) {
+            warn!(%error, task_id = %task_id, "监控任务启动失败");
+        }
     }
 }

@@ -10,9 +10,10 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::runtime::python::SidecarLifecycle;
+use crate::runtime::tasks::{TaskKind, TaskManager};
 use common::contracts::ChannelSidecarCookieRenewRequest;
 use common::events::{emit, AppEvent, ChannelStatusEvent, EventSink};
-use infra::sidecar::lifecycle::SidecarLifecycle;
 use platform::domain::account::{AccountService, AccountStore, AccountUpdate};
 use platform::domain::risk::RiskService;
 use platform::shared::cookies::parse_credential;
@@ -68,6 +69,8 @@ impl RenewQueue {
 }
 
 /// 浏览器续期编排 — 全局串行队列、写回 Cookie、重连渠道。
+///
+/// 每次续期运行经 Runtime `TaskManager` 创建并执行，复用任务生命周期观测与关闭取消。
 pub struct RiskCookieRenewer {
     sidecar: Arc<SidecarLifecycle>,
     account_store: Arc<dyn AccountStore>,
@@ -75,6 +78,7 @@ pub struct RiskCookieRenewer {
     risk_store: Option<Arc<InMemoryRiskStore>>,
     sink: Arc<dyn EventSink>,
     owner_id: i64,
+    manager: Arc<TaskManager>,
     queue: Mutex<RenewQueue>,
     last_attempt_ms: Mutex<std::collections::HashMap<String, u128>>,
 }
@@ -91,6 +95,7 @@ impl RiskCookieRenewer {
         risk_store: Option<Arc<InMemoryRiskStore>>,
         sink: Arc<dyn EventSink>,
         owner_id: i64,
+        manager: Arc<TaskManager>,
     ) -> Self {
         Self {
             sidecar,
@@ -99,6 +104,7 @@ impl RiskCookieRenewer {
             risk_store,
             sink,
             owner_id,
+            manager,
             queue: Mutex::new(RenewQueue::new()),
             last_attempt_ms: Mutex::new(std::collections::HashMap::new()),
         }
@@ -231,31 +237,42 @@ impl RiskCookieRenewer {
 
         self.emit_ui_status(&account_id, ui_status::RENEWING, "正在过滑块验证，请稍候");
 
-        tokio::spawn(async move {
-            if let Err(error) = self.dispatcher.disconnect(&account_id).await {
-                warn!(account = %account_id, %error, "续期前断开连接失败（继续尝试浏览器续期）");
+        let run_id = self.manager.create(TaskKind::Renew);
+        let renewer = self.clone();
+        let renew_account = account_id.clone();
+        let future = async move {
+            if let Err(error) = renewer.dispatcher.disconnect(&renew_account).await {
+                warn!(account = %renew_account, %error, "续期前断开连接失败（继续尝试浏览器续期）");
             }
-            self.emit_ui_status(&account_id, ui_status::RENEWING, "正在过滑块验证，请稍候");
-            let result = self.renew_once(&account_id, &detail).await;
+            renewer.emit_ui_status(
+                &renew_account,
+                ui_status::RENEWING,
+                "正在过滑块验证，请稍候",
+            );
+            let result = renewer.renew_once(&renew_account, &detail).await;
             match &result {
                 Ok(()) => {
-                    info!(account = %account_id, "滑块续期完成，已重连");
-                    self.record_slider_log(&account_id, true, "");
+                    info!(account = %renew_account, "滑块续期完成，已重连");
+                    renewer.record_slider_log(&renew_account, true, "");
                 }
                 Err(error) => {
-                    warn!(account = %account_id, %error, "滑块续期失败");
-                    self.clear_attempt(&account_id);
-                    self.record_slider_log(&account_id, false, error);
+                    warn!(account = %renew_account, %error, "滑块续期失败");
+                    renewer.clear_attempt(&renew_account);
+                    renewer.record_slider_log(&renew_account, false, error);
                     let short = error.chars().take(80).collect::<String>();
-                    self.emit_ui_status(
-                        &account_id,
+                    renewer.emit_ui_status(
+                        &renew_account,
                         ui_status::ERROR,
                         &format!("滑块续期失败：{short}"),
                     );
                 }
             }
-            self.finish_and_pump_queue(&account_id);
-        });
+            renewer.finish_and_pump_queue(&renew_account);
+            result.map(|_| ())
+        };
+        if let Err(error) = self.manager.start(run_id, future) {
+            warn!(%error, account = %account_id, "续期任务启动失败");
+        }
     }
 
     /// 把过滑块结果写入风控日志（成功 / 失败）。
@@ -358,10 +375,12 @@ impl RiskCookieRenewer {
             punish_url,
             trace_id: Some(format!("renew-{account_id}")),
         };
-        let response =
-            infra::sidecar::routes::channel_cookie_renew::call(self.sidecar.client(), request)
-                .await
-                .map_err(|error| error.to_string())?;
+        let response = crate::runtime::python::routes::channel_cookie_renew::call(
+            self.sidecar.client(),
+            request,
+        )
+        .await
+        .map_err(|error| error.to_string())?;
 
         if !response.ok {
             return Err(response.detail.unwrap_or_else(|| "浏览器续期失败".into()));

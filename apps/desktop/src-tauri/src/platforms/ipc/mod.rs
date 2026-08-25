@@ -29,11 +29,11 @@ macro_rules! invoke_ipc_use_decls {
         #[cfg(platform_xianyu)]
         use $crate::platforms::xianyu::ipc::*;
         use $crate::shared::ipc::{
-            ai_account_balance, ai_config_get, ai_config_set, ai_test_api_key, app_version,
-            channel_connect, channel_disconnect, channel_send, channel_state_get,
+            agent_reply, ai_account_balance, ai_config_get, ai_config_set, ai_test_api_key,
+            app_version, channel_connect, channel_disconnect, channel_send, channel_state_get,
             channel_state_set, license_activate, license_machine_code, license_status, log_clear,
             log_recent, log_write, platform_descriptors, plugin_install, plugin_list,
-            plugin_uninstall,
+            plugin_uninstall, runtime_status, runtime_task_cancel,
         };
         // 1688 专属 IPC 落地后在此 `use` 并在 `platform_ipc_step_ali1688!` 中追加命令名。
     };
@@ -44,6 +44,7 @@ macro_rules! invoke_ipc_use_decls {
 macro_rules! with_shared_ipc {
     ($callback:ident) => {
         $callback!(
+            agent_reply,
             ai_config_get,
             ai_config_set,
             ai_test_api_key,
@@ -73,6 +74,8 @@ macro_rules! with_shared_ipc {
             log_recent,
             log_write,
             app_version,
+            runtime_status,
+            runtime_task_cancel,
         )
     };
 }
