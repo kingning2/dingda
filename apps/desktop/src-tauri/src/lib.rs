@@ -1,15 +1,15 @@
 //! Tauri shell：组装 AppState、注册 IPC commands、启动 sidecar。
 //!
-//! 目录约定：
+//! 目录约定（对标 clash-verge-rev）：
 //! - [`contracts`] — 共享 DTO / 错误 / 事件
-//! - [`command`] — 全部 Tauri IPC（按业务模块分目录）
-//! - [`servers`] — 渠道服务层（领域 / 协议 / 存储 + 站壳）
-//! - [`ports`] / [`infra`] — Port traits 与基础设施适配
-//! - [`config`] / [`logging`] / [`timing`] / [`channel_store`] — 应用胶水
-//! - [`runtime`] — Runtime 层（App / Python / Agent / Task + Supervisor）
-//! - [`shared`] — Tauri 专属胶水（协调器、AppState）
+//! - [`cmd`] — 全部 Tauri IPC（按业务模块分目录，薄层）
+//! - [`core`] — 核心业务层（领域 / 协议 / 存储 / 底座 + `core::manager` 运行时编排）
+//! - [`feat`] — 平台功能编排层（渠道站壳）
+//! - [`config`] — 应用配置
+//! - [`utils`] — 跨层共用（AppState / 事件桥 / 日志 / 时间 / 渠道存储）
+//! - [`constants`] — 编译期平台常量 re-export
 //!
-//! IPC 注册收敛在 [`command`]；本文件仅负责 AppState 组装与 Tauri 生命周期编排。
+//! IPC 注册收敛在 [`cmd`]；本文件仅负责 AppState 组装与 Tauri 生命周期编排。
 //!
 //! 作者：Xiaoman
 //! 创建时间：2026-07-16
@@ -17,36 +17,31 @@
 #[macro_use]
 extern crate tracing;
 
-pub mod channel_store;
-pub mod command;
+pub mod cmd;
 pub mod config;
+pub mod constants;
 pub mod contracts;
-pub mod infra;
-pub mod kernel_event_sink;
-pub mod logging;
-pub mod ports;
-pub mod runtime;
-mod servers;
-mod shared;
-pub mod timing;
+pub mod core;
+pub mod feat;
+pub mod utils;
 
-// `#[timed]` / 历史路径：`crate::timing` · `crate::logging` · `crate::config` · `crate::state`
-pub use shared::state;
+// 兼容路径：`crate::state` → `utils::state`（AppState）。
+pub use utils::state;
 
-use crate::infra::event::{EventBus, InMemoryEventBus};
-use crate::ports::license::LicenseGate;
-use runtime::app::lifecycle;
-use runtime::python::{
+use crate::core::infra::event::{EventBus, InMemoryEventBus};
+use crate::core::ports::license::LicenseGate;
+use core::channel::coordinator::ChannelCoordinator;
+use core::channel::dispatcher::ChannelDispatcher;
+use core::channel::ChannelRepo;
+use core::manager::app::lifecycle;
+use core::manager::python::{
     PythonWssBridge, RuntimeAgentSidecar, SidecarConfig, SidecarLifecycle, RUNTIME_ERROR_TOPIC,
     SIDECAR_RESTARTED_TOPIC,
 };
-use shared::channel::coordinator::ChannelCoordinator;
-use shared::channel::dispatcher::ChannelDispatcher;
-use shared::channel::ChannelRepo;
-use shared::{init_tracing, platform_initialization_script, AppState};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Manager, RunEvent};
+use utils::{init_tracing, platform_initialization_script, AppState};
 
 /// 启动桌面应用：组装 AppState、注册 IPC、运行事件循环。
 ///
@@ -71,7 +66,7 @@ pub fn launch(
         event_bus.clone() as Arc<dyn EventBus>,
     ));
     let gateway = Arc::new(RuntimeAgentSidecar::new(lifecycle.client().clone()));
-    let supervisor = Arc::new(runtime::RuntimeSupervisor::new(lifecycle.clone()));
+    let supervisor = Arc::new(core::manager::RuntimeSupervisor::new(lifecycle.clone()));
     let app_state = AppState {
         lifecycle: lifecycle.clone(),
         gateway,
@@ -118,13 +113,20 @@ pub fn launch(
                 config_dir.clone(),
                 data_dir,
             ));
-            shared::plugin_download::sync_camoufox_env(&config_store);
+            utils::plugin_download::sync_camoufox_env(&config_store);
             lifecycle::on_plugin_env_ready();
             app.manage(config_store);
-            let plugin_tracker = Arc::new(shared::plugin_download::PluginDownloadTracker::new());
+            let plugin_tracker = Arc::new(utils::plugin_download::PluginDownloadTracker::new());
             app.manage(plugin_tracker);
 
-            servers::core::bootstrap::register_business(app.handle(), &config_dir)?;
+            // Rust 完全掌控 Python 生命周期：业务注册前先拉起 Sidecar 并等待就绪。
+            let supervisor = app.state::<AppState>().supervisor.clone();
+            if let Err(error) = tauri::async_runtime::block_on(supervisor.start()) {
+                error!(%error, "Runtime 启动失败；业务将按需自愈");
+            }
+            supervisor.spawn_observation_loop();
+
+            core::bootstrap::register_business(app.handle(), &config_dir)?;
             lifecycle::on_business_ready();
 
             let db_dir = config_dir.join("channel");
@@ -146,11 +148,11 @@ pub fn launch(
             app.manage(dispatcher.clone());
 
             let event_sink: Arc<dyn crate::contracts::events::EventSink> =
-                Arc::new(shared::TauriEventSink::new(app.handle().clone()));
+                Arc::new(utils::TauriEventSink::new(app.handle().clone()));
             app.manage(event_sink.clone());
 
             {
-                let forwarder = shared::BusToTauri::new(app.handle().clone());
+                let forwarder = utils::BusToTauri::new(app.handle().clone());
                 for topic in [RUNTIME_ERROR_TOPIC, SIDECAR_RESTARTED_TOPIC] {
                     if let Err(error) = app
                         .state::<AppState>()
@@ -169,7 +171,7 @@ pub fn launch(
                 event_sink.clone(),
             ));
 
-            let account_store = app.state::<crate::command::AccountHandle>().store.clone();
+            let account_store = app.state::<crate::cmd::AccountHandle>().store.clone();
             let wss_bridge = Arc::new(PythonWssBridge::new(
                 app.state::<AppState>().lifecycle.clone(),
                 coordinator.clone(),
@@ -184,19 +186,13 @@ pub fn launch(
 
             app.manage(coordinator.clone());
 
-            servers::runtime::register_platform(
+            core::platform::register_platform(
                 app.handle(),
                 &dispatcher,
                 &coordinator,
                 &wss_bridge,
             )?;
             lifecycle::on_platform_ready();
-
-            let supervisor = app.state::<AppState>().supervisor.clone();
-            tauri::async_runtime::spawn(async move {
-                let _ = supervisor.start().await;
-                supervisor.spawn_observation_loop();
-            });
             lifecycle::on_setup();
             Ok(())
         })
@@ -219,7 +215,7 @@ pub fn launch(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> tauri::Result<()> {
-    use crate::infra::license::UnlockedLicenseGate;
+    use crate::core::infra::license::UnlockedLicenseGate;
     run_with(Arc::new(UnlockedLicenseGate::new()))
 }
 

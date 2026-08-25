@@ -58,7 +58,7 @@ pub fn timed(attr: TokenStream, item: TokenStream) -> TokenStream {
     quote! {
         #(#attrs)*
         #vis #sig {
-            crate::timing::timed_run(#name, async #block).await
+            crate::utils::timing::timed_run(#name, async #block).await
         }
     }
     .into()
@@ -165,13 +165,13 @@ fn expand_runtime(args: RuntimeArgs, func: ItemFn) -> syn::Result<proc_macro2::T
     let apply_state = |variant: &Ident| -> syn::Result<proc_macro2::TokenStream> {
         match scope.as_str() {
             "python" => Ok(quote! {
-                self.lifecycle.set(crate::runtime::python::PythonState::#variant);
+                self.lifecycle.set(crate::core::manager::python::PythonState::#variant);
             }),
             "agent" => Ok(quote! {
-                self.lifecycle.transition(crate::runtime::agent::AgentState::#variant);
+                self.lifecycle.transition(crate::core::manager::agent::AgentState::#variant);
             }),
             "runtime" => Ok(quote! {
-                self.set_state(crate::runtime::RuntimeState::#variant);
+                self.set_state(crate::core::manager::RuntimeState::#variant);
             }),
             other => Err(syn::Error::new(
                 args.scope.span(),
@@ -184,7 +184,7 @@ fn expand_runtime(args: RuntimeArgs, func: ItemFn) -> syn::Result<proc_macro2::T
     let ok_set = apply_state(ok)?;
     let begin = quote! {
         #begin_set
-        crate::runtime::mark::phase(#scope_lit, #start_label);
+        crate::core::manager::mark::phase(#scope_lit, #start_label);
     };
 
     let body = if is_async {
@@ -201,11 +201,11 @@ fn expand_runtime(args: RuntimeArgs, func: ItemFn) -> syn::Result<proc_macro2::T
                 match &__runtime_result {
                     Ok(_) => {
                         #ok_set
-                        crate::runtime::mark::phase(#scope_lit, #ok_label);
+                        crate::core::manager::mark::phase(#scope_lit, #ok_label);
                     }
                     Err(_) => {
                         #err_set
-                        crate::runtime::mark::phase(#scope_lit, #err_label);
+                        crate::core::manager::mark::phase(#scope_lit, #err_label);
                     }
                 }
             }
@@ -213,7 +213,7 @@ fn expand_runtime(args: RuntimeArgs, func: ItemFn) -> syn::Result<proc_macro2::T
             quote! {
                 if __runtime_result.is_ok() {
                     #ok_set
-                    crate::runtime::mark::phase(#scope_lit, #ok_label);
+                    crate::core::manager::mark::phase(#scope_lit, #ok_label);
                 }
             }
         }
@@ -223,7 +223,7 @@ fn expand_runtime(args: RuntimeArgs, func: ItemFn) -> syn::Result<proc_macro2::T
         }
         quote! {
             #ok_set
-            crate::runtime::mark::phase(#scope_lit, #ok_label);
+            crate::core::manager::mark::phase(#scope_lit, #ok_label);
         }
     };
 
