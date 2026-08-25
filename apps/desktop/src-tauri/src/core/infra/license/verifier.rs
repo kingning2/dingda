@@ -69,7 +69,7 @@ impl VerifierProcessLicense {
         security.verify_binary_integrity(&verifier_path)?;
         if !security.has_attest_key() {
             return Err(LicenseError::FailClosed {
-                reason: "attestation key not embedded; run `pnpm build:license-verifier` (builds subscription and writes crates/infra/generated/)"
+                reason: "attestation key not embedded; run `pnpm build:license-verifier` (builds subscription and writes apps/desktop/src-tauri/generated/)"
                     .into(),
             });
         }

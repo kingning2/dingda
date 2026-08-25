@@ -94,8 +94,9 @@ fn write_attestation_key(out_dir: &PathBuf, manifest_dir: &PathBuf, pem_bytes: &
 
     let infra_generated = manifest_dir
         .join("..")
-        .join("crates")
-        .join("infra")
+        .join("apps")
+        .join("desktop")
+        .join("src-tauri")
         .join("generated");
     let _ = fs::create_dir_all(&infra_generated);
     let attest_path = infra_generated.join("license_attest_key.hex");

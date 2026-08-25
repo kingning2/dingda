@@ -20,7 +20,7 @@ import { ensureSccache } from "./ensure-sccache.mjs";
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const subscriptionDir = join(root, "subscription");
 const binariesDir = join(root, "apps/desktop/src-tauri/binaries");
-const infraGeneratedDir = join(root, "crates/infra/generated");
+const infraGeneratedDir = join(root, "apps/desktop/src-tauri/generated");
 
 /** 本机 Windows 默认 MSVC triple（仅当未指定 --target / 环境变量时）。 */
 const WINDOWS_DEFAULT_MSVC_TRIPLE = "x86_64-pc-windows-msvc";
