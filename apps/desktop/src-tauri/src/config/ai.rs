@@ -56,6 +56,7 @@ impl AiConfigStore {
             Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(AiIpcConfigResponse {
                 providers: Vec::new(),
                 accounts: Vec::new(),
+                graph_models: None,
             }),
             Err(error) => Err(format!("ai config read failed: {error}").into()),
         }
@@ -78,6 +79,7 @@ impl AiConfigStore {
         let response = AiIpcConfigResponse {
             providers: config.providers,
             accounts: config.accounts,
+            graph_models: config.graph_models,
         };
         if let Some(parent) = self.path.parent() {
             std::fs::create_dir_all(parent)

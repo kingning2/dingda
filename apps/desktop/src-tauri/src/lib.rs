@@ -1,15 +1,15 @@
 //! Tauri shell：组装 AppState、注册 IPC commands、启动 sidecar。
 //!
-//! 目录约定（对标 clash-verge-rev）：
-//! - [`contracts`] — 共享 DTO / 错误 / 事件
-//! - [`cmd`] — 全部 Tauri IPC（按业务模块分目录，薄层）
-//! - [`core`] — 核心业务层（领域 / 协议 / 存储 / 底座 + `core::manager` 运行时编排）
-//! - [`feat`] — 平台功能编排层（渠道站壳）
-//! - [`config`] — 应用配置
-//! - [`utils`] — 跨层共用（AppState / 事件桥 / 日志 / 时间 / 渠道存储）
-//! - [`constants`] — 编译期平台常量 re-export
+//! 目录约定（六边形 + Tauri）：
+//! - [`commands`] — Tauri IPC 薄适配层
+//! - [`domain`] — 纯领域（实体 / 协议）
+//! - [`application`] — 用例编排
+//! - [`ports`] — Port traits
+//! - [`infrastructure`] — Driven 适配器（存储 / 事件 / runtime / 渠道 IO）
+//! - [`app`] — 壳层状态与生命周期观测
+//! - [`config`] / [`contracts`] — 配置与共享 DTO
 //!
-//! IPC 注册收敛在 [`cmd`]；本文件仅负责 AppState 组装与 Tauri 生命周期编排。
+//! 本文件仅负责 AppState 组装与 Tauri 生命周期编排。
 //!
 //! 作者：Xiaoman
 //! 创建时间：2026-07-16
@@ -17,31 +17,34 @@
 #[macro_use]
 extern crate tracing;
 
-pub mod cmd;
+pub mod app;
+pub mod application;
+pub mod commands;
 pub mod config;
 pub mod constants;
 pub mod contracts;
-pub mod core;
-pub mod feat;
-pub mod utils;
+pub mod domain;
+pub mod infrastructure;
+pub mod ports;
 
-// 兼容路径：`crate::state` → `utils::state`（AppState）。
-pub use utils::state;
+// 兼容路径：`crate::state` → `app::state`（AppState）。
+pub use app::state;
 
-use crate::core::infra::event::{EventBus, InMemoryEventBus};
-use crate::core::ports::license::LicenseGate;
-use core::channel::coordinator::ChannelCoordinator;
-use core::channel::dispatcher::ChannelDispatcher;
-use core::channel::ChannelRepo;
-use core::manager::app::lifecycle;
-use core::manager::python::{
-    PythonWssBridge, RuntimeAgentSidecar, SidecarConfig, SidecarLifecycle, RUNTIME_ERROR_TOPIC,
-    SIDECAR_RESTARTED_TOPIC,
+use crate::app::lifecycle;
+use crate::application::channel::coordinator::ChannelCoordinator;
+use crate::domain::channel::ChannelDispatcher;
+use crate::infrastructure::channel::PythonWssBridge;
+use crate::infrastructure::event::{BusToTauri, EventBus, InMemoryEventBus, TauriEventSink};
+use crate::infrastructure::runtime::agent::RuntimeAgentSidecar;
+use crate::infrastructure::runtime::python::{
+    SidecarConfig, SidecarLifecycle, RUNTIME_ERROR_TOPIC, SIDECAR_RESTARTED_TOPIC,
 };
+use crate::infrastructure::storage::ChannelRepo;
+use crate::ports::license::LicenseGate;
+use app::{init_tracing, platform_initialization_script, AppState};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Manager, RunEvent};
-use utils::{init_tracing, platform_initialization_script, AppState};
 
 /// 启动桌面应用：组装 AppState、注册 IPC、运行事件循环。
 ///
@@ -66,7 +69,9 @@ pub fn launch(
         event_bus.clone() as Arc<dyn EventBus>,
     ));
     let gateway = Arc::new(RuntimeAgentSidecar::new(lifecycle.client().clone()));
-    let supervisor = Arc::new(core::manager::RuntimeSupervisor::new(lifecycle.clone()));
+    let supervisor = Arc::new(crate::infrastructure::runtime::RuntimeSupervisor::new(
+        lifecycle.clone(),
+    ));
     let app_state = AppState {
         lifecycle: lifecycle.clone(),
         gateway,
@@ -76,7 +81,24 @@ pub fn launch(
     };
     lifecycle::on_state_ready();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+    {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            info!("检测到重复启动，聚焦已有窗口");
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            } else if let Some((_, window)) = app.webview_windows().into_iter().next() {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }));
+    }
+
+    builder
         .plugin(tauri_plugin_opener::init())
         .append_invoke_initialization_script(platform_initialization_script())
         .manage(app_state)
@@ -113,20 +135,30 @@ pub fn launch(
                 config_dir.clone(),
                 data_dir,
             ));
-            utils::plugin_download::sync_camoufox_env(&config_store);
+            crate::infrastructure::plugins::download::sync_camoufox_env(&config_store);
             lifecycle::on_plugin_env_ready();
-            app.manage(config_store);
-            let plugin_tracker = Arc::new(utils::plugin_download::PluginDownloadTracker::new());
+            app.manage(config_store.clone());
+            let plugin_tracker =
+                Arc::new(crate::infrastructure::plugins::download::PluginDownloadTracker::new());
             app.manage(plugin_tracker);
 
-            // Rust 完全掌控 Python 生命周期：业务注册前先拉起 Sidecar 并等待就绪。
-            let supervisor = app.state::<AppState>().supervisor.clone();
-            if let Err(error) = tauri::async_runtime::block_on(supervisor.start()) {
-                error!(%error, "Runtime 启动失败；业务将按需自愈");
-            }
-            supervisor.spawn_observation_loop();
+            // Embedding：独立 manage，安装与推理共用同一实例（OnceLock 预热后可复用）
+            let embedder = Arc::new(crate::infrastructure::embedding::EmbeddingService::new(
+                crate::config::embedding_cache_dir(config_store.plugins_dir()),
+            ));
+            app.manage(embedder);
 
-            core::bootstrap::register_business(app.handle(), &config_dir)?;
+            // 侧车后台异步拉起：不阻塞窗口 / HTML；watchdog 等首次 start 完成后再开，避免双 spawn 抢 pipe。
+            let supervisor = app.state::<AppState>().supervisor.clone();
+            let supervisor_boot = supervisor.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = supervisor_boot.start().await {
+                    error!(%error, "Runtime 后台启动失败；业务将按需自愈");
+                }
+                supervisor_boot.spawn_observation_loop();
+            });
+
+            crate::application::bootstrap::register_business(app.handle(), &config_dir)?;
             lifecycle::on_business_ready();
 
             let db_dir = config_dir.join("channel");
@@ -148,11 +180,22 @@ pub fn launch(
             app.manage(dispatcher.clone());
 
             let event_sink: Arc<dyn crate::contracts::events::EventSink> =
-                Arc::new(utils::TauriEventSink::new(app.handle().clone()));
+                Arc::new(TauriEventSink::new(app.handle().clone()));
             app.manage(event_sink.clone());
 
             {
-                let forwarder = utils::BusToTauri::new(app.handle().clone());
+                let agent_store = Arc::new(
+                    crate::infrastructure::runtime::agent::AgentRunStore::new(config_dir.clone()),
+                );
+                app.state::<AppState>().supervisor.agent().configure(
+                    event_sink.clone(),
+                    config_store.clone(),
+                    agent_store,
+                );
+            }
+
+            {
+                let forwarder = BusToTauri::new(app.handle().clone());
                 for topic in [RUNTIME_ERROR_TOPIC, SIDECAR_RESTARTED_TOPIC] {
                     if let Err(error) = app
                         .state::<AppState>()
@@ -171,7 +214,7 @@ pub fn launch(
                 event_sink.clone(),
             ));
 
-            let account_store = app.state::<crate::cmd::AccountHandle>().store.clone();
+            let account_store = app.state::<crate::commands::AccountHandle>().store.clone();
             let wss_bridge = Arc::new(PythonWssBridge::new(
                 app.state::<AppState>().lifecycle.clone(),
                 coordinator.clone(),
@@ -186,7 +229,7 @@ pub fn launch(
 
             app.manage(coordinator.clone());
 
-            core::platform::register_platform(
+            crate::app::platform::register_platform(
                 app.handle(),
                 &dispatcher,
                 &coordinator,
@@ -215,7 +258,7 @@ pub fn launch(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() -> tauri::Result<()> {
-    use crate::core::infra::license::UnlockedLicenseGate;
+    use crate::infrastructure::license::UnlockedLicenseGate;
     run_with(Arc::new(UnlockedLicenseGate::new()))
 }
 

@@ -3,12 +3,12 @@
 
 use std::sync::Arc;
 
-use dingda_lib::core::ports::license::LicenseGate;
+use dingda_lib::ports::license::LicenseGate;
 
 #[cfg(not(feature = "license-lock"))]
-use dingda_lib::core::infra::license::UnlockedLicenseGate;
+use dingda_lib::infrastructure::license::UnlockedLicenseGate;
 #[cfg(feature = "license-lock")]
-use dingda_lib::core::infra::license::{FailClosedLicenseGate, VerifierProcessLicense};
+use dingda_lib::infrastructure::license::{FailClosedLicenseGate, VerifierProcessLicense};
 
 /// 按 Cargo feature 构造 License 闸门（仅桌面 bin 入口负责，lib 不内置策略）。
 fn build_license_gate() -> Arc<dyn LicenseGate> {

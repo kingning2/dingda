@@ -19,8 +19,10 @@ use std::path::{Path, PathBuf};
 
 pub use ai::AiConfigStore;
 pub use plugins::{
-    find_camoufox_executable, plugin_assets, plugin_install_dir, tmp_path, PluginAsset,
-    PLUGIN_ID_CAMOUFOX, PLUGIN_ID_OCR,
+    embedding_cache_dir, embedding_installed, embedding_item, find_builtin,
+    find_camoufox_executable, plugin_assets, plugin_install_dir, tmp_path, BuiltinPlugin,
+    PluginAsset, PluginFetch, PluginVerify, BUILTIN_PLUGINS, PLUGIN_ID_CAMOUFOX,
+    PLUGIN_ID_EMBEDDING, PLUGIN_ID_OCR,
 };
 
 /// 应用配置存储（AI JSON + 插件目录）。
