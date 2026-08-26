@@ -28,8 +28,10 @@ class RuntimeObservabilityTests(unittest.TestCase):
 
         obs = get_runtime_observability()
         with track_workflow("agent_reply", detail="trace-1") as run:
-            run.stage("price_compare")
-            self.assertEqual(len(obs.snapshot()["active_ops"]), 1)
+            run.stage("3/8 planner")
+            snap = obs.snapshot()
+            self.assertEqual(len(snap["active_ops"]), 1)
+            self.assertEqual(snap["active_ops"][0]["stage"], "3/8 planner")
         self.assertEqual(len(obs.snapshot()["active_ops"]), 0)
 
 

@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from agent.llm.factory import normalize_provider_type
 from config.models import ProviderSettings
-from llm.factory import normalize_provider_type
 
 
 @dataclass

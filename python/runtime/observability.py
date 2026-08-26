@@ -9,16 +9,9 @@ import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any
 
-
-class RuntimeState(StrEnum):
-    STOPPED = "stopped"
-    STARTING = "starting"
-    READY = "ready"
-    RUNNING = "running"
-    STOPPING = "stopping"
+from runtime.state import RuntimeState
 
 
 @dataclass
@@ -135,7 +128,7 @@ class RuntimeObservability:
 
         wss: dict[str, Any] = {"connections": []}
         try:
-            from runtime.wss.manager import get_wss_manager
+            from runtimes.wss import get_wss_manager
 
             wss = get_wss_manager().snapshot_sync()
         except Exception:  # noqa: BLE001

@@ -23,10 +23,10 @@ def parse_history_message(model: dict[str, Any]) -> dict[str, Any] | None:
         return None
     content = decode_history_content(data) or ""
     created_at_ms = 0
-    for key in ("createTime", "ts", "createTimeMs"):
+    for key in ("createAt", "createTime", "ts", "createTimeMs"):
         value = message.get(key)
-        if isinstance(value, int):
-            created_at_ms = value
+        if isinstance(value, int | float):
+            created_at_ms = int(value)
             break
     return {
         "sender_user_id": sender_user_id,

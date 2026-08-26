@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import unittest
 
-from agents.intent import Intent, route_intent
+from agent.graph.model import BARGAIN_LIMIT_REPLY
+from agent.prompts.intent import Intent, route_intent
+from agent.workflows.buyer_reply import run_buyer_reply
 from config.settings import AiSettings
-from graph.core.model import BARGAIN_LIMIT_REPLY
-from graph.workflows.buyer_reply import run_buyer_reply
 
 
 class TestIntent(unittest.TestCase):

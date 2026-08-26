@@ -1,16 +1,12 @@
-"""共享内存服务端（Python 写端）— 由 Rust 通过 `--shm` 启动时启用。
+"""共享内存服务端 — 槽位协议与请求处理。
 
-与 Rust `ShmTransport`（`core/manager/python/shm/transport.rs`）
-逐字段对齐：Python 在就绪后置 `ready=1` 并周期性刷新心跳；单调度线程扫描
-槽位认领 `REQ_READY` 请求，提交到线程池执行，完成后写回响应并置 `RES_READY`。
-Rust 侧读取响应后自行归位 `IDLE`。启动时将所有槽位置 `IDLE`，供 Rust 侧
-"Sidecar 重启" 检测使用。
+由 hybrid 入口调用 ``bootstrap`` / ``wake_slot`` / ``scan_slots``。
+请求 envelope::
 
-请求 envelope（与 Rust `client.rs` 一致）:
-```json
-{ "method": "POST", "path": "/v1/...", "body": {...} }
-```
-业务分发复用 ``runtime.dispatch.dispatch_post``，与 HTTP 路径行为一致。"""
+    {"method": "POST"|"GET", "path": "/v1/...", "body": {...}}
+
+业务分发复用 ``runtime.dispatch.dispatch_post``。
+"""
 
 from __future__ import annotations
 
@@ -25,69 +21,101 @@ from concurrent.futures import ThreadPoolExecutor
 
 from runtime import shm_protocol as shm
 from runtime.dispatch import dispatch_post
+from runtime.handlers.runtime import build_runtime_status
 
 logger = logging.getLogger("dingda.runtime.shm")
 
-# 心跳刷新周期（ms）。
 _HEARTBEAT_INTERVAL_MS = 250
-# 等待 Rust 先创建好段文件并完成初始化映射的最长时间。
 _SEGMENT_WAIT_TIMEOUT = 15.0
 
 
 class ShmServer:
-    """基于 mmap 的共享内存服务循环。"""
+    """基于 mmap 的共享内存服务。"""
 
     def __init__(self, path: str, max_workers: int = 8) -> None:
         self.path = path
-        self._running = threading.Event()
+        self._stopped = threading.Event()
         self._mm: mmap.mmap | None = None
         self._executor = ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="shm-worker"
         )
+        self._slot_lock = threading.Lock()
 
-    # ------------------------------------------------------------------
-    # 生命周期
-    # ------------------------------------------------------------------
-    def serve_forever(self) -> None:
-        """打开段、初始化协议头字段并进入调度循环（阻塞）。"""
+    def bootstrap(self) -> None:
+        """打开段、重置槽位、置 ready 并启动心跳（不进入忙轮询）。"""
         self._open_segment()
         self._reset_slots_to_idle()
-        lifecycle = _LifecycleNotifier()
-        lifecycle.on_starting()
-        # 就绪后先置心跳，再置 ready=1（Rust 的 is_healthy 依赖两者）。
         self._write_u64(shm.OFF_HEARTBEAT, self._now_ms())
         self._write_u64(shm.OFF_READY, 1)
         heartbeat = threading.Thread(target=self._heartbeat_loop, daemon=True, name="shm-heartbeat")
         heartbeat.start()
-        lifecycle.on_ready()
-        lifecycle.on_running()
         logger.info(
             "共享内存服务就绪 path=%s",
             self.path,
             extra={
-                "event": "sidecar.shm.starting",
+                "event": "sidecar.shm.ready",
                 "feature": "runtime",
                 "shm_path": self.path,
             },
         )
-        try:
-            self._dispatch_loop()
-        finally:
-            self.stop()
+
+    def is_stopped(self) -> bool:
+        return self._stopped.is_set()
 
     def stop(self) -> None:
-        self._running.set()
+        if self._stopped.is_set():
+            return
+        self._stopped.set()
         self._executor.shutdown(wait=False)
         if self._mm is not None:
-            # 下线前清就绪位，Rust 侧健康检查立即失败，触发重启编排。
             self._write_u64(shm.OFF_READY, 0)
             self._mm.flush()
             self._mm.close()
             self._mm = None
 
-    # ------------------------------------------------------------------
-    # 打开与初始化
-    # ------------------------------------------------------------------
+    def wake_slot(self, index: int) -> None:
+        """处理单个槽位（由 pipe ``shm.wake`` 触发）。"""
+        if index < 0 or index >= shm.SLOT_COUNT:
+            self.scan_slots()
+            return
+        self._claim_and_dispatch(index)
+
+    def scan_slots(self) -> None:
+        """扫描全部 ``REQ_READY`` 槽位。"""
+        for index in range(shm.SLOT_COUNT):
+            self._claim_and_dispatch(index)
+
+    def _claim_and_dispatch(self, index: int) -> None:
+        with self._slot_lock:
+            mm = self._require_mm()
+            base = shm.slot_offset(index)
+            state = struct.unpack_from("<I", mm, base + shm.STATE)[0]
+            if state != shm.STATE_REQ_READY:
+                return
+            struct.pack_into("<I", mm, base + shm.STATE, shm.STATE_PROCESSING)
+            req_len = struct.unpack_from("<I", mm, base + shm.REQ_LEN)[0]
+            if req_len > shm.REQ_CAP:
+                self._write_response(
+                    index,
+                    status=500,
+                    body=b'{"code":"req_too_large"}',
+                    trace_id="",
+                )
+                return
+            req_seq = struct.unpack_from("<Q", mm, base + shm.REQ_SEQ)[0]
+            raw = bytes(mm[base + shm.REQ_BUF : base + shm.REQ_BUF + req_len])
+        self._executor.submit(self._handle_slot, index, raw, req_seq)
+
+    def serve_forever(self) -> None:
+        """兼容旧入口：bootstrap + 低频扫描直到 stop。"""
+        self.bootstrap()
+        try:
+            while not self._stopped.is_set():
+                self.scan_slots()
+                time.sleep(0.2)
+        finally:
+            self.stop()
+
     def _open_segment(self) -> None:
         deadline = time.monotonic() + _SEGMENT_WAIT_TIMEOUT
         last_error: str | None = None
@@ -127,57 +155,22 @@ class ShmServer:
             raise RuntimeError(f"槽位数量不匹配: {slot_count} != {shm.SLOT_COUNT}")
 
     def _reset_slots_to_idle(self) -> None:
-        """Rust 重启检测依赖：Python 启动即把全部槽位置 IDLE。"""
         mm = self._require_mm()
         for index in range(shm.SLOT_COUNT):
             offset = shm.slot_offset(index) + shm.STATE
             mm[offset : offset + 4] = struct.pack("<I", shm.STATE_IDLE)
 
-    # ------------------------------------------------------------------
-    # 后台心跳
-    # ------------------------------------------------------------------
     def _heartbeat_loop(self) -> None:
-        while not self._running.is_set():
+        while not self._stopped.is_set():
             time.sleep(_HEARTBEAT_INTERVAL_MS / 1000)
+            if self._mm is None:
+                break
             self._write_u64(shm.OFF_HEARTBEAT, self._now_ms())
 
     @staticmethod
     def _now_ms() -> int:
         return int(time.time() * 1000)
 
-    # ------------------------------------------------------------------
-    # 调度主循环
-    # ------------------------------------------------------------------
-    def _dispatch_loop(self) -> None:
-        while not self._running.is_set():
-            self._scan_slots()
-            time.sleep(0.001)
-
-    def _scan_slots(self) -> None:
-        mm = self._require_mm()
-        for index in range(shm.SLOT_COUNT):
-            base = shm.slot_offset(index)
-            state = struct.unpack_from("<I", mm, base + shm.STATE)[0]
-            if state != shm.STATE_REQ_READY:
-                continue
-            # 单调度线程认领：REQ_READY → PROCESSING。
-            struct.pack_into("<I", mm, base + shm.STATE, shm.STATE_PROCESSING)
-            req_len = struct.unpack_from("<I", mm, base + shm.REQ_LEN)[0]
-            if req_len > shm.REQ_CAP:
-                self._write_response(
-                    index,
-                    status=500,
-                    body=b'{"code":"req_too_large"}',
-                    trace_id="",
-                )
-                continue
-            req_seq = struct.unpack_from("<Q", mm, base + shm.REQ_SEQ)[0]
-            raw = mm[base + shm.REQ_BUF : base + shm.REQ_BUF + req_len]
-            self._executor.submit(self._handle_slot, index, raw, req_seq)
-
-    # ------------------------------------------------------------------
-    # 请求处理
-    # ------------------------------------------------------------------
     def _handle_slot(self, index: int, raw: bytes, _req_seq: int) -> None:
         try:
             envelope = json.loads(raw.decode("utf-8"))
@@ -186,14 +179,34 @@ class ShmServer:
             self._write_response(index, status=400, body=b'{"code":"bad_request"}', trace_id="")
             return
 
-        method = str(envelope.get("method") or "POST")
+        method = str(envelope.get("method") or "POST").upper()
         path = str(envelope.get("path") or "")
         body = envelope.get("body")
         trace_id = ""
         if isinstance(body, dict):
             trace_id = str(body.get("trace_id", ""))
 
-        # 控制面指令：Rust 优雅关闭时发送，响应后退出服务循环。
+        if method == "GET":
+            if path == "/health":
+                self._write_response(
+                    index,
+                    status=200,
+                    body=b'{"status":"ok"}',
+                    trace_id=trace_id,
+                )
+                return
+            if path == "/v1/runtime/status":
+                encoded = json.dumps(build_runtime_status(), ensure_ascii=False).encode("utf-8")
+                self._write_response(index, status=200, body=encoded, trace_id=trace_id)
+                return
+            self._write_response(
+                index,
+                status=404,
+                body=b'{"code":"not_found","message":"route not found"}',
+                trace_id=trace_id,
+            )
+            return
+
         if method == "POST" and path == "/v1/system/shutdown":
             self._write_response(
                 index,
@@ -205,13 +218,13 @@ class ShmServer:
                 "收到关闭指令，退出共享内存服务",
                 extra={"event": "sidecar.shm.shutdown", "feature": "runtime"},
             )
-            self._running.set()
+            self.stop()
             return
 
         payload = body if isinstance(body, dict) else None
         result = dispatch_post(path, payload, method=method)
         encoded = json.dumps(result.body, ensure_ascii=False).encode("utf-8")
-        self._write_response(index, status=result.status, body=encoded, trace_id=result.trace_id)
+        self._write_response(index, status=result.status, body=encoded, trace_id=trace_id)
 
     def _write_response(self, index: int, *, status: int, body: bytes, trace_id: str) -> None:
         mm = self._require_mm()
@@ -231,12 +244,8 @@ class ShmServer:
         res_seq = struct.unpack_from("<Q", mm, base + shm.REQ_SEQ)[0]
         struct.pack_into("<Q", mm, base + shm.RES_SEQ, res_seq)
         mm[base + shm.RES_BUF : base + shm.RES_BUF + len(body)] = body
-        # 最后发布状态，Rust 以 Acquire 读取。
         struct.pack_into("<I", mm, base + shm.STATE, shm.STATE_RES_READY)
 
-    # ------------------------------------------------------------------
-    # 底层 mmap 读写
-    # ------------------------------------------------------------------
     def _require_mm(self) -> mmap.mmap:
         if self._mm is None:
             raise RuntimeError("共享内存段尚未打开")
@@ -245,28 +254,12 @@ class ShmServer:
     def _read_u32(self, offset: int) -> int:
         return struct.unpack_from("<I", self._require_mm(), offset)[0]
 
-    def _write_u32(self, offset: int, value: int) -> None:
-        struct.pack_into("<I", self._require_mm(), offset, value)
-
     def _write_u64(self, offset: int, value: int) -> None:
         struct.pack_into("<Q", self._require_mm(), offset, value)
 
 
-class _LifecycleNotifier:
-    """最小生命周期钩子 — 共享内存模式无进程模型事件上报，仅打日志。"""
-
-    def on_starting(self) -> None:
-        logger.info("共享内存服务启动", extra={"event": "sidecar.starting", "feature": "runtime"})
-
-    def on_ready(self) -> None:
-        logger.info("共享内存服务就绪", extra={"event": "sidecar.ready", "feature": "runtime"})
-
-    def on_running(self) -> None:
-        logger.info("共享内存服务运行中", extra={"event": "sidecar.running", "feature": "runtime"})
-
-
 def serve_shm(path: str) -> None:
-    """共享内存模式入口 — 阻塞运行直到被停止。"""
+    """仅 SHM 模式（无管道唤醒）— 低频扫描兜底。"""
     server = ShmServer(path)
     try:
         server.serve_forever()

@@ -19,7 +19,16 @@ from runtime.observability import get_runtime_observability
 
 logger = logging.getLogger("dingda.runtime.dispatch")
 
-_QUIET_PATHS = frozenset({"/v1/channel/qr_check"})
+# 高频轮询：正常且够快时降为 DEBUG，避免刷屏；start/control/cancel 仍走 INFO。
+_QUIET_PATHS = frozenset(
+    {
+        "/v1/channel/qr_check",
+        "/v1/agent/run/status",
+        "/v1/agent/ping",
+        "/v1/runtime/status",
+    }
+)
+_POLL_EVENTS_PATH = "/v1/ws/events/poll"
 _QUIET_SLOW_MS = 500
 
 _ASYNC_LOOP: asyncio.AbstractEventLoop | None = None
@@ -41,6 +50,26 @@ def duration_ms(started: float) -> int:
     return max(0, int((time.perf_counter() - started) * 1000))
 
 
+def _agent_request_summary(path: str, body: dict[str, Any] | None) -> str:
+    """把 agent run 入参缩进日志，避免只剩 path=200。"""
+    if not isinstance(body, dict):
+        return ""
+    if path == "/v1/agent/run/start":
+        user = str(body.get("user") or "")[:80]
+        return (
+            f" run_id={body.get('run_id') or '-'} resume_node={body.get('resume_node') or '-'}"
+            f" user={user!r}"
+        )
+    if path == "/v1/agent/run/control":
+        return (
+            f" run_id={body.get('run_id') or '-'} action={body.get('action') or '-'}"
+            f" node={body.get('node') or '-'}"
+        )
+    if path == "/v1/agent/run/cancel":
+        return f" run_id={body.get('run_id') or '-'}"
+    return ""
+
+
 def log_request_completed(
     *,
     path: str,
@@ -49,6 +78,8 @@ def log_request_completed(
     trace_id: str = "",
     handler: str = "",
     ok: bool | None = None,
+    event_count: int | None = None,
+    summary: str = "",
 ) -> None:
     extra: dict[str, Any] = {
         "event": "sidecar.request.completed",
@@ -64,10 +95,24 @@ def log_request_completed(
         extra["trace_id"] = trace_id
     if ok is not None:
         extra["ok"] = ok
-    message = f"接口调用完成 method=POST path={path} status={status} duration_ms={duration_ms}"
+    if event_count is not None:
+        extra["event_count"] = event_count
+    if summary:
+        extra["summary"] = summary.strip()
+    message = (
+        f"接口调用完成 method=POST path={path} status={status} duration_ms={duration_ms}{summary}"
+    )
     quiet = (
         path in _QUIET_PATHS and status < 400 and duration_ms < _QUIET_SLOW_MS and ok is not False
     )
+    if (
+        path == _POLL_EVENTS_PATH
+        and status < 400
+        and duration_ms < _QUIET_SLOW_MS
+        and ok is not False
+        and event_count == 0
+    ):
+        quiet = True
     if quiet:
         logger.debug(message, extra=extra)
     else:
@@ -100,6 +145,7 @@ def dispatch_post(
     """分发一条契约 POST（或方法校验失败）请求。"""
     started = time.perf_counter()
     trace_id = ""
+    summary = _agent_request_summary(path, body if isinstance(body, dict) else None)
     if isinstance(body, dict):
         trace_id = str(body.get("trace_id", ""))
 
@@ -115,6 +161,7 @@ def dispatch_post(
             status=result.status,
             duration_ms=duration_ms(started),
             trace_id=trace_id,
+            summary=summary,
         )
         return result
 
@@ -132,6 +179,7 @@ def dispatch_post(
             duration_ms=duration_ms(started),
             trace_id=trace_id,
             handler=handler_name,
+            summary=summary,
         )
         return result
 
@@ -149,6 +197,7 @@ def dispatch_post(
             duration_ms=duration_ms(started),
             trace_id=trace_id,
             handler=handler_name,
+            summary=summary,
         )
         return result
 
@@ -164,10 +213,11 @@ def dispatch_post(
         obs.record_error(path=path, message=str(error), trace_id=trace_id)
         obs.end_request(req_op, ok=False)
         logger.exception(
-            "接口调用异常 method=%s path=%s duration_ms=%s",
+            "接口调用异常 method=%s path=%s duration_ms=%s%s",
             method,
             path,
             elapsed,
+            summary,
             extra={
                 "event": "sidecar.request.failed",
                 "feature": "runtime",
@@ -191,6 +241,7 @@ def dispatch_post(
     if not isinstance(payload, dict):
         payload = {"result": payload}
 
+    event_count = payload.pop("__event_count", None) if isinstance(payload, dict) else None
     ok: bool | None = None
     if "ok" in payload:
         ok = bool(payload.get("ok"))
@@ -198,6 +249,14 @@ def dispatch_post(
             message = str(payload.get("message") or "handler returned ok=false")
             obs.record_error(path=path, message=message, trace_id=trace_id)
     obs.end_request(req_op, ok=ok)
+
+    out_bits = []
+    if isinstance(payload, dict):
+        if payload.get("state") is not None:
+            out_bits.append(f" state={payload.get('state')}")
+        if payload.get("run_id"):
+            out_bits.append(f" out_run_id={payload.get('run_id')}")
+    out_summary = summary + "".join(out_bits)
 
     result = DispatchResult(
         status=200,
@@ -213,5 +272,7 @@ def dispatch_post(
         trace_id=trace_id,
         handler=handler_name,
         ok=ok,
+        event_count=event_count if isinstance(event_count, int) else None,
+        summary=out_summary,
     )
     return result

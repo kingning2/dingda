@@ -1,14 +1,15 @@
 """LLM / 知识库 / 配置层单元测试。
 
-校验 Provider 工厂规范化、知识服务与比价/商品服务纯函数。"""
+校验 Provider 类型归一、知识服务与比价/商品服务纯函数。"""
 
 from __future__ import annotations
 
 import unittest
 
+from agent.graph.model import create_chat_model
+from agent.knowledge import ItemKnowledge, build_item_context
+from agent.llm.factory import normalize_provider_type
 from config.settings import AiSettings
-from knowledge import ItemKnowledge, build_item_context
-from llm.factory import create_provider, normalize_provider_type
 from services.price import compare_prices
 from services.product import match_products, normalize_products
 
@@ -26,16 +27,18 @@ class TestLlmFactory(unittest.TestCase):
             "anthropic",
         )
 
-    def test_create_openai_provider(self) -> None:
-        dummy = "k"
+    def test_create_chat_model_builtin(self) -> None:
+        try:
+            import langchain_openai  # noqa: F401
+        except ImportError:
+            self.skipTest("langchain_openai not installed")
         settings = AiSettings(
-            api_key=dummy,
+            api_key=("k"),
             base_url="https://api.deepseek.com/v1",
             model_name="m",
-        ).to_provider_settings()
-        provider = create_provider(settings)
-        self.assertEqual(provider.kind, "openai_compatible")
-        self.assertTrue(provider.supports_tools)
+        )
+        model = create_chat_model(settings)
+        self.assertEqual(type(model).__name__, "ChatOpenAI")
 
 
 class TestKnowledge(unittest.TestCase):

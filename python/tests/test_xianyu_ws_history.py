@@ -36,14 +36,14 @@ class TestHistoryParse(unittest.TestCase):
             "message": {
                 "extension": {"senderUserId": "u1", "reminderTitle": "买家"},
                 "content": {"custom": {"data": encoded}},
-                "createTime": 123,
+                "createAt": 1740848534092,
             },
         }
         parsed = parse_history_message(model)
         assert parsed is not None
         self.assertEqual(parsed["sender_user_id"], "u1")
         self.assertEqual(parsed["content"], "在吗")
-        self.assertEqual(parsed["created_at_ms"], 123)
+        self.assertEqual(parsed["created_at_ms"], 1740848534092)
 
 
 if __name__ == "__main__":

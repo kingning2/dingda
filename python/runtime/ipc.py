@@ -7,8 +7,29 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from runtime.handlers.agent import handle_agent_complete, handle_agent_ping, handle_agent_reply
-from runtime.handlers.ws import (
+from application.sidecar.handlers.channel.cookie_renew import handle_cookie_renew
+from application.sidecar.handlers.channel.login_probe import handle_login_probe
+from application.sidecar.handlers.channel.qr import (
+    handle_qr_cancel,
+    handle_qr_check,
+    handle_qr_start,
+)
+from application.sidecar.handlers.channel.search import handle_search
+from runtime.handlers.ai_probe import handle_ai_account_balance, handle_ai_probe_key
+from runtime.handlers.xianyu_mtop import (
+    handle_xianyu_item_detail,
+    handle_xianyu_message_headinfo,
+    handle_xianyu_seller_items,
+    handle_xianyu_user_profile,
+)
+from runtimes.agent.handlers import handle_agent_complete, handle_agent_ping, handle_agent_reply
+from runtimes.langgraph.handlers import (
+    handle_agent_run_cancel,
+    handle_agent_run_control,
+    handle_agent_run_start,
+    handle_agent_run_status,
+)
+from runtimes.wss.handlers import (
     handle_ws_connect,
     handle_ws_disconnect,
     handle_ws_events_poll,
@@ -16,16 +37,6 @@ from runtime.handlers.ws import (
     handle_ws_send,
     handle_ws_status,
 )
-from runtime.handlers.xianyu_mtop import (
-    handle_xianyu_item_detail,
-    handle_xianyu_message_headinfo,
-    handle_xianyu_seller_items,
-    handle_xianyu_user_profile,
-)
-from sidecar.handlers.channel.cookie_renew import handle_cookie_renew
-from sidecar.handlers.channel.login_probe import handle_login_probe
-from sidecar.handlers.channel.qr import handle_qr_cancel, handle_qr_check, handle_qr_start
-from sidecar.handlers.channel.search import handle_search
 
 Handler = Callable[..., Any]
 
@@ -43,6 +54,12 @@ ROUTES: dict[str, tuple[str, str]] = {
     "/v1/agent/ping": ("POST", "handle_agent_ping"),
     "/v1/agent/complete": ("POST", "handle_agent_complete"),
     "/v1/agent/reply": ("POST", "handle_agent_reply"),
+    "/v1/agent/run/start": ("POST", "handle_agent_run_start"),
+    "/v1/agent/run/control": ("POST", "handle_agent_run_control"),
+    "/v1/agent/run/status": ("POST", "handle_agent_run_status"),
+    "/v1/agent/run/cancel": ("POST", "handle_agent_run_cancel"),
+    "/v1/ai/probe_key": ("POST", "handle_ai_probe_key"),
+    "/v1/ai/account_balance": ("POST", "handle_ai_account_balance"),
     "/v1/ws/connect": ("POST", "handle_ws_connect"),
     "/v1/ws/disconnect": ("POST", "handle_ws_disconnect"),
     "/v1/ws/send": ("POST", "handle_ws_send"),
@@ -65,6 +82,12 @@ HANDLERS: dict[str, Handler] = {
     "handle_agent_ping": handle_agent_ping,
     "handle_agent_complete": handle_agent_complete,
     "handle_agent_reply": handle_agent_reply,
+    "handle_agent_run_start": handle_agent_run_start,
+    "handle_agent_run_control": handle_agent_run_control,
+    "handle_agent_run_status": handle_agent_run_status,
+    "handle_agent_run_cancel": handle_agent_run_cancel,
+    "handle_ai_probe_key": handle_ai_probe_key,
+    "handle_ai_account_balance": handle_ai_account_balance,
     "handle_ws_connect": handle_ws_connect,
     "handle_ws_disconnect": handle_ws_disconnect,
     "handle_ws_send": handle_ws_send,
