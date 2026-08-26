@@ -7,7 +7,7 @@
 ```
 1. 修改 Contract（本目录）
        ↓
-2. Code Generation（python skills/dingda/scripts/sync_contracts.py）
+2. Code Generation（pnpm contracts:sync）
        ↓
 3. 受影响实现端：默认 Rust → React
    仅当该能力必须走 sidecar 时才改 Python
@@ -23,11 +23,11 @@
 ## 变更工作流
 
 1. 编辑 schema / openapi
-2. 运行 `python skills/dingda/scripts/sync_contracts.py`
+2. 运行 `pnpm contracts:sync`（或 `python tooling/dingda/scripts/sync_contracts.py`）
 3. 更新受影响端引用（默认 Rust / TS；仅 sidecar 例外才改 Python）
 4. PR 至少 2 人 Approve
 
 ## 相关文档
 
+- [`docs/managed/architecture/README.md`](../docs/managed/architecture/README.md) — 系统架构
 - [`.cursor/rules/master.md`](../.cursor/rules/master.md) — 全局架构约束
-- [`skills/dingda/guides/contracts.md`](../skills/dingda/guides/contracts.md) — Contracts 指南

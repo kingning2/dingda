@@ -1,12 +1,14 @@
 # DingDa Managed Docs
 
-这里是 DingDa 的增量文档管理中心。它不替代仓库已有文档，也不要求搬迁或修改现有 Markdown 文件。
+这里是 DingDa 的增量文档管理中心。
+
+**系统业务与架构叙事唯一入口：** [`architecture/README.md`](architecture/README.md)。
 
 ## Agent 最小读取路径
 
 处理任何改动时，只按下面顺序读取，找到足够上下文后立即停止：
 
-1. 本文件；
+1. [`architecture/README.md`](architecture/README.md)（业务）或本文件（治理）；
 2. [`ACTIVE.md`](registry/ACTIVE.md)；
 3. 与任务相关的一个领域入口；
 4. 当前变更记录；
@@ -18,6 +20,7 @@
 
 | 目录 | 管理范围 | 拆分单位 |
 |---|---|---|
+| `architecture/` | 系统业务与架构总览（唯一叙事入口） | 一份 README |
 | `registry/` | 小型导航与当前工作 | 活跃项、领域目录 |
 | `domains/` | 某个稳定领域的现状 | 一个领域一个目录 |
 | `roadmaps/` | 领域里程碑与尚未完成的目标 | 一个领域一份活跃路线图，过大时按里程碑拆分 |

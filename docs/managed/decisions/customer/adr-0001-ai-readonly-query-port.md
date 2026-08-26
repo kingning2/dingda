@@ -102,4 +102,4 @@ Agent（默认 Rust；仅例外时为 Python sidecar）
 **兼容要求：**
 
 - 所有 MVP Agent 功能 Change 须引用本 ADR
-- `skills/dingda/scripts/check_architecture.py` 应能检测 Python 直连 DB（若尚未覆盖，后续补充规则）
+- 架构边界检查应能检测 Python 直连 DB（若尚未覆盖，后续补充规则）

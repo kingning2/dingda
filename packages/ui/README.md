@@ -4,7 +4,7 @@ DingDa 设计系统与 **通用** UI 组件库。Feature 层的视觉与交互�
 
 > Feature 层禁止裸用 `bg-white`、`rounded-lg` 等 Tailwind 原子类；使用语义组件与 variant。
 
-**UI 参考首选：** [skills/dingda/guides/ui-reference.md](../skills/dingda/guides/ui-reference.md)（Shadcn Admin 结构 + shadcn 组件 + Aceternity 视觉层）。
+**UI 约定：** 组件与令牌以本包为准；桌面壳装配在 `apps/desktop/src/app/`。动效与交互细则见仓库 `.agents/skills/emil-design-eng`。
 
 ## 边界
 
