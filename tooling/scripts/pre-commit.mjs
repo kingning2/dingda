@@ -61,7 +61,11 @@ function restage(files) {
   if (files.length === 0) {
     return;
   }
-  run("git", ["add", "--", ...files]);
+  // Windows cmd.exe 对参数长度有上限；大批量暂存文件时需分批 git add
+  const batchSize = 40;
+  for (let i = 0; i < files.length; i += batchSize) {
+    run("git", ["add", "--", ...files.slice(i, i + batchSize)]);
+  }
 }
 
 const siteFile = (file) => file.replaceAll("\\", "/").startsWith("site/");
