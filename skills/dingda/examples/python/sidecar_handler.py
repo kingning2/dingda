@@ -1,6 +1,7 @@
 """Example: Python sidecar handler (Python ← Rust only).
 
-Real handlers live in python/sidecar/handlers/; platform login in python/channels/<platform>/login/.
+Real handlers live in python/application/sidecar/handlers/;
+platform login in python/crawlers/<platform>/login/.
 """
 
 from __future__ import annotations

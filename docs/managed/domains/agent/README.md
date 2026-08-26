@@ -6,8 +6,8 @@ Agent 领域负责 AI 规划、模型交互与任务执行，是当前桌面应�
 
 当前实现（骨架）：
 
-- **PingAgent**：通过 `AgentSidecarGateway.ping()` 探活 Python sidecar（见 [`src-tauri/src/agent.rs`](../../../../../apps/desktop/src-tauri/src/agent.rs)）。此路径是既有骨架，**不是**「AI 必须在 Python」的依据。
-- **License 门禁**：授权校验在应用入口处（见 `state.rs` 的 `build_license_gate`）
+- **PingAgent**：通过 `AgentSidecarGateway.ping()` 探活 Python sidecar（见 `infrastructure/runtime/agent/`）。此路径是既有骨架，**不是**「AI 必须在 Python」的依据。
+- **License 门禁**：授权校验在应用入口处（见 `main.rs` 的 `build_license_gate`）
 
 ## 非职责
 
@@ -42,11 +42,11 @@ PingAgent → AgentSidecarGateway → Python gateway（agent_ping handler）
 
 | 类型 | 路径 |
 |------|------|
-| Rust（业务） | `apps/desktop/src-tauri/src/agent.rs`、`commands/agent.rs` |
-| Gateway trait | `crates/ports/src/sidecar.rs` |
-| Adapter | `crates/adapter/`（`RuntimeAgentSidecar`） |
-| Runtime | `crates/runtime/`（`SidecarLifecycle`） |
-| Python（例外 / 现有 ping 骨架） | `python/packages/gateway/`（`agent_ping` handler） |
+| Rust（业务 / Runtime） | `apps/desktop/src-tauri/src/infrastructure/runtime/agent/`、`commands/agent.rs` |
+| Gateway trait | `apps/desktop/src-tauri/src/ports/sidecar.rs` |
+| Adapter | `infrastructure/runtime/agent/gateway.rs`（`RuntimeAgentSidecar`） |
+| Sidecar 生命周期 | `infrastructure/runtime/python/` |
+| Python（例外 / 现有 ping 骨架） | `python/`（`agent_ping` handler） |
 | Contract | `contracts/`（`agent_ipc_ping_*` / `agent_sidecar_ping_*`） |
 
 ## 当前状态

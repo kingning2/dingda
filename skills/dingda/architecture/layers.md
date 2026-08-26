@@ -26,9 +26,10 @@
 │ Layer 3: Python Sidecar（例外，不是 AI Runtime）           │
 │                                                          │
 │  python/                    单一项目（无 uv workspace）    │
-│    sidecar/                 进程入口 · 管理面 API          │
-│    channels/                渠道浏览器例外（闲鱼 / 1688 等）│
-│    shared/ · contracts/     共享工具 · codegen 类型        │
+│    application/sidecar/     进程入口 · channel handlers    │
+│    runtime/ · runtimes/     宿主与子运行时生命周期          │
+│    crawlers/ · agent/       渠道浏览器例外 · Agent 图      │
+│    contracts/               codegen 类型                   │
 └──────────────────────────────────────────────────────────┘
 ```
 

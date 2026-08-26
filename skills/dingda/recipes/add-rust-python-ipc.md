@@ -32,7 +32,7 @@ contracts/openapi/sidecar.paths/<feature>_<action>.yaml
 crates/infra/src/sidecar/client.rs          # 首次创建
 crates/infra/src/sidecar/routes/<feature>_<action>.rs
 python/packages/gateway/src/gateway/handlers/<feature>_<action>.py
-python/sidecar/routes.py                      # 路由注册
+python/runtime/ipc.py                         # 路由注册
 skills/dingda/examples/rust-python/<feature>_<action>/README.md
 ```
 

@@ -51,7 +51,7 @@ contracts/schema/v1/<feature>/sidecar/<action>.response.schema.json
 | Rust HTTP 客户端 | `crates/infra/src/sidecar/client.rs` |
 | Rust 路由绑定 | `crates/infra/src/sidecar/routes/<feature>_<action>.rs` |
 | Python 处理器 | `python/packages/gateway/src/gateway/handlers/` |
-| Python 路由表 | `python/sidecar/routes.py` |
+| Python 路由表 | `python/runtime/ipc.py` |
 
 ## 脚手架
 

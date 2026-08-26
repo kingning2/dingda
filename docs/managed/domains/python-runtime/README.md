@@ -6,7 +6,15 @@ Python 是 **Rust 生态不够时的例外 Sidecar**，不是 AI Runtime。默�
 
 仅在 Change Record 写明「Rust 生态缺少可用实现」时才编写或扩展 `python/**`。已接受的例外示例：Playwright 浏览器会话（[ADR-0008](../../decisions/channel/adr-0008-browser-login-hybrid.md)）。
 
-Sidecar 仍由 Rust 托管生命周期；请求经本机 HTTP，契约来自 `contracts/`。
+Sidecar 由 Rust 托管生命周期。产品通讯为：
+
+```text
+请求：Rust pipe request sidecar.invoke {method,path,body}
+      → Python 线程池 dispatch_post → pipe response {status,body}
+推送：Python 管道 Event（如 ws.event）→ Rust IpcSession 订阅 → 业务分发
+```
+
+契约路径仍来自 `contracts/`。产品默认仅 `--ipc`；`--shm` + `--ipc` hybrid 为预留大文件通道，不在产品路径启用。
 
 ## 非职责
 
@@ -22,7 +30,7 @@ Sidecar 仍由 Rust 托管生命周期；请求经本机 HTTP，契约来自 `co
 ```text
 默认：React → Rust（实现，含 AI）
 
-例外：Rust → gateway →（仅该缺口能力）Python sidecar
+例外：Rust → pipe RPC / Event →（仅该缺口能力）Python sidecar
 ```
 
 Rust 负责 Sidecar 生命周期、权限、业务状态、存储和前端事件转发。
@@ -34,12 +42,11 @@ Rust 负责 Sidecar 生命周期、权限、业务状态、存储和前端事件
 
 ## 当前状态
 
-Architecture Skeleton：sidecar 与 `agent_ping` 骨架仍在，不表示 AI 必须走 Python。后续能力默认落 Rust；Python 只补生态缺口。
+产品入口要求 `--ipc`（`runtime.ipc_server`，`sidecar.invoke` + Event）。进程模块：`application.sidecar.main`。`--shm` + `--ipc` hybrid 预留大文件，非默认。`--port` HTTP 仅供手工调试。
 
 ## 日志边界
 
 - Python 使用标准库 `logging`，经 stdout 输出 `runtime/log/entry/v1` JSON Lines；
-- `shared.logging` 提供配置、上下文传播、脱敏和开发 payload 预览；
 - Python 不直接写日志文件，Rust 负责接管、展示、落盘和轮转；
 - stderr 保留给未捕获异常和第三方原始输出；
 - 日志只用于观测，不作为生命周期或健康控制协议。
