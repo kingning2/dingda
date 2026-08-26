@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { platform } from "node:os";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
-const SYNC_SCRIPT = join(root, "skills/dingda/scripts/sync_contracts.py");
+const SYNC_SCRIPT = join(root, "tooling/dingda/scripts/sync_contracts.py");
 
 /**
  * @param {string} command

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-CONFIG_PATH = ROOT / "skills" / "dingda" / "config" / "branch_roles.json"
+CONFIG_PATH = ROOT / "tooling" / "dingda" / "config" / "branch_roles.json"
 ACTIVE_RULE_PATH = ROOT / ".cursor" / "rules" / "active-branch.mdc"
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -201,7 +201,7 @@ alwaysApply: true
 
 ---
 
-> 由 `skills/dingda/scripts/sync_branch_rules.py` 根据分支名生成。
+> 由 `tooling/dingda/scripts/sync_branch_rules.py` 根据分支名生成。
 > 切换分支后若约束不符，运行 `pnpm branch:sync`。
 """
 

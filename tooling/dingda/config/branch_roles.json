@@ -59,7 +59,7 @@
       "branch_prefix": "contract",
       "allowed_globs": [
         "contracts/**",
-        "skills/dingda/scripts/sync_contracts.py"
+        "tooling/dingda/scripts/sync_contracts.py"
       ],
       "optional_globs": [
         "apps/desktop/src-tauri/src/contracts/**"
