@@ -1,0 +1,18 @@
+﻿paths:
+  /v1/agent/run/status:
+    post:
+      operationId: agentRunStatus
+      summary: Query graph run status and step deltas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema/v1/agent/sidecar/run_status.request.schema.json'
+      responses:
+        '200':
+          description: Run status
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema/v1/agent/sidecar/run_status.response.schema.json'

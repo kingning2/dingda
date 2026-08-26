@@ -23,10 +23,8 @@ pub const TOPIC_TASK: &str = "app/task";
 pub const TOPIC_CHANNEL_MESSAGE: &str = "channel/message";
 /// 渠道连接状态 topic。
 pub const TOPIC_CHANNEL_STATUS: &str = "channel/status";
-/// 闲鱼监控命中 topic。
-pub const TOPIC_MONITOR: &str = "app/monitor";
-/// 闲鱼监控运行进度 topic。
-pub const TOPIC_MONITOR_PROGRESS: &str = "app/monitor/progress";
+/// Agent graph 运行进度 topic。
+pub const TOPIC_AGENT_PROGRESS: &str = "app/agent/progress";
 
 /// 应用级事件 — 涵盖消息、账号、后台任务状态。
 ///
@@ -45,10 +43,8 @@ pub enum AppEvent {
     ChannelMessage(ChannelMessageEvent),
     /// 渠道连接状态变更。
     ChannelStatus(ChannelStatusEvent),
-    /// 闲鱼监控 AI 推荐命中。
-    MonitorMatch(MonitorMatchEvent),
-    /// 闲鱼监控运行逐步进度（工作流式展示）。
-    MonitorProgress(MonitorProgressEvent),
+    /// Agent / LangGraph 运行逐步进度。
+    AgentProgress(AgentProgressEvent),
 }
 
 /// 消息类事件载荷。
@@ -193,77 +189,31 @@ pub struct ChannelStatusEvent {
     pub detail: Option<String>,
 }
 
-/// 闲鱼监控命中通知载荷。
+/// Agent graph 运行逐步进度。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct MonitorMatchEvent {
-    pub task_id: String,
-    pub task_name: String,
-    pub item_id: String,
-    pub title: String,
-    pub url: String,
-    pub price_text: String,
-    pub reason: String,
-}
-
-/// 闲鱼监控运行阶段。
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MonitorProgressStage {
-    /// 任务开始运行。
-    Started,
-    /// 关键词就绪（生成或复用）。
-    Keywords,
-    /// 开始搜索某个关键词。
-    Search,
-    /// 某个关键词扫描完成（含条数）。
-    Scanned,
-    /// 进入 AI 决策阶段。
-    Decide,
-    /// AI 推荐命中某商品。
-    Matched,
-    /// 任务成功完成（含汇总）。
-    Finished,
-    /// 任务失败。
-    Failed,
-}
-
-/// 单次运行结束汇总（进度事件携带）。
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MonitorProgressSummary {
-    pub scanned: u32,
-    pub new_items: u32,
-    pub skipped: u32,
-    pub recommended: u32,
-}
-
-/// 闲鱼监控运行逐步进度载荷 — 供前端工作流式展示。
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MonitorProgressEvent {
-    /// 步骤唯一 id（前端稳定 key + 去重）。
+pub struct AgentProgressEvent {
+    pub run_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub step_id: Option<String>,
-    /// 所属运行记录 id（前端据此把实时步骤关联到具体一次执行）。
-    pub run_id: String,
-    pub task_id: String,
-    pub task_name: String,
-    pub stage: MonitorProgressStage,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub index: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub total: Option<i64>,
+    pub status: String,
     pub message: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub summary: Option<MonitorProgressSummary>,
-    /// 该步正文（发给 AI 的 prompt / AI 原始返回 / 爬取文本），供转录式渲染。
+    pub error_kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub account_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
-    /// 正文类型：`json` | `markdown` | `text`。
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub content_kind: Option<String>,
-    /// 说话角色：`user`（发送给 AI）| `assistant`（AI 返回）| `tool`（爬虫）。
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub role: Option<String>,
 }
 
 impl AppEvent {
@@ -278,8 +228,7 @@ impl AppEvent {
             AppEvent::Task(_) => TOPIC_TASK,
             AppEvent::ChannelMessage(_) => TOPIC_CHANNEL_MESSAGE,
             AppEvent::ChannelStatus(_) => TOPIC_CHANNEL_STATUS,
-            AppEvent::MonitorMatch(_) => TOPIC_MONITOR,
-            AppEvent::MonitorProgress(_) => TOPIC_MONITOR_PROGRESS,
+            AppEvent::AgentProgress(_) => TOPIC_AGENT_PROGRESS,
         }
     }
 }

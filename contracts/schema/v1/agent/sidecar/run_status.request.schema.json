@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://agent/sidecar/run_status.request/v1",
+  "title": "agent/sidecar/run_status.request",
+  "type": "object",
+  "required": ["run_id"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "since_index": { "type": "integer" },
+    "trace_id": { "type": "string" }
+  },
+  "additionalProperties": false
+}

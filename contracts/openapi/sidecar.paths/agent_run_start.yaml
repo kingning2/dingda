@@ -1,0 +1,18 @@
+﻿paths:
+  /v1/agent/run/start:
+    post:
+      operationId: agentRunStart
+      summary: Start a controllable graph run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema/v1/agent/sidecar/run_start.request.schema.json'
+      responses:
+        '200':
+          description: Run started
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema/v1/agent/sidecar/run_start.response.schema.json'

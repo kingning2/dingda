@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://ai/graph_models/v1",
+  "title": "ai/graph_models",
+  "type": "object",
+  "required": [],
+  "properties": {
+    "node_accounts": {
+      "type": "array",
+      "items": { "$ref": "graph_node_account.schema.json" }
+    },
+    "failover_account_ids": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "failover_enabled": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

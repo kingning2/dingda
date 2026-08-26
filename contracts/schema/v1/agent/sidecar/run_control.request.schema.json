@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://agent/sidecar/run_control.request/v1",
+  "title": "agent/sidecar/run_control.request",
+  "type": "object",
+  "required": ["run_id", "action"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "action": { "type": "string" },
+    "node": { "type": "string" },
+    "node_model": { "$ref": "node_model.schema.json" },
+    "trace_id": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+﻿paths:
+  /v1/agent/run/cancel:
+    post:
+      operationId: agentRunCancel
+      summary: Cancel a graph run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema/v1/agent/sidecar/run_cancel.request.schema.json'
+      responses:
+        '200':
+          description: Run cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema/v1/agent/sidecar/run_cancel.response.schema.json'

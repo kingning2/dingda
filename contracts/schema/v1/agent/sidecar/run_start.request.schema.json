@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://agent/sidecar/run_start.request/v1",
+  "title": "agent/sidecar/run_start.request",
+  "type": "object",
+  "required": ["user"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "user": { "type": "string" },
+    "system": { "type": "string" },
+    "kind": { "type": "string" },
+    "node_models": {
+      "type": "array",
+      "items": { "$ref": "node_model.schema.json" }
+    },
+    "default_base_url": { "type": "string" },
+    "default_api_key": { "type": "string" },
+    "default_model": { "type": "string" },
+    "resume_from_run_id": { "type": "string" },
+    "resume_state_json": { "type": "string" },
+    "resume_node": { "type": "string" },
+    "trace_id": { "type": "string" }
+  },
+  "additionalProperties": false
+}

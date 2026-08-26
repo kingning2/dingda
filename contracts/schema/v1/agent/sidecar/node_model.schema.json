@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://agent/sidecar/node_model/v1",
+  "title": "agent/sidecar/node_model",
+  "type": "object",
+  "required": ["node", "base_url", "api_key", "model"],
+  "properties": {
+    "node": { "type": "string" },
+    "account_id": { "type": "string" },
+    "base_url": { "type": "string" },
+    "api_key": { "type": "string" },
+    "model": { "type": "string" },
+    "provider_type": { "type": "string" }
+  },
+  "additionalProperties": false
+}

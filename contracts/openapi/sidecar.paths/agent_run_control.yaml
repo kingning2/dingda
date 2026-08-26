@@ -1,0 +1,18 @@
+﻿paths:
+  /v1/agent/run/control:
+    post:
+      operationId: agentRunControl
+      summary: Pause / continue / restart / seek a graph run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../../schema/v1/agent/sidecar/run_control.request.schema.json'
+      responses:
+        '200':
+          description: Control applied
+          content:
+            application/json:
+              schema:
+                $ref: '../../schema/v1/agent/sidecar/run_control.response.schema.json'

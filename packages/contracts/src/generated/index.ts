@@ -2,9 +2,21 @@
 
 export type { AgentIpcPingRequest } from "./agent_ipc_ping_request";
 export type { AgentIpcPingResponse } from "./agent_ipc_ping_response";
+export type { AgentSidecarNodeModel } from "./agent_sidecar_node_model";
 export type { AgentSidecarPingRequest } from "./agent_sidecar_ping_request";
 export type { AgentSidecarPingResponse } from "./agent_sidecar_ping_response";
+export type { AgentSidecarRunCancelRequest } from "./agent_sidecar_run_cancel_request";
+export type { AgentSidecarRunCancelResponse } from "./agent_sidecar_run_cancel_response";
+export type { AgentSidecarRunControlRequest } from "./agent_sidecar_run_control_request";
+export type { AgentSidecarRunControlResponse } from "./agent_sidecar_run_control_response";
+export type { AgentSidecarRunStartRequest } from "./agent_sidecar_run_start_request";
+export type { AgentSidecarRunStartResponse } from "./agent_sidecar_run_start_response";
+export type { AgentSidecarRunStatusRequest } from "./agent_sidecar_run_status_request";
+export type { AgentSidecarRunStatusResponse } from "./agent_sidecar_run_status_response";
+export type { AgentSidecarRunStep } from "./agent_sidecar_run_step";
 export type { AiAccount } from "./ai_account";
+export type { AiGraphModels } from "./ai_graph_models";
+export type { AiGraphNodeAccount } from "./ai_graph_node_account";
 export type { AiIpcConfigRequest } from "./ai_ipc_config_request";
 export type { AiIpcConfigResponse } from "./ai_ipc_config_response";
 export type { AiProvider } from "./ai_provider";

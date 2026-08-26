@@ -2,9 +2,21 @@
 
 from .agent_ipc_ping_request import AgentIpcPingRequest
 from .agent_ipc_ping_response import AgentIpcPingResponse
+from .agent_sidecar_node_model import AgentSidecarNodeModel
 from .agent_sidecar_ping_request import AgentSidecarPingRequest
 from .agent_sidecar_ping_response import AgentSidecarPingResponse
+from .agent_sidecar_run_cancel_request import AgentSidecarRunCancelRequest
+from .agent_sidecar_run_cancel_response import AgentSidecarRunCancelResponse
+from .agent_sidecar_run_control_request import AgentSidecarRunControlRequest
+from .agent_sidecar_run_control_response import AgentSidecarRunControlResponse
+from .agent_sidecar_run_start_request import AgentSidecarRunStartRequest
+from .agent_sidecar_run_start_response import AgentSidecarRunStartResponse
+from .agent_sidecar_run_status_request import AgentSidecarRunStatusRequest
+from .agent_sidecar_run_status_response import AgentSidecarRunStatusResponse
+from .agent_sidecar_run_step import AgentSidecarRunStep
 from .ai_account import AiAccount
+from .ai_graph_models import AiGraphModels
+from .ai_graph_node_account import AiGraphNodeAccount
 from .ai_ipc_config_request import AiIpcConfigRequest
 from .ai_ipc_config_response import AiIpcConfigResponse
 from .ai_provider import AiProvider
@@ -61,9 +73,21 @@ from .runtime_log_entry import RuntimeLogEntry
 __all__ = [
     "AgentIpcPingRequest",
     "AgentIpcPingResponse",
+    "AgentSidecarNodeModel",
     "AgentSidecarPingRequest",
     "AgentSidecarPingResponse",
+    "AgentSidecarRunCancelRequest",
+    "AgentSidecarRunCancelResponse",
+    "AgentSidecarRunControlRequest",
+    "AgentSidecarRunControlResponse",
+    "AgentSidecarRunStartRequest",
+    "AgentSidecarRunStartResponse",
+    "AgentSidecarRunStatusRequest",
+    "AgentSidecarRunStatusResponse",
+    "AgentSidecarRunStep",
     "AiAccount",
+    "AiGraphModels",
+    "AiGraphNodeAccount",
     "AiIpcConfigRequest",
     "AiIpcConfigResponse",
     "AiProvider",

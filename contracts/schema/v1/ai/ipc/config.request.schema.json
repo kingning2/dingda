@@ -16,6 +16,9 @@
       "items": {
         "$ref": "../account.schema.json"
       }
+    },
+    "graph_models": {
+      "$ref": "../graph_models.schema.json"
     }
   },
   "additionalProperties": false
