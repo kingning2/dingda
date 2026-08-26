@@ -12,6 +12,8 @@ import { TrendingUp } from "@desk/ui/icons";
 import { HAS_XIANYU, HAS_ALI1688 } from "@desk/platform/compile";
 
 export { DiscoveryPage } from "./discovery-page";
+export { FailoverPanel } from "./failover-panel";
+export { usePriceCompareRun } from "./use-price-compare-run";
 
 /** 双站齐备时才暴露选品能力。 */
 export const DISCOVERY_AVAILABLE: boolean = HAS_XIANYU && HAS_ALI1688;

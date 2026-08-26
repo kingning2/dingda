@@ -45,6 +45,8 @@ const SILENT_COMMANDS = new Set(["log_recent", "log_clear", "log_write"]);
 /** 高频探测/轮询命令：正常且够快时只打 debug。 */
 const QUIET_COMMANDS = new Set([
   "agent_ping",
+  "agent_run_status",
+  "agent_run_get",
   "channel_qr_check",
   "license_status",
 ]);

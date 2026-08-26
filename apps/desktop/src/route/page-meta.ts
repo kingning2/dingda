@@ -1,14 +1,15 @@
 /**
  * 路由 → 页面元信息（中文标题 / 描述）。
  *
+ * Feature 页优先取自 {@link listWorkspaceFeatures}；渠道管理页走 platform-routes。
+ *
  * @author coisini
  * @created 2026-07-20
  */
 
-import {
-  CHANNEL_MANAGE_ROOT,
-} from "@desk/platform/compile";
+import { CHANNEL_MANAGE_ROOT } from "@desk/platform/compile";
 import { manageTitleFromPath } from "@platform-routes";
+import { listWorkspaceFeatures } from "@feature/workspace-features";
 
 /**
  * 页面元信息。
@@ -23,27 +24,26 @@ export interface PageMeta {
   description?: string;
 }
 
+const featurePageMeta: Record<string, PageMeta> = Object.fromEntries(
+  listWorkspaceFeatures().map((feature) => [
+    feature.path,
+    {
+      title: feature.navItem.label,
+      description: feature.description,
+    },
+  ]),
+);
+
 const pageMetaByPath: Record<string, PageMeta> = {
   "/": {
     title: "首页",
     description: "渠道经营总览与快捷入口",
   },
-  "/features/ai": {
-    title: "AI 配置",
-    description: "管理智能回复与监控任务使用的 AI 账号",
-  },
-  "/features/chat": {
-    title: "客户会话",
-    description: "查看买家消息并人工回复",
-  },
   [CHANNEL_MANAGE_ROOT]: {
     title: "首页",
     description: "渠道经营总览与快捷入口",
   },
-  "/features/knowledge": {
-    title: "知识库",
-    description: "沉淀商品话术与常见问题，供客服快速检索",
-  },
+  ...featurePageMeta,
 };
 
 /**

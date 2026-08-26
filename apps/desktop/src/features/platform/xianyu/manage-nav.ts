@@ -11,7 +11,7 @@ import {
   navTitles,
   visibleManageNavGroups as visibleGroups,
 } from "@components/manage/nav";
-import { Building2, Package, Radar, Search, ShoppingCart, Users } from "@desk/ui/icons";
+import { Package, ShoppingCart, Users } from "@desk/ui/icons";
 
 export type { ManageNavGroup, ManageNavItem } from "@components/manage/nav";
 export { managePath } from "@desk/platform/compile";
@@ -20,10 +20,6 @@ export { managePath } from "@desk/platform/compile";
 export type ManageView =
   | "dashboard"
   | "accounts"
-  | "accounts-1688"
-  | "search"
-  | "search-1688"
-  | "monitor"
   | "items"
   | "orders";
 
@@ -33,41 +29,9 @@ export const MANAGE_NAV: ManageNavItem<ManageView>[] = [
     key: "accounts",
     label: "账号管理",
     icon: Users,
-    description: "闲鱼 / 1688 分 Tab 扫码登录与连接状态",
+    description: "闲鱼账号扫码登录与连接状态",
     ready: true,
   },
-  {
-    key: "search",
-    label: "闲鱼商品搜索",
-    icon: Search,
-    description: "关键词搜索闲鱼二手商品",
-    ready: true,
-  },
-  {
-    key: "monitor",
-    label: "商品监控",
-    icon: Radar,
-    description: "定时扫描商品，AI 自动筛选并推荐入库",
-    ready: true,
-  },
-  ...(__DINGDA_HAS_ALI1688__
-    ? [
-        {
-          key: "accounts-1688" as const,
-          label: "1688账号",
-          icon: Building2,
-          description: "打开账号管理并定位 1688 账号",
-          ready: false,
-        },
-        {
-          key: "search-1688" as const,
-          label: "1688商品搜索",
-          icon: Search,
-          description: "关键词搜索 1688 批发商品",
-          ready: true,
-        },
-      ]
-    : []),
   {
     key: "items",
     label: "商品管理",
@@ -86,10 +50,7 @@ export const MANAGE_NAV: ManageNavItem<ManageView>[] = [
 
 /** 侧栏分组导航 — 保留的管理子页按业务域归类。 */
 export const MANAGE_NAV_GROUPS: ManageNavGroup<ManageView>[] = [
-  { label: "交易", icon: ShoppingCart, keys: ["accounts", "search", "monitor", "items", "orders"] },
-  ...(__DINGDA_HAS_ALI1688__
-    ? [{ label: "1688", icon: Building2, keys: ["search-1688"] as ManageView[] }]
-    : []),
+  { label: "交易", icon: ShoppingCart, keys: ["accounts", "items", "orders"] },
 ];
 
 /** 解析分组内已接入的导航项（保持 MANAGE_NAV 中的顺序）。 */

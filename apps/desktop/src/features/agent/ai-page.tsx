@@ -20,7 +20,7 @@ import type { AiAccount } from "@desk/contracts";
 import { ACCOUNT_PROVIDERS, BUILT_IN_PROVIDERS, type BuiltInProvider } from "./builtin-providers";
 import { AiAccountCard } from "./ai-account-card";
 import { AiAccountDialog } from "./ai-account-dialog";
-import { useAiConfigStore } from "./use-ai-config";
+import { AI_GRAPH_NODES, useAiConfigStore } from "./use-ai-config";
 
 function toError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -103,7 +103,7 @@ export function AiPage() {
   return (
     <PageScaffold
       title="AI 配置"
-      subtitle="管理客服自动回复与商品监控使用的 AI 账号，密钥仅保存在本机"
+      subtitle="管理客服自动回复与双方比价使用的 AI 账号，密钥仅保存在本机"
     >
       {loadError ? (
         <p className="mb-4 text-[length:var(--text-sm)] text-red-600 dark:text-red-400">
@@ -167,6 +167,8 @@ export function AiPage() {
             onSave={() => void saveOllamaModel()}
           />
         ) : null}
+
+        <GraphModelsSection />
       </div>
 
       <AiAccountDialog
@@ -243,6 +245,85 @@ function LocalAiSection({
           {error ? (
             <p className="text-[length:var(--text-sm)] text-red-600 dark:text-red-400">{error}</p>
           ) : null}
+        </div>
+      </PageGlowCard>
+    </section>
+  );
+}
+
+const NODE_LABELS: Record<string, string> = {
+  web_research: "网页调研",
+  article_analyze: "文章分析",
+  planner: "规划",
+  analyze: "核验分析",
+  finalize: "成文",
+};
+
+/**
+ * 比价图节点模型路由与欠费 failover。
+ */
+function GraphModelsSection() {
+  const accounts = useAiConfigStore((state) => state.accounts);
+  const graphModels = useAiConfigStore((state) => state.graphModels);
+  const setGraphNodeAccount = useAiConfigStore((state) => state.setGraphNodeAccount);
+  const setFailoverEnabled = useAiConfigStore((state) => state.setFailoverEnabled);
+  const setFailoverAccountIds = useAiConfigStore((state) => state.setFailoverAccountIds);
+
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="font-medium text-foreground">比价图模型路由</h2>
+        <p className="text-[length:var(--text-xs)] text-muted-foreground">
+          为需要 AI 的节点指定账号；欠费时按 failover 顺序换模重试
+        </p>
+      </div>
+      <PageGlowCard className="space-y-4 border border-border/70 bg-card p-4 shadow-sm">
+        {AI_GRAPH_NODES.map((node) => {
+          const current =
+            graphModels.node_accounts?.find((row) => row.node === node)?.account_id ?? "";
+          return (
+            <div key={node} className="flex flex-wrap items-center gap-3">
+              <label className="w-28 text-[length:var(--text-sm)] font-medium text-foreground">
+                {NODE_LABELS[node] ?? node}
+              </label>
+              <select
+                className="min-w-[12rem] rounded-[var(--radius-md)] border border-border bg-background px-2 py-1.5 text-[length:var(--text-sm)]"
+                value={current}
+                onChange={(event) => void setGraphNodeAccount(node, event.target.value)}
+              >
+                <option value="">（默认首个账号）</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
+        <label className="flex items-center gap-2 text-[length:var(--text-sm)]">
+          <input
+            type="checkbox"
+            checked={graphModels.failover_enabled !== false}
+            onChange={(event) => void setFailoverEnabled(event.target.checked)}
+          />
+          欠费自动换模
+        </label>
+        <div className="flex flex-col gap-2">
+          <span className="text-[length:var(--text-sm)] font-medium text-foreground">
+            Failover 顺序（逗号分隔账号 id）
+          </span>
+          <Input
+            value={(graphModels.failover_account_ids ?? []).join(",")}
+            onChange={(event) => {
+              const ids = event.target.value
+                .split(",")
+                .map((part) => part.trim())
+                .filter(Boolean);
+              void setFailoverAccountIds(ids);
+            }}
+            placeholder={accounts.map((a) => a.id).join(",") || "acc-1,acc-2"}
+          />
         </div>
       </PageGlowCard>
     </section>

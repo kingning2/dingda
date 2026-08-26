@@ -1,5 +1,5 @@
 /**
- * 工作区侧栏 — Aceternity Sidebar + 可折叠菜单分组。
+ * 工作区侧栏 — Aceternity Sidebar + 可折叠菜单分组 + 动态 Feature 菜单。
  *
  * @author Xiaoman
  * @created 2026-08-20
@@ -19,8 +19,7 @@ import {
 } from "@desk/ui";
 import { Home } from "@desk/ui/icons";
 import { manageNavGroups, type ManageNavItem } from "@platform-routes";
-import { aiFeature } from "@feature/agent";
-import { chatFeature } from "@feature/chat";
+import { listWorkspaceFeatures, type WorkspaceFeature } from "@feature/workspace-features";
 
 const GROUP_STORAGE_KEY = "desk.sidebar.groups";
 /** 首次使用默认展开的分组（其余默认收起）。 */
@@ -46,6 +45,26 @@ function isNavActive(activePath: string, targetPath: string): boolean {
   return activePath === targetPath || activePath.startsWith(`${targetPath}/`);
 }
 
+function FeatureNavLink({
+  feature,
+  activePath,
+  onNavigate,
+}: {
+  feature: WorkspaceFeature;
+  activePath: string;
+  onNavigate: (path: string) => void;
+}) {
+  const Icon = feature.navItem.icon;
+  return (
+    <SidebarLink
+      label={feature.navItem.label}
+      icon={<Icon className="size-[1.125rem]" aria-hidden />}
+      active={isNavActive(activePath, feature.path)}
+      onClick={() => onNavigate(feature.path)}
+    />
+  );
+}
+
 /**
  * 桌面工作区左侧导航。
  *
@@ -53,8 +72,8 @@ function isNavActive(activePath: string, targetPath: string): boolean {
  * @created 2026-08-20
  */
 export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarProps) {
-  const AiNavIcon = aiFeature.navItem.icon;
-  const ChatNavIcon = chatFeature.navItem.icon;
+  const headerFeatures = useMemo(() => listWorkspaceFeatures("header"), []);
+  const footerFeatures = useMemo(() => listWorkspaceFeatures("footer"), []);
   const autoOpenGroupIds = useMemo(
     () =>
       manageNavGroups
@@ -79,12 +98,14 @@ export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarPro
             }
             onClick={() => onNavigate(CHANNEL_MANAGE_ROOT)}
           />
-          <SidebarLink
-            label={chatFeature.navItem.label}
-            icon={<ChatNavIcon className="size-[1.125rem]" aria-hidden />}
-            active={isNavActive(activePath, chatFeature.path)}
-            onClick={() => onNavigate(chatFeature.path)}
-          />
+          {headerFeatures.map((feature) => (
+            <FeatureNavLink
+              key={feature.id}
+              feature={feature}
+              activePath={activePath}
+              onNavigate={onNavigate}
+            />
+          ))}
         </SidebarHeader>
 
         <SidebarGroupsProvider
@@ -96,42 +117,44 @@ export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarPro
             {manageNavGroups.map((group) => {
               const GroupIcon = group.icon;
               return (
-              <SidebarGroup
-                key={group.label}
-                groupId={group.label}
-                label={group.label}
-                icon={
-                  GroupIcon ? (
-                    <GroupIcon className="size-[1.125rem]" aria-hidden />
-                  ) : undefined
-                }
-              >
-                {group.items.map((item: ManageNavItem) => {
-                  const path = managePath(item.key);
-                  const Icon = item.icon;
-                  return (
-                    <SidebarLink
-                      key={item.key}
-                      label={item.label}
-                      icon={<Icon className="size-[1.125rem]" aria-hidden />}
-                      active={isNavActive(activePath, path)}
-                      onClick={() => onNavigate(path)}
-                    />
-                  );
-                })}
-              </SidebarGroup>
+                <SidebarGroup
+                  key={group.label}
+                  groupId={group.label}
+                  label={group.label}
+                  icon={
+                    GroupIcon ? (
+                      <GroupIcon className="size-[1.125rem]" aria-hidden />
+                    ) : undefined
+                  }
+                >
+                  {group.items.map((item: ManageNavItem) => {
+                    const path = managePath(item.key);
+                    const Icon = item.icon;
+                    return (
+                      <SidebarLink
+                        key={item.key}
+                        label={item.label}
+                        icon={<Icon className="size-[1.125rem]" aria-hidden />}
+                        active={isNavActive(activePath, path)}
+                        onClick={() => onNavigate(path)}
+                      />
+                    );
+                  })}
+                </SidebarGroup>
               );
             })}
           </SidebarContent>
         </SidebarGroupsProvider>
 
         <SidebarFooter className="mt-auto space-y-2 border-t border-border pt-2">
-          <SidebarLink
-            label={aiFeature.navItem.label}
-            icon={<AiNavIcon className="size-[1.125rem]" aria-hidden />}
-            active={isNavActive(activePath, aiFeature.path)}
-            onClick={() => onNavigate(aiFeature.path)}
-          />
+          {footerFeatures.map((feature) => (
+            <FeatureNavLink
+              key={feature.id}
+              feature={feature}
+              activePath={activePath}
+              onNavigate={onNavigate}
+            />
+          ))}
           <SidebarToggle placement="footer" />
         </SidebarFooter>
       </div>

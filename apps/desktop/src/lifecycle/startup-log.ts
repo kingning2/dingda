@@ -1,5 +1,5 @@
 /**
- * 前端启动生命周期埋点。
+ * 前端启动生命周期埋点（中文 + 本段耗时）。
  *
  * `sinceNavMs` 从 WebView 导航起点算（含 HTML/JS 下载与执行）。
  * `sinceJsMs` 从本模块执行算（Vite 转换完成后）。
@@ -13,6 +13,7 @@ import { logWrite } from "@desk/platform/ipc/log";
 const jsStartAt = performance.now();
 
 const loggedPhases = new Set<string>();
+let lastSinceJsMs = 0;
 
 type StartupMark = {
   phase: string;
@@ -25,33 +26,48 @@ declare global {
   }
 }
 
+const PHASE_LABELS: Record<string, string> = {
+  "frontend.html": "HTML 就绪",
+  "frontend.js.entry": "JS 入口",
+  "frontend.react.mounted": "React 已挂载",
+  "frontend.gate.blocking": "授权闸门等待中",
+  "frontend.gate.redirect-503": "闸门跳转服务不可用",
+  "frontend.gate.open": "授权闸门已放行",
+  "frontend.license.fetch.begin": "开始拉取授权状态",
+  "frontend.license.fetch.end": "授权状态拉取完成",
+  "frontend.shell.ready": "工作区壳就绪",
+  "frontend.first-paint": "首屏绘制完成",
+};
+
+function phaseLabel(phase: string): string {
+  return PHASE_LABELS[phase] ?? `未登记阶段(${phase})`;
+}
+
 function formatNav(entry: PerformanceNavigationTiming | undefined): string {
   if (!entry) {
     return "";
   }
-  const parts = [
-    `dns=${entry.domainLookupEnd.toFixed(0)}`,
-    `response=${entry.responseEnd.toFixed(0)}`,
-    `domInteractive=${entry.domInteractive.toFixed(0)}`,
-  ];
-  return ` ${parts.join(" ")}`;
+  return ` | DNS ${entry.domainLookupEnd.toFixed(0)}ms | 响应 ${entry.responseEnd.toFixed(0)}ms | DOM可交互 ${entry.domInteractive.toFixed(0)}ms`;
 }
 
 /**
  * 上报一个启动阶段。同名阶段只打一次（避免 StrictMode 刷屏）。
  *
  * @param phase - 阶段名，如 `frontend.js.entry`
- * @param extra - 附加字段文本（已含前导空格）
+ * @param extra - 附加字段文本（已含前导分隔）
  */
 export function logStartupPhase(phase: string, extra = ""): void {
   if (loggedPhases.has(phase)) {
     return;
   }
   loggedPhases.add(phase);
-  const sinceNavMs = performance.now().toFixed(0);
-  const sinceJsMs = (performance.now() - jsStartAt).toFixed(0);
+  const sinceNavMs = Math.round(performance.now());
+  const sinceJsMs = Math.round(performance.now() - jsStartAt);
+  const deltaMs = Math.max(0, sinceJsMs - lastSinceJsMs);
+  lastSinceJsMs = sinceJsMs;
+  const label = phaseLabel(phase);
   void logWrite(
-    `[startup] phase=${phase} sinceNavMs=${sinceNavMs} sinceJsMs=${sinceJsMs}${extra}`,
+    `[启动] ${label} | 本段 ${deltaMs}ms | 自JS ${sinceJsMs}ms | 自导航 ${sinceNavMs}ms${extra}`,
     "INFO",
   ).catch(() => {});
 }
@@ -66,9 +82,11 @@ export function flushHtmlStartupMarks(): void {
       continue;
     }
     loggedPhases.add(mark.phase);
-    const jsGapMs = (jsStartAt - mark.atMs).toFixed(0);
+    const sinceNavMs = Math.round(mark.atMs);
+    const jsGapMs = Math.round(jsStartAt - mark.atMs);
+    const label = phaseLabel(mark.phase);
     void logWrite(
-      `[startup] phase=${mark.phase} sinceNavMs=${mark.atMs.toFixed(0)} jsGapMs=${jsGapMs}`,
+      `[启动] ${label} | 自导航 ${sinceNavMs}ms | 距JS入口 ${jsGapMs}ms`,
       "INFO",
     ).catch(() => {});
   }
@@ -83,5 +101,5 @@ export function logFirstScreenRender(route: string): void {
   const nav = performance.getEntriesByType("navigation")[0] as
     | PerformanceNavigationTiming
     | undefined;
-  logStartupPhase("frontend.first-paint", ` route=${route}${formatNav(nav)}`);
+  logStartupPhase("frontend.first-paint", ` | 路由=${route}${formatNav(nav)}`);
 }
