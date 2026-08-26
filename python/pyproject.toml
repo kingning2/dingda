@@ -13,6 +13,7 @@ dependencies = [
   "openai>=1.40",
   "websockets>=13.0",
   "msgpack>=1.0",
+  "trafilatura>=2.2.0",
 ]
 
 [dependency-groups]
@@ -21,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-dingda-sidecar = "sidecar.main:main"
+dingda-sidecar = "application.sidecar.main:main"
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -29,5 +30,5 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["contracts*", "sidecar*", "runtime*", "graph*", "agents*", "crawlers*", "services*", "llm*", "knowledge*", "tools*", "config*"]
+include = ["contracts*", "application*", "runtime*", "runtimes*", "agent*", "skills*", "crawlers*", "services*", "tools*", "config*"]
 namespaces = true

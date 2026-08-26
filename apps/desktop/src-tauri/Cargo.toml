@@ -29,6 +29,7 @@ base64 = "0.22"
 chrono = { workspace = true }
 diesel = { workspace = true }
 diesel_migrations = { workspace = true }
+fastembed = { workspace = true }
 futures-util = { workspace = true }
 hmac = "0.12"
 libsqlite3-sys = { workspace = true }
@@ -50,6 +51,9 @@ zip = "2"
 rmp-serde = "1.3"
 rmp = "0.8"
 bytes = "1"
+
+[target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
+tauri-plugin-single-instance = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [
