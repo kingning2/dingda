@@ -28,24 +28,28 @@ const CHAIN_ORDER = ["xianyu", "ali1688", "xiaohongshu", "douyin"];
 const ROUTE_CONTRIBUTION = {
   xianyu: "apps/desktop/src/route/platforms/xianyu/contribution.ts",
   ali1688: "apps/desktop/src/route/platforms/ali1688/contribution.ts",
+  xiaohongshu: "apps/desktop/src/route/platforms/xiaohongshu/contribution.ts",
 };
 
 /** 平台 id → 设置分区链步骤文件。 */
 const SETTINGS_STEP = {
   xianyu: "apps/desktop/src/app/settings/platform-sections/xianyu.ts",
   ali1688: "apps/desktop/src/app/settings/platform-sections/ali1688.ts",
+  xiaohongshu: "apps/desktop/src/app/settings/platform-sections/xiaohongshu.ts",
 };
 
 /** 平台 id → IPC 平台 barrel。 */
 const IPC_PLATFORM = {
   xianyu: "packages/platform/src/ipc/platforms/xianyu.ts",
   ali1688: "packages/platform/src/ipc/platforms/ali1688.ts",
+  xiaohongshu: "packages/platform/src/ipc/platforms/xiaohongshu.ts",
 };
 
 /** 平台 id → manage-nav 模块（Vite alias 路径）。 */
 const MANAGE_NAV_MODULE = {
   xianyu: "@feature/platform/xianyu/manage-nav",
   ali1688: "@feature/platform/ali1688/manage-nav",
+  xiaohongshu: "@feature/platform/xiaohongshu/manage-nav",
 };
 
 /** contribution / settings 导出名前缀。 */
@@ -196,16 +200,27 @@ function generateManageNavReexport(enabled) {
  * @returns {string}
  */
 function generateShellLifecyclesFixed(enabled) {
-  if (!enabled.includes("xianyu") && !enabled.includes("ali1688")) {
+  const hasAccountPlatforms =
+    enabled.includes("xianyu") ||
+    enabled.includes("ali1688") ||
+    enabled.includes("xiaohongshu");
+  if (!hasAccountPlatforms) {
     return "export function PlatformShellLifecycles() { return null; }";
   }
-  return [
-    'import { useAccountAutoConnect } from "@components/accounts/use-auto-connect";',
-    "export function PlatformShellLifecycles() {",
-    "  useAccountAutoConnect();",
-    "  return null;",
-    "}",
-  ].join("\n");
+  const lines = [
+    'import { useAccountSessionProbeListener } from "@components/accounts/use-account-session-probe-listener";',
+  ];
+  if (enabled.includes("xianyu") || enabled.includes("ali1688")) {
+    lines.push('import { useAccountAutoConnect } from "@components/accounts/use-auto-connect";');
+  }
+  lines.push("export function PlatformShellLifecycles() {");
+  lines.push("  useAccountSessionProbeListener();");
+  if (enabled.includes("xianyu") || enabled.includes("ali1688")) {
+    lines.push("  useAccountAutoConnect();");
+  }
+  lines.push("  return null;");
+  lines.push("}");
+  return lines.join("\n");
 }
 
 /**

@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node tooling/scripts/run-with-channel-platform.mjs xianyu,ali1688 pnpm --filter @desk/desktop dev",
-    "build": "node tooling/scripts/run-with-channel-platform.mjs xianyu,ali1688 pnpm --filter @desk/desktop build",
+    "dev": "node tooling/scripts/run-with-channel-platform.mjs xianyu,ali1688,xiaohongshu pnpm --filter @desk/desktop dev",
+    "build": "node tooling/scripts/run-with-channel-platform.mjs xianyu,ali1688,xiaohongshu pnpm --filter @desk/desktop build",
     "build:sidecar": "node tooling/scripts/build-sidecar.mjs",
     "build:license-verifier": "node tooling/scripts/build-license-verifier.mjs",
     "locked:gui": "node tooling/scripts/run-activation-gen-gui.mjs",

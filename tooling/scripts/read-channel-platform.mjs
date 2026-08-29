@@ -123,7 +123,7 @@ export function applyChannelPlatformEnv(env, platformsArg) {
   });
 
   /** 与 `apps/desktop/src-tauri/Cargo.toml` [features] 对齐。 */
-  const cargoPlatformFeatures = new Set(["xianyu", "ali1688"]);
+  const cargoPlatformFeatures = new Set(["xianyu", "ali1688", "xiaohongshu"]);
   const canonicalPlatforms = enabledPlatforms.join(",");
   const cargoFeatures = enabledPlatforms
     .filter((id) => cargoPlatformFeatures.has(id))
@@ -247,6 +247,7 @@ export function channelPlatformDefine(env = process.env) {
     __DINGDA_CHANNEL_PLATFORMS__: JSON.stringify(platforms),
     __DINGDA_HAS_XIANYU__: JSON.stringify(enabledSet.has("xianyu")),
     __DINGDA_HAS_ALI1688__: JSON.stringify(enabledSet.has("ali1688")),
+    __DINGDA_HAS_XIAOHONGSHU__: JSON.stringify(enabledSet.has("xiaohongshu")),
     __DINGDA_APP_BRAND_TITLE__: JSON.stringify(resolveAppBrandTitle(env)),
   };
 }

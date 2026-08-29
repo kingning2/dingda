@@ -16,7 +16,7 @@
     {
       "id": "xiaohongshu",
       "name": "小红书",
-      "implemented": false
+      "implemented": true
     },
     {
       "id": "douyin",
