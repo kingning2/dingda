@@ -37,7 +37,10 @@ class _Readable(Protocol):
 
 
 def serve_ipc(endpoint: str) -> None:
-    """产品入口：仅 pipe（无 SHM）。"""
+    """产品入口：仅 pipe（无 SHM）。另启动副驾直连 HTTP（随机端口）。"""
+    from dingda_sidecar.runtime.server import start_copilot_http_server
+
+    start_copilot_http_server()
     if sys.platform == "win32":
         _serve_named_pipe(endpoint)
     else:
