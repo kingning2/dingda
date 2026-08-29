@@ -58,5 +58,6 @@ tooling/strawberry-perl/
 docs/managed/changes/*
 
 .agents
-# 小红书 mcp Go sidecar 编译产物
-python/crawlers/vendor/xiaohongshu_mcp/bin/
+
+# Python sidecar 运行时数据
+python/.data/

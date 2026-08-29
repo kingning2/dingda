@@ -15,9 +15,11 @@ export default tseslint.config(
       "**/pnpm-lock.yaml",
       ".tmp/**",
       "python/browser_data/**",
+      "python/src/dingda_sidecar/crawlers/vendor/**", // vendored 第三方爬虫（同 ruff exclude），不参与 lint
       "tooling/strawberry-perl/**",
       "plugins/**", // 第三方参照项目（xianyu-auto-reply），非本仓库代码，不参与 lint
       "site/**", // 独立 Next.js 应用（自带 next build 类型检查与 lint），不参与根 lint
+      "website/**", // 独立 Next.js 应用（自带 eslint.config.mjs），不参与根 lint
     ],
   },
   js.configs.recommended,
