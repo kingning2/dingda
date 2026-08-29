@@ -8,8 +8,8 @@ import base64
 import json
 import unittest
 
-from crawlers.xianyu.ws.frames import list_user_messages_frame
-from crawlers.xianyu.ws.history import decode_history_content, parse_history_message
+from dingda_sidecar.crawlers.goofish.ws.frames import list_user_messages_frame
+from dingda_sidecar.crawlers.goofish.ws.history import decode_history_content, parse_history_message
 
 
 class TestHistoryParse(unittest.TestCase):

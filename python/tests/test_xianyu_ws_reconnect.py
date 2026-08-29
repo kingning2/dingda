@@ -6,11 +6,11 @@ import time
 import unittest
 from unittest.mock import patch
 
-import crawlers.xianyu.ws.token as token_mod
-from crawlers.xianyu.ws.constants import TOKEN_CACHE_TTL_SEC
-from crawlers.xianyu.ws.cookies import merge_cookie_header
-from crawlers.xianyu.ws.frames import sync_ack_frame
-from crawlers.xianyu.ws.token import TokenError, fetch_ws_token
+import dingda_sidecar.crawlers.goofish.ws.token as token_mod
+from dingda_sidecar.crawlers.goofish.ws.constants import TOKEN_CACHE_TTL_SEC
+from dingda_sidecar.crawlers.goofish.ws.cookies import merge_cookie_header
+from dingda_sidecar.crawlers.goofish.ws.frames import sync_ack_frame
+from dingda_sidecar.crawlers.goofish.ws.token import TokenError, fetch_ws_token
 
 
 class TestWsReconnectHelpers(unittest.TestCase):
@@ -31,7 +31,7 @@ class TestWsReconnectHelpers(unittest.TestCase):
         token_mod._token_cache.clear()
         cookies = [{"name": "unb", "value": "u1"}]
         with patch(
-            "crawlers.xianyu.ws.token._fetch_ws_token_uncached",
+            "dingda_sidecar.crawlers.goofish.ws.token._fetch_ws_token_uncached",
             return_value="tok1",
         ) as mocked:
             first = fetch_ws_token(cookies)
@@ -44,7 +44,7 @@ class TestWsReconnectHelpers(unittest.TestCase):
         token_mod._token_cache.clear()
         cookies = [{"name": "unb", "value": "u2"}]
         with patch(
-            "crawlers.xianyu.ws.token._fetch_ws_token_uncached",
+            "dingda_sidecar.crawlers.goofish.ws.token._fetch_ws_token_uncached",
             side_effect=["tok-a", "tok-b"],
         ):
             first = fetch_ws_token(cookies)

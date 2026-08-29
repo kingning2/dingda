@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 
-from runtime.observability import RuntimeObservability, RuntimeState, track_workflow
+from dingda_sidecar.runtime.observability import RuntimeObservability, RuntimeState, track_workflow
 
 
 class RuntimeObservabilityTests(unittest.TestCase):
@@ -24,7 +24,7 @@ class RuntimeObservabilityTests(unittest.TestCase):
         obs.end_op(op_id)
 
     def test_track_workflow_context_manager(self) -> None:
-        from runtime.observability import get_runtime_observability
+        from dingda_sidecar.runtime.observability import get_runtime_observability
 
         obs = get_runtime_observability()
         with track_workflow("agent_reply", detail="trace-1") as run:

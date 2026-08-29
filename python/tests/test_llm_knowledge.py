@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import unittest
 
-from agent.graph.model import create_chat_model
-from agent.knowledge import ItemKnowledge, build_item_context
-from agent.llm.factory import normalize_provider_type
-from config.settings import AiSettings
-from services.price import compare_prices
-from services.product import match_products, normalize_products
+from dingda_sidecar.agent.graph.model import create_chat_model
+from dingda_sidecar.agent.knowledge import ItemKnowledge, build_item_context
+from dingda_sidecar.agent.llm.factory import normalize_provider_type
+from dingda_sidecar.config.settings import AiSettings
+from dingda_sidecar.services.price import compare_prices
+from dingda_sidecar.services.product import match_products, normalize_products
 
 
 class TestLlmFactory(unittest.TestCase):

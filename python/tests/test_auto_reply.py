@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import unittest
 
-from agent.graph.model import BARGAIN_LIMIT_REPLY
-from agent.prompts.intent import Intent, route_intent
-from agent.workflows.buyer_reply import run_buyer_reply
-from config.settings import AiSettings
+from dingda_sidecar.agent.graph.model import BARGAIN_LIMIT_REPLY
+from dingda_sidecar.agent.prompts.intent import Intent, route_intent
+from dingda_sidecar.agent.workflows.buyer_reply import run_buyer_reply
+from dingda_sidecar.config.settings import AiSettings
 
 
 class TestIntent(unittest.TestCase):

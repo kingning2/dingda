@@ -8,7 +8,7 @@ import base64
 import json
 import unittest
 
-from crawlers.xianyu.ws.push import (
+from dingda_sidecar.crawlers.goofish.ws.push import (
     decode_push_payload,
     extract_incoming_text,
     parse_sync_push_package,

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import unittest
 
-from runtime import dispatch as dispatch_mod
-from runtime.dispatch import dispatch_post
-from runtime.ipc import HANDLERS, ROUTES
+from dingda_sidecar.runtime import dispatch as dispatch_mod
+from dingda_sidecar.runtime.dispatch import dispatch_post
+from dingda_sidecar.runtime.ipc import HANDLERS, ROUTES
 
 
 class DispatchPostTests(unittest.TestCase):

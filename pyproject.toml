@@ -10,6 +10,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "pytest>=8.0",
   "ruff>=0.11",
 ]
 
@@ -19,7 +20,7 @@ dingda-sidecar = { path = "python", editable = true }
 [tool.ruff]
 target-version = "py313"
 line-length = 100
-src = ["python"]
+src = ["python/src", "python/tests"]
 # vendored 第三方爬虫源码不参与本仓库风格约束（见 python/crawlers/vendor/VENDOR.md）
 exclude = ["**/crawlers/vendor/**"]
 
@@ -37,7 +38,7 @@ ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 # 自动生成的契约文件：导入排序由 codegen 输出决定，格式化会随重新生成被覆盖。
-"python/contracts/generated/*.py" = ["I001"]
+"python/src/dingda_sidecar/contracts/*.py" = ["I001"]
 
 [tool.ruff.lint.isort]
 known-first-party = [

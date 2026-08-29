@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from crawlers.xianyu.item import parse_item_detail, parse_list_page
+from dingda_sidecar.crawlers.goofish.item import parse_item_detail, parse_list_page
 
 
 class XianyuItemParseTests(unittest.TestCase):

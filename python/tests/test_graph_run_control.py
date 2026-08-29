@@ -6,15 +6,24 @@ import threading
 import time
 import unittest
 
-from runtimes.langgraph.errors import ErrorKind, classify_exception
-from runtimes.langgraph.handlers import (
+from dingda_sidecar.runtime.langgraph.errors import ErrorKind, classify_exception
+from dingda_sidecar.runtime.langgraph.handlers import (
     handle_agent_run_cancel,
     handle_agent_run_control,
     handle_agent_run_start,
     handle_agent_run_status,
 )
-from runtimes.langgraph.run_control import GraphRun, deep_copy_state, get_run_registry, new_run_id
-from runtimes.langgraph.step_runner import PRICE_COMPARE_STEPS, build_initial_state, run_steps
+from dingda_sidecar.runtime.langgraph.run_control import (
+    GraphRun,
+    deep_copy_state,
+    get_run_registry,
+    new_run_id,
+)
+from dingda_sidecar.runtime.langgraph.step_runner import (
+    PRICE_COMPARE_STEPS,
+    build_initial_state,
+    run_steps,
+)
 
 
 class TestClassify(unittest.TestCase):

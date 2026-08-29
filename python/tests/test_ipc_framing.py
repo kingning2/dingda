@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 import unittest
 
-from runtime.ipc_framing import encode_message, read_frame, write_frame
+from dingda_sidecar.runtime.ipc_framing import encode_message, read_frame, write_frame
 
 
 class IpcFramingTests(unittest.TestCase):

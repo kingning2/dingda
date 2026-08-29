@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from crawlers.xianyu.search.mtop import map_item, parse_search_items
+from dingda_sidecar.crawlers.goofish.search_mtop import map_item, parse_search_items
 
 FIXTURE = {
     "data": {

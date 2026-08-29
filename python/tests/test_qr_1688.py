@@ -12,12 +12,12 @@ PYTHON_ROOT = Path(__file__).resolve().parents[1]
 if str(PYTHON_ROOT) not in sys.path:
     sys.path.insert(0, str(PYTHON_ROOT))
 
-from crawlers.alibaba.login.qrcode import (  # noqa: E402
+from dingda_sidecar.crawlers.alibaba.login.qrcode import (  # noqa: E402
     find_code_content,
     parse_qr_login_status,
     render_code_content_to_data_url,
 )
-from crawlers.core.login.helpers import (  # noqa: E402
+from dingda_sidecar.crawlers.core.login.helpers import (  # noqa: E402
     cookie_domains,
     cookies_indicate_platform_login,
     has_login_cookie,
