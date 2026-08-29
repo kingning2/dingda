@@ -25,6 +25,9 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -38,22 +41,30 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: website/pnpm-lock.yaml
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.path }}
+          key: ${{ runner.os }}-pnpm-website-${{ hashFiles('website/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-website-
 
       - name: Install & build website
-        working-directory: website
         env:
           NEXT_PUBLIC_BASE_PATH: /dingda
           NEXT_PUBLIC_SITE_URL: https://kingning2.github.io/dingda
           # 头条站长平台 HTML 验证：在 zhanzhang.toutiao.com 获取后写入仓库 Secret
           NEXT_PUBLIC_TOUTIAO_SITE_VERIFICATION: ${{ secrets.TOUTIAO_SITE_VERIFICATION }}
         run: |
-          pnpm install --frozen-lockfile
+          pnpm install --frozen-lockfile --prefer-offline
           pnpm run build
 
       - name: Verify sitemap.xml exists
-        working-directory: website
         run: |
           test -f out/sitemap.xml
           echo "--- sitemap.xml ---"
