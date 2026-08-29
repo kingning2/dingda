@@ -48,12 +48,13 @@ import {
 import type { AccountPanelDeps } from "./types";
 import { AccountQrDialog } from "./account-qr-dialog";
 import {
+  getCachedSessionProbe,
   invalidateProbeCache,
   loadConnectedAccountIds,
   probeAccountLoginSessions,
-  probeConnectedAccounts,
   setAccountConnected,
 } from "./use-connected-accounts";
+import { ACCOUNTS_SESSION_PROBED_EVENT } from "./account-session-events";
 
 
 /**
@@ -84,14 +85,26 @@ function isAuthExpiredText(text?: string | null): boolean {
  * @created 2026-08-22
  *
  * @param account - 账号记录
- * @returns `xianyu` 或 `ali1688`
+ * @returns `xianyu` / `ali1688` / `xiaohongshu`
  */
-export function resolveAccountPlatform(account: XianyuAccount): "xianyu" | "ali1688" {
-  if (account.platform === "ali1688" || account.platform === "xianyu") {
+export function resolveAccountPlatform(
+  account: XianyuAccount,
+): "xianyu" | "ali1688" | "xiaohongshu" {
+  if (
+    account.platform === "ali1688" ||
+    account.platform === "xianyu" ||
+    account.platform === "xiaohongshu"
+  ) {
     return account.platform;
   }
   if (account.account_id.startsWith("1688:")) {
     return "ali1688";
+  }
+  if (
+    account.account_id.startsWith("xhs:") ||
+    account.account_id.startsWith("xiaohongshu-qr-")
+  ) {
+    return "xiaohongshu";
   }
   return "xianyu";
 }
@@ -297,82 +310,48 @@ export function AccountsPanel({ deps }: { deps: AccountPanelDeps }) {
     void refreshConnectionStates(accounts.map((account) => account.account_id));
   }, [accounts, supportsConnection, refreshConnectionStates]);
 
-  /** 恢复「已连接」标记并探针校验登录是否过期（闲鱼等已连渠道账号）。 */
-  const refreshConnectedSessionProbe = useCallback(async (list: XianyuAccount[]) => {
-    const connectedIds = await loadConnectedAccountIds();
-    const platformConnected = connectedIds.filter((accountId) =>
-      list.some((account) => account.account_id === accountId),
-    );
-    if (platformConnected.length === 0) {
-      return;
-    }
-
-    setConnectionStates((current) => {
-      const next = { ...current };
-      for (const accountId of platformConnected) {
-        if (next[accountId] !== "auth_expired") {
-          next[accountId] = "connecting";
-        }
+  /** 从启动探针缓存同步登录态展示（不发网络请求，不阻塞渲染）。 */
+  const applyCachedProbeStates = useCallback(
+    async (list: XianyuAccount[]) => {
+      let scoped = list.filter((account) => Boolean(account.cookie?.trim()));
+      if (!isLoginSession) {
+        const connectedIds = new Set(await loadConnectedAccountIds());
+        scoped = scoped.filter((account) => connectedIds.has(account.account_id));
       }
-      return next;
-    });
 
-    // 已有渠道 WS 快照为 connected 的账号直接视为在线，不发 Playwright 探针。
-    const results: Record<string, boolean> = {};
-    const needProbe: XianyuAccount[] = [];
-    await Promise.all(
-      list
-        .filter((account) => platformConnected.includes(account.account_id))
-        .map(async (account) => {
-          if (deps.connectionState && Boolean(account.cookie?.trim())) {
-            try {
-              const state = normalizeChannelConnectionState(
-                await deps.connectionState(OWNER_ID, account.account_id),
-              );
-              if (state === "connected") {
-                results[account.account_id] = true;
-                return;
-              }
-            } catch {
-              // 状态查询失败则退回探针。
-            }
-          }
-          needProbe.push(account);
-        }),
-    );
-
-    Object.assign(results, await probeConnectedAccounts(needProbe));
-    setConnectionStates((current) => {
-      const next = { ...current };
-      for (const [accountId, ok] of Object.entries(results)) {
-        next[accountId] = ok ? "connected" : "auth_expired";
+      if (scoped.length === 0) {
+        return;
       }
-      return next;
-    });
-    const expiredIds = Object.entries(results)
-      .filter(([, ok]) => !ok)
-      .map(([accountId]) => accountId);
-    if (expiredIds.length === 0) {
-      setConnectionDetails((current) => {
+
+      setConnectionStates((current) => {
         const next = { ...current };
-        for (const accountId of Object.keys(results)) {
-          delete next[accountId];
+        for (const account of scoped) {
+          const cached = getCachedSessionProbe(account.account_id);
+          if (cached === true) {
+            next[account.account_id] = "connected";
+          } else if (cached === false && current[account.account_id] !== "connected") {
+            next[account.account_id] = "auth_expired";
+          }
         }
         return next;
       });
-      return;
-    }
+      setConnectionDetails((current) => {
+        const next = { ...current };
+        for (const account of scoped) {
+          const cached = getCachedSessionProbe(account.account_id);
+          if (cached === false) {
+            next[account.account_id] = "登录态已过期，请重新扫码";
+          } else if (cached === true) {
+            delete next[account.account_id];
+          }
+        }
+        return next;
+      });
+    },
+    [isLoginSession],
+  );
 
-    setConnectionDetails((current) => {
-      const next = { ...current };
-      for (const accountId of expiredIds) {
-        next[accountId] = "登录态已过期，请重新扫码";
-      }
-      return next;
-    });
-  }, []);
-
-  /** 1688 等：对有 Cookie 的账号批量探针，先展示「检测中」。 */
+  /** 1688 / 小红书等：用户操作后即时探针（如扫码成功）。 */
   const refreshLoginSessionProbe = useCallback(async (list: XianyuAccount[]) => {
     const targets = list.filter((account) => Boolean(account.cookie?.trim()));
     if (targets.length === 0) {
@@ -389,7 +368,7 @@ export function AccountsPanel({ deps }: { deps: AccountPanelDeps }) {
       return next;
     });
 
-    const results = await probeAccountLoginSessions(targets);
+    const results = await probeAccountLoginSessions(targets, { ignoreCache: true });
     setConnectionStates((current) => {
       const next = { ...current };
       for (const account of targets) {
@@ -414,16 +393,35 @@ export function AccountsPanel({ deps }: { deps: AccountPanelDeps }) {
     });
   }, []);
 
+  /** 账号列表就绪后读缓存；启动探针完成后再同步一次。 */
   useEffect(() => {
-    if (accounts.length === 0) {
+    if (loading || accounts.length === 0) {
       return;
     }
-    if (isLoginSession) {
-      void refreshLoginSessionProbe(accounts);
-      return;
-    }
-    void refreshConnectedSessionProbe(accounts);
-  }, [accounts, isLoginSession, refreshConnectedSessionProbe, refreshLoginSessionProbe]);
+    void applyCachedProbeStates(accounts);
+  }, [accounts, applyCachedProbeStates, loading]);
+
+  useEffect(() => {
+    const onProbed = () => {
+      void accountList(OWNER_ID)
+        .then((list) => {
+          const platformAccounts = list.filter(
+            (account) => resolveAccountPlatform(account) === platform,
+          );
+          void applyCachedProbeStates(platformAccounts);
+          if (supportsConnection && platformAccounts.length > 0) {
+            void refreshConnectionStates(
+              platformAccounts.map((account) => account.account_id),
+            );
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener(ACCOUNTS_SESSION_PROBED_EVENT, onProbed);
+    return () => {
+      window.removeEventListener(ACCOUNTS_SESSION_PROBED_EVENT, onProbed);
+    };
+  }, [applyCachedProbeStates, platform, refreshConnectionStates, supportsConnection]);
 
   const filtered = useMemo(() => {
     return accounts.filter((account) => {

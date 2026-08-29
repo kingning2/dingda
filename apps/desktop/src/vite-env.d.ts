@@ -15,6 +15,9 @@ declare const __DINGDA_HAS_XIANYU__: boolean;
 /** 1688 是否编入本次构建 — 由 Vite `define` 注入。 */
 declare const __DINGDA_HAS_ALI1688__: boolean;
 
+/** 小红书是否编入本次构建 — 由 Vite `define` 注入。 */
+declare const __DINGDA_HAS_XIAOHONGSHU__: boolean;
+
 /** 编译期标题栏品牌中文名 — 由 Vite `define` 注入。 */
 declare const __DINGDA_APP_BRAND_TITLE__: string;
 

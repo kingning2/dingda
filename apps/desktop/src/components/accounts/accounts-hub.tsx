@@ -26,9 +26,12 @@ import { AccountsPanel } from "./accounts-panel";
 export function AccountsHubPage({
   tabs,
   initialTab,
+  embedded = false,
 }: {
   tabs: AccountsTab[];
   initialTab?: AccountPlatform;
+  /** 嵌入设置页时不渲染 PageScaffold 大标题。 */
+  embedded?: boolean;
 }) {
   const [tab, setTab] = useState<AccountPlatform | undefined>(initialTab ?? tabs[0]?.id);
 
@@ -42,8 +45,8 @@ export function AccountsHubPage({
       ? `${tabs.map((item) => item.deps.platformName).join(" 与 ")} 分站扫码登录，互不串绑`
       : `${tabs[0]?.deps.platformName ?? ""}账号扫码登录与管理`;
 
-  return (
-    <PageScaffold title="账号管理" subtitle={subtitle}>
+  const body = (
+    <>
       {tabs.length > 1 ? (
         <div className="mb-4 flex border-b border-border" role="tablist" aria-label="账号平台">
           {tabs.map((item) => (
@@ -65,6 +68,16 @@ export function AccountsHubPage({
         </div>
       ) : null}
       {active ? <AccountsPanel key={active.id} deps={active.deps} /> : null}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="min-h-0">{body}</div>;
+  }
+
+  return (
+    <PageScaffold title="账号管理" subtitle={subtitle}>
+      {body}
     </PageScaffold>
   );
 }

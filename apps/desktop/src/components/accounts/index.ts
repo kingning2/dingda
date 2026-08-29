@@ -21,3 +21,6 @@ export {
   probeConnectedAccounts,
   setAccountConnected,
 } from "./use-connected-accounts";
+export { useAccountGateStatus } from "./use-account-gate";
+export { useAccountSessionProbeListener } from "./use-account-session-probe-listener";
+export { ACCOUNTS_SESSION_PROBED_EVENT } from "./account-session-events";

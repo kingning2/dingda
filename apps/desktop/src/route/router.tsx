@@ -1,38 +1,54 @@
 /**
- * 应用路由：壳层常驻；具体 Feature 由 WorkspaceOutlet 按标签懒加载。
- *
- * 渠道相关路由为编译期静态路径（见 `@platform-routes`），无 `:platform` 动态段。
- * `/features/channel` 重定向至当前平台的管理后台。
- * Feature 路由由 {@link listWorkspaceFeatures} 动态展开。
- * 后端不可用走 `/503`；授权门控在 WorkspaceOutlet 路由级处理。
- *
- * @author coisini
- * @created 2026-07-21
+ * 应用路由：选品产品路径；旧客服 / channel 路径 redirect 到工作台。
  */
 
 import { createBrowserRouter, Navigate } from "react-router";
-import { CHANNEL_MANAGE_ROOT } from "@desk/platform/compile";
-import { routeSegments } from "@platform-routes";
 import { featureRoutePath, listWorkspaceFeatures } from "@feature/workspace-features";
 
 import { AccessGate } from "../app/access-gate";
 import { ServiceUnavailablePage } from "../app/pages/service-unavailable-page";
 import { AppShell } from "../app/shell";
 
-/**
- * 占位路由节点：实际页面由 {@link AppShell} 内 WorkspaceOutlet 按 pathname 懒加载。
- *
- * @author Xiaoman
- * @created 2026-08-20
- */
 function WorkspacePathMarker() {
   return null;
 }
 
-/** 为仅匹配 URL 的工作区路径补上 element，消除 React Router leaf 警告。 */
 function workspaceRoute(path: string) {
   return { path, element: <WorkspacePathMarker /> };
 }
+
+const PRODUCT_ROUTE_PATHS = [
+  "dashboard",
+  "discovery",
+  "discovery/high-profit",
+  "discovery/hot",
+  "discovery/blue-ocean",
+  "discovery/new",
+  "discovery/start",
+  "products",
+  "products/:productId",
+  "products/:productId/supply",
+  "products/:productId/demand",
+  "products/:productId/matches",
+  "products/:productId/profit",
+  "products/:productId/history",
+  "profit",
+  "profit/calculator",
+  "profit/templates",
+  "monitoring",
+  "monitoring/subscriptions",
+  "monitoring/alerts",
+  "monitoring/rules",
+  "tasks",
+  "tasks/:taskId",
+  "settings",
+  "settings/general",
+  "settings/accounts",
+  "settings/collection",
+  "settings/profit",
+  "settings/ai",
+  "settings/subscription",
+];
 
 export const appRouter = createBrowserRouter([
   { path: "/503", element: <ServiceUnavailablePage /> },
@@ -44,18 +60,17 @@ export const appRouter = createBrowserRouter([
       </AccessGate>
     ),
     children: [
-      { index: true, element: <Navigate to={CHANNEL_MANAGE_ROOT} replace /> },
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      ...PRODUCT_ROUTE_PATHS.map((path) => workspaceRoute(path)),
       ...listWorkspaceFeatures().map((feature) =>
         workspaceRoute(featureRoutePath(feature)),
       ),
-      {
-        path: "features/channel",
-        element: <Navigate to={CHANNEL_MANAGE_ROOT} replace />,
-      },
-      ...routeSegments.map((segment) => ({
-        ...segment,
-        element: <WorkspacePathMarker />,
-      })),
+      { path: "features/discovery", element: <Navigate to="/discovery" replace /> },
+      { path: "features/ai", element: <Navigate to="/settings/ai" replace /> },
+      { path: "features/chat", element: <Navigate to="/dashboard" replace /> },
+      { path: "features/knowledge", element: <Navigate to="/dashboard" replace /> },
+      { path: "features/channel", element: <Navigate to="/dashboard" replace /> },
+      { path: "features/channel/*", element: <Navigate to="/dashboard" replace /> },
     ],
   },
 ]);

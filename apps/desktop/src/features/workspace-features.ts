@@ -1,15 +1,16 @@
 /**
  * 工作区 Feature 注册表 — 侧栏 / 路由 / 页面元信息的唯一清单。
  *
- * 各 Feature 在自身 `index.ts` 声明 `navItem` 与可选门控，
- * 本文件汇总后供 Sidebar、Router、page-meta 消费。
+ * 选品产品：仅注册业务 L1；设置走独立底栏入口；客服/AI 不注册。
  */
 
 import type { ComponentType, SVGProps } from "react";
-import { aiFeature } from "@feature/agent";
-import { chatFeature } from "@feature/chat";
+import { dashboardFeature } from "@feature/dashboard";
 import { discoveryFeature, DISCOVERY_AVAILABLE } from "@feature/discovery";
-import { knowledgeFeature } from "@feature/knowledge";
+import { productsFeature } from "@feature/products";
+import { profitFeature } from "@feature/profit";
+import { monitoringFeature } from "@feature/monitoring";
+import { tasksFeature } from "@feature/tasks";
 
 /** 侧栏图标组件。 */
 export type FeatureNavIcon = ComponentType<SVGProps<SVGSVGElement> & { className?: string }>;
@@ -42,33 +43,44 @@ export interface WorkspaceFeature {
 
 /**
  * 全部工作区 Feature（含可能未启用的）。
- * 新增 Feature：在对应 `index.ts` 导出元信息后加入本数组即可。
  */
 export const WORKSPACE_FEATURES: WorkspaceFeature[] = [
   {
-    ...chatFeature,
+    ...dashboardFeature,
     navSlot: "header",
     order: 10,
-    description: "查看买家消息并人工回复",
+    description: "今天有什么值得卖",
   },
   {
     ...discoveryFeature,
     available: DISCOVERY_AVAILABLE,
     navSlot: "header",
     order: 20,
-    description: "闲鱼强需求 × 1688 货源，Agent 比价选品",
+    description: "发现高利润 / 热门 / 蓝海 / 新商品机会",
   },
   {
-    ...knowledgeFeature,
+    ...productsFeature,
     navSlot: "header",
     order: 30,
-    description: "沉淀商品话术与常见问题，供客服快速检索",
+    description: "标准商品目录与指标",
   },
   {
-    ...aiFeature,
-    navSlot: "footer",
-    order: 10,
-    description: "管理智能回复与双方比价使用的 AI 账号",
+    ...profitFeature,
+    navSlot: "header",
+    order: 40,
+    description: "成本模型与利润测算",
+  },
+  {
+    ...monitoringFeature,
+    navSlot: "header",
+    order: 50,
+    description: "价格与竞品监控提醒",
+  },
+  {
+    ...tasksFeature,
+    navSlot: "header",
+    order: 60,
+    description: "选品与采集等业务任务",
   },
 ];
 

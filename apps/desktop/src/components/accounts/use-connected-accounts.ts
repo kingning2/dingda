@@ -72,6 +72,11 @@ export function invalidateProbeCache(accountId: string): void {
   probeCacheAt.delete(accountId);
 }
 
+/** 写入探针结果（启动轮换 / 探活后供面板读取）。 */
+export function recordSessionProbe(accountId: string, ok: boolean): void {
+  writeProbe(accountId, ok);
+}
+
 interface ProbeOptions {
   /** 忽略缓存强制探针（用户主动点击时用）。 */
   ignoreCache?: boolean;

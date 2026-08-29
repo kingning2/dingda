@@ -23,6 +23,7 @@ import {
   setAutoConnectOnStartEnabled,
 } from "@components/accounts/use-auto-connect";
 import { ali1688AccountTab } from "@feature/platform/ali1688/accounts";
+import { xiaohongshuAccountTab } from "@feature/platform/xiaohongshu/accounts";
 
 const xianyuDeps: AccountPanelDeps = {
   platform: "xianyu",
@@ -47,10 +48,12 @@ export const xianyuAccountTab: AccountsTab = {
   deps: xianyuDeps,
 };
 
-/** 本构建启用的账号管理 Tab（1688 未编入时只有闲鱼）。 */
-const ENABLED_ACCOUNT_TABS: AccountsTab[] = __DINGDA_HAS_ALI1688__
-  ? [xianyuAccountTab, ali1688AccountTab]
-  : [xianyuAccountTab];
+/** 本构建启用的账号管理 Tab（按平台 feature 门控）。 */
+const ENABLED_ACCOUNT_TABS: AccountsTab[] = [
+  xianyuAccountTab,
+  ...(__DINGDA_HAS_ALI1688__ ? [ali1688AccountTab] : []),
+  ...(__DINGDA_HAS_XIAOHONGSHU__ ? [xiaohongshuAccountTab] : []),
+];
 
 /**
  * 账号管理页（默认闲鱼 Tab；双站构建时含 1688 Tab）。
@@ -62,8 +65,13 @@ const ENABLED_ACCOUNT_TABS: AccountsTab[] = __DINGDA_HAS_ALI1688__
  */
 export function XianyuAccountsPage({
   initialTab = "xianyu",
+  embedded = false,
 }: {
   initialTab?: AccountPlatform;
+  /** 嵌入设置路由时不渲染账号页大标题。 */
+  embedded?: boolean;
 }) {
-  return <AccountsHubPage tabs={ENABLED_ACCOUNT_TABS} initialTab={initialTab} />;
+  return (
+    <AccountsHubPage tabs={ENABLED_ACCOUNT_TABS} initialTab={initialTab} embedded={embedded} />
+  );
 }

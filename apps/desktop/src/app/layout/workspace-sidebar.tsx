@@ -1,35 +1,30 @@
 /**
- * 工作区侧栏 — Aceternity Sidebar + 可折叠菜单分组 + 动态 Feature 菜单。
+ * 工作区侧栏 — 选品业务一级导航 + 底栏设置。
  *
- * @author Xiaoman
- * @created 2026-08-20
+ * 不展示客服 / AI / 平台「交易」分组。
  */
 
 import { useMemo } from "react";
-import { CHANNEL_MANAGE_ROOT, managePath } from "@desk/platform/compile";
 import {
   DesktopSidebar,
-  SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupsProvider,
   SidebarHeader,
   SidebarLink,
   SidebarToggle,
 } from "@desk/ui";
-import { Home } from "@desk/ui/icons";
-import { manageNavGroups, type ManageNavItem } from "@platform-routes";
+import { Settings } from "@desk/ui/icons";
 import { listWorkspaceFeatures, type WorkspaceFeature } from "@feature/workspace-features";
 
-const GROUP_STORAGE_KEY = "desk.sidebar.groups";
-/** 首次使用默认展开的分组（其余默认收起）。 */
-const DEFAULT_OPEN_GROUPS = ["交易"];
+/** L1 点击时落到默认二级路由。 */
+const DEFAULT_CHILD_PATH: Record<string, string> = {
+  "/discovery": "/discovery/high-profit",
+  "/profit": "/profit/calculator",
+  "/monitoring": "/monitoring/subscriptions",
+  "/settings": "/settings/general",
+};
 
 /**
  * 工作区侧栏属性。
- *
- * @author Xiaoman
- * @created 2026-08-20
  */
 export interface WorkspaceSidebarProps {
   /** 当前激活路径。 */
@@ -55,49 +50,27 @@ function FeatureNavLink({
   onNavigate: (path: string) => void;
 }) {
   const Icon = feature.navItem.icon;
+  const target = DEFAULT_CHILD_PATH[feature.path] ?? feature.path;
   return (
     <SidebarLink
       label={feature.navItem.label}
       icon={<Icon className="size-[1.125rem]" aria-hidden />}
       active={isNavActive(activePath, feature.path)}
-      onClick={() => onNavigate(feature.path)}
+      onClick={() => onNavigate(target)}
     />
   );
 }
 
 /**
  * 桌面工作区左侧导航。
- *
- * @author Xiaoman
- * @created 2026-08-20
  */
 export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarProps) {
   const headerFeatures = useMemo(() => listWorkspaceFeatures("header"), []);
-  const footerFeatures = useMemo(() => listWorkspaceFeatures("footer"), []);
-  const autoOpenGroupIds = useMemo(
-    () =>
-      manageNavGroups
-        .filter((group) =>
-          group.items.some((item) => isNavActive(activePath, managePath(item.key))),
-        )
-        .map((group) => group.label),
-    [activePath],
-  );
 
   return (
     <DesktopSidebar className="min-h-0">
       <div className="flex h-full min-h-0 flex-col">
         <SidebarHeader>
-          <SidebarLink
-            label="首页"
-            icon={<Home className="size-[1.125rem]" aria-hidden />}
-            active={
-              activePath === CHANNEL_MANAGE_ROOT ||
-              activePath === managePath("dashboard") ||
-              activePath === "/"
-            }
-            onClick={() => onNavigate(CHANNEL_MANAGE_ROOT)}
-          />
           {headerFeatures.map((feature) => (
             <FeatureNavLink
               key={feature.id}
@@ -108,53 +81,15 @@ export function WorkspaceSidebar({ activePath, onNavigate }: WorkspaceSidebarPro
           ))}
         </SidebarHeader>
 
-        <SidebarGroupsProvider
-          storageKey={GROUP_STORAGE_KEY}
-          defaultOpenGroupIds={DEFAULT_OPEN_GROUPS}
-          autoOpenGroupIds={autoOpenGroupIds}
-        >
-          <SidebarContent>
-            {manageNavGroups.map((group) => {
-              const GroupIcon = group.icon;
-              return (
-                <SidebarGroup
-                  key={group.label}
-                  groupId={group.label}
-                  label={group.label}
-                  icon={
-                    GroupIcon ? (
-                      <GroupIcon className="size-[1.125rem]" aria-hidden />
-                    ) : undefined
-                  }
-                >
-                  {group.items.map((item: ManageNavItem) => {
-                    const path = managePath(item.key);
-                    const Icon = item.icon;
-                    return (
-                      <SidebarLink
-                        key={item.key}
-                        label={item.label}
-                        icon={<Icon className="size-[1.125rem]" aria-hidden />}
-                        active={isNavActive(activePath, path)}
-                        onClick={() => onNavigate(path)}
-                      />
-                    );
-                  })}
-                </SidebarGroup>
-              );
-            })}
-          </SidebarContent>
-        </SidebarGroupsProvider>
+        <div className="min-h-0 flex-1" aria-hidden />
 
         <SidebarFooter className="mt-auto space-y-2 border-t border-border pt-2">
-          {footerFeatures.map((feature) => (
-            <FeatureNavLink
-              key={feature.id}
-              feature={feature}
-              activePath={activePath}
-              onNavigate={onNavigate}
-            />
-          ))}
+          <SidebarLink
+            label="设置"
+            icon={<Settings className="size-[1.125rem]" aria-hidden />}
+            active={isNavActive(activePath, "/settings")}
+            onClick={() => onNavigate("/settings/general")}
+          />
           <SidebarToggle placement="footer" />
         </SidebarFooter>
       </div>

@@ -16,7 +16,7 @@ import {
   subscribeWindowMaximized,
   toggleMaximizeWindow,
 } from "@desk/platform";
-import { SettingsDialogProvider, useSettingsDialog } from "./settings";
+import { SettingsDialogProvider } from "./settings";
 import { PlatformShellLifecycles } from "virtual:dingda/platform-shell-lifecycles";
 import { useRouteChange, useStartApp, usePluginLifecycle } from "../lifecycle";
 import { AppLayout, MainPanel } from "./layout";
@@ -36,7 +36,6 @@ import { WorkspaceOutlet } from "./workspace-outlet";
 function AppShellInner() {
   const platform = getPlatform();
   const [isMaximized, setIsMaximized] = useState(false);
-  const { openSettings } = useSettingsDialog();
   const [sidebarExpanded, setSidebarExpanded] = useState(() => {
     if (typeof window === "undefined") {
       return true;
@@ -52,6 +51,19 @@ function AppShellInner() {
   useRouteChange();
   useStartApp();
   usePluginLifecycle();
+
+  useEffect(() => {
+    const redirects: Record<string, string> = {
+      "/discovery": "/discovery/high-profit",
+      "/profit": "/profit/calculator",
+      "/monitoring": "/monitoring/subscriptions",
+      "/settings": "/settings/general",
+    };
+    const next = redirects[activePath];
+    if (next) {
+      selectTab(next);
+    }
+  }, [activePath, selectTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,7 +99,7 @@ function AppShellInner() {
               <IconButton
                 label="设置"
                 title="设置"
-                onClick={() => openSettings()}
+                onClick={() => selectTab("/settings/general")}
               >
                 <Settings className="size-3.5" />
               </IconButton>
