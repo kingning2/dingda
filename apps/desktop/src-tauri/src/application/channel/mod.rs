@@ -4,6 +4,6 @@ pub mod coordinator;
 
 pub use crate::domain::channel;
 pub use crate::domain::channel::dispatcher;
-pub use crate::infrastructure::storage::{conversation_id_for, inbound_to_message, ChannelRepo};
+pub use crate::infrastructure::database::{conversation_id_for, inbound_to_message, ChannelRepo};
 
 pub use coordinator::ChannelCoordinator;

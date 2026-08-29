@@ -2,7 +2,7 @@
 
 use super::plugin_install_dir;
 use super::types::{BuiltinPlugin, PluginFetch};
-use crate::contracts::contracts::PluginItem;
+use crate::contracts::PluginItem;
 use std::path::{Path, PathBuf};
 
 /// 插件稳定 id。

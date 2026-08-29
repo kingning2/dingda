@@ -1,6 +1,6 @@
 //! 渠道入站消息归一化 DTO。
 //!
-//! 协议层归一化后的入站消息（应用层继续加工为 [`crate::contracts::contracts::ChannelMessage`]）。
+//! 协议层归一化后的入站消息（应用层继续加工为 [`crate::contracts::ChannelMessage`]）。
 //! 由 `business`（channel.rs）与 `platform`（协议层）共用，故下沉到 `common`，
 //! 避免 `business` 依赖 `platform`。
 

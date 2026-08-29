@@ -10,7 +10,7 @@
 use crate::commands::AccountHandle;
 use crate::commands::AccountQrHandle;
 use crate::contracts::DingDaResult;
-use crate::infrastructure::storage::{InMemoryAccountStore, SqliteBusinessDb};
+use crate::infrastructure::database::{InMemoryAccountStore, SqliteBusinessDb};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use tauri::Manager;

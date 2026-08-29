@@ -24,9 +24,10 @@ fn default_account_platform() -> String {
 }
 
 /// 账号状态。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AccountStatus {
+    #[default]
     Active,
     Disabled,
 }
@@ -49,9 +50,10 @@ impl AccountStatus {
 }
 
 /// 登录方式。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum LoginMethod {
+    #[default]
     Qr,
     Password,
 }
@@ -129,7 +131,7 @@ pub struct DeliveryGuard {
 ///
 /// 作者：Xiaoman
 /// 创建时间：2026-08-13
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct XianyuAccount {
     pub id: i64,
     pub owner_id: i64,

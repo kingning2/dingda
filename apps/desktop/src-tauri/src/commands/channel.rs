@@ -23,7 +23,7 @@ mod state {
     //
     // 闲鱼专属历史 / 商品卡 / 渠道扫码见同目录 [`super::chat`]。
 
-    use crate::contracts::contracts::{
+    use crate::contracts::{
         ChannelConversation, ChannelIpcConnectResponse, ChannelIpcDisconnectResponse,
         ChannelIpcSendRequest, ChannelIpcSendResponse, ChannelIpcStateRequest,
         ChannelIpcStateResponse,
@@ -38,7 +38,7 @@ mod state {
     use crate::infrastructure::channel::wss_bridge::{
         connect_channel, connection_state_for, disconnect_channel, PythonWssBridge,
     };
-    use crate::infrastructure::storage::ChannelRepo;
+    use crate::infrastructure::database::ChannelRepo;
 
     /// 读取渠道全量状态（账号/会话/消息/设置）。
 
@@ -82,7 +82,7 @@ mod state {
 
     #[tauri::command]
     pub async fn channel_connect(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         coordinator: State<'_, Arc<ChannelCoordinator>>,
         repo: State<'_, Arc<ChannelRepo>>,
         dispatcher: State<'_, Arc<ChannelDispatcher>>,
@@ -128,7 +128,7 @@ mod state {
 
     #[tauri::command]
     pub async fn channel_disconnect(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         dispatcher: State<'_, Arc<ChannelDispatcher>>,
         wss_bridge: State<'_, Arc<PythonWssBridge>>,
         repo: State<'_, Arc<ChannelRepo>>,
@@ -156,7 +156,7 @@ mod state {
 
     #[tauri::command]
     pub async fn channel_send(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         coordinator: State<'_, Arc<ChannelCoordinator>>,
         repo: State<'_, Arc<ChannelRepo>>,
         request: ChannelIpcSendRequest,
@@ -193,13 +193,13 @@ mod chat {
     //
     // 通用状态 / 连接 / 发送见同目录 [`super::state`]。
 
-    use crate::contracts::contracts::{
+    use crate::contracts::events::{emit, AppEvent, ChannelMessageEvent, EventSink};
+    use crate::contracts::{
         ChannelIpcQrCancelRequest, ChannelIpcQrCancelResponse, ChannelIpcQrCheckRequest,
         ChannelIpcQrCheckResponse, ChannelIpcQrStartRequest, ChannelIpcQrStartResponse,
         ChannelMessage, ChannelSidecarQrCancelRequest, ChannelSidecarQrCheckRequest,
         ChannelSidecarQrStartRequest,
     };
-    use crate::contracts::events::{emit, AppEvent, ChannelMessageEvent, EventSink};
     use crate::contracts::{DingDaError, DingDaResult};
     use serde_json::Value;
     use std::collections::HashMap;
@@ -208,14 +208,12 @@ mod chat {
     use tracing::{info, warn};
     use uuid::Uuid;
 
-    use crate::app::state::AppState;
     use crate::application::channel::dispatcher::ChannelDispatcher;
+    use crate::bootstrap::state::AppState;
     use crate::commands::IpcResponse;
-    use crate::infrastructure::channel::sidecar::xianyu_message_headinfo::{
-        self, MessageHeadinfoRequest,
-    };
     use crate::infrastructure::channel::PythonWssBridge;
-    use crate::infrastructure::storage::ChannelRepo;
+    use crate::infrastructure::database::ChannelRepo;
+    use crate::infrastructure::sidecar::channel_product::{self, MessageHeadinfoRequest};
 
     /// QR 扫码会话的登录目标：绑定已有账号，或登录成功后自动创建。
     enum QrTarget {
@@ -235,7 +233,7 @@ mod chat {
     /// 创建时间：2026-08-20
     #[tauri::command]
     pub async fn channel_fetch_history(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         repo: State<'_, Arc<ChannelRepo>>,
         dispatcher: State<'_, Arc<ChannelDispatcher>>,
         wss_bridge: State<'_, Arc<PythonWssBridge>>,
@@ -261,8 +259,8 @@ mod chat {
             .find(|account| account.id == conversation.account_id)
             .and_then(|account| {
                 let cookie_list =
-                    crate::infrastructure::storage::cookies::parse_credential(&account.credential);
-                crate::infrastructure::storage::cookies::my_id(&cookie_list)
+                    crate::infrastructure::database::cookies::parse_credential(&account.credential);
+                crate::infrastructure::database::cookies::my_id(&cookie_list)
             });
 
         let cid = conversation
@@ -352,8 +350,8 @@ mod chat {
             .into_iter()
             .find(|account| account.id == conversation.account_id)
             .ok_or_else(|| DingDaError::not_found("account", &conversation.account_id))?;
-        let cookie_str = crate::infrastructure::storage::cookies::cookies_to_string(
-            &crate::infrastructure::storage::cookies::parse_credential(&account.credential),
+        let cookie_str = crate::infrastructure::database::cookies::cookies_to_string(
+            &crate::infrastructure::database::cookies::parse_credential(&account.credential),
         );
         let item_id = conversation.item_id.unwrap_or_default();
         let session_id = conversation
@@ -366,7 +364,7 @@ mod chat {
             .ensure_running()
             .await
             .map_err(|error| DingDaError::wrap(error.to_string()))?;
-        let response = xianyu_message_headinfo::call(
+        let response = channel_product::message_headinfo(
             state.lifecycle.client(),
             MessageHeadinfoRequest {
                 cookie: cookie_str,
@@ -393,7 +391,7 @@ mod chat {
     /// 创建时间：2026-08-20
     #[tauri::command]
     pub async fn channel_qr_start(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         repo: State<'_, Arc<ChannelRepo>>,
         request: ChannelIpcQrStartRequest,
     ) -> DingDaResult<IpcResponse<ChannelIpcQrStartResponse>> {
@@ -421,12 +419,10 @@ mod chat {
             platform: Some("xianyu".to_string()),
         };
         let sidecar = state.lifecycle.client();
-        let response = crate::infrastructure::channel::sidecar::channel_qr_start::call(
-            sidecar,
-            sidecar_request,
-        )
-        .await
-        .map_err(|error| error.to_string())?;
+        let response =
+            crate::infrastructure::sidecar::channel_login::qr_start(sidecar, sidecar_request)
+                .await
+                .map_err(|error| error.to_string())?;
 
         // 登记 session → 登录目标映射（qr_check 时消费）。
         if let Some(session_id) = response.session_id.clone() {
@@ -461,7 +457,7 @@ mod chat {
     /// 创建时间：2026-08-20
     #[tauri::command]
     pub async fn channel_qr_check(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         repo: State<'_, Arc<ChannelRepo>>,
         dispatcher: State<'_, Arc<ChannelDispatcher>>,
         request: ChannelIpcQrCheckRequest,
@@ -478,12 +474,10 @@ mod chat {
             platform: Some("xianyu".to_string()),
         };
         let sidecar = state.lifecycle.client();
-        let response = crate::infrastructure::channel::sidecar::channel_qr_check::call(
-            sidecar,
-            sidecar_request,
-        )
-        .await
-        .map_err(|error| error.to_string())?;
+        let response =
+            crate::infrastructure::sidecar::channel_login::qr_check(sidecar, sidecar_request)
+                .await
+                .map_err(|error| error.to_string())?;
 
         // 登录成功：绑定已有账号或自动创建账号，写入 cookies 并连接。
         if response.status == "success" {
@@ -501,7 +495,7 @@ mod chat {
                         accounts.into_iter().find(|account| account.id == id)
                     }
                     Some(QrTarget::Pending { kind, name }) => {
-                        Some(crate::contracts::contracts::ChannelAccount {
+                        Some(crate::contracts::ChannelAccount {
                             id: Uuid::new_v4().to_string(),
                             kind,
                             name,
@@ -538,7 +532,7 @@ mod chat {
     /// 创建时间：2026-08-20
     #[tauri::command]
     pub async fn channel_qr_cancel(
-        state: tauri::State<'_, crate::app::state::AppState>,
+        state: tauri::State<'_, crate::bootstrap::state::AppState>,
         request: ChannelIpcQrCancelRequest,
     ) -> DingDaResult<IpcResponse<ChannelIpcQrCancelResponse>> {
         state
@@ -553,12 +547,10 @@ mod chat {
             platform: Some("xianyu".to_string()),
         };
         let sidecar = state.lifecycle.client();
-        let response = crate::infrastructure::channel::sidecar::channel_qr_cancel::call(
-            sidecar,
-            sidecar_request,
-        )
-        .await
-        .map_err(|error| error.to_string())?;
+        let response =
+            crate::infrastructure::sidecar::channel_login::qr_cancel(sidecar, sidecar_request)
+                .await
+                .map_err(|error| error.to_string())?;
 
         Ok(IpcResponse::ok(ChannelIpcQrCancelResponse {
             ok: response.ok,
@@ -586,17 +578,17 @@ mod connection {
     // 作者：Xiaoman
     // 创建时间：2026-08-18
 
-    use crate::app::state::AppState;
     use crate::application::channel::dispatcher::ChannelDispatcher;
+    use crate::bootstrap::state::AppState;
     use crate::commands::AccountHandle;
     use crate::commands::IpcResponse;
-    use crate::contracts::contracts::ChannelAccount;
+    use crate::contracts::ChannelAccount;
     use crate::domain::account::{AccountService, AccountStore, AccountUpdate};
-    use crate::infrastructure::channel::sidecar::xianyu_user_profile::{self, UserProfileRequest};
     use crate::infrastructure::channel::wss_bridge::{
         connect_channel, connection_state_for, disconnect_channel, PythonWssBridge,
     };
-    use crate::infrastructure::storage::InMemoryAccountStore;
+    use crate::infrastructure::database::InMemoryAccountStore;
+    use crate::infrastructure::sidecar::channel_product::{self, UserProfileRequest};
     use serde::Deserialize;
     use std::sync::Arc;
     use tauri::State;
@@ -641,7 +633,7 @@ mod connection {
     ///
     /// 成功返回 `()`；拉取或写入失败返回错误文案。
     pub async fn sync_account_profile(
-        lifecycle: &crate::infrastructure::runtime::python::SidecarLifecycle,
+        lifecycle: &crate::infrastructure::sidecar::SidecarLifecycle,
         store: &InMemoryAccountStore,
         owner_id: i64,
         account_id: &str,
@@ -658,7 +650,7 @@ mod connection {
             .ensure_running()
             .await
             .map_err(|error| crate::contracts::DingDaError::wrap(error.to_string()))?;
-        let response = xianyu_user_profile::call(
+        let response = channel_product::user_profile(
             lifecycle.client(),
             UserProfileRequest {
                 cookie: account.cookie.clone(),
@@ -873,7 +865,7 @@ mod connection {
         if !account.has_cookie() {
             return Err(crate::contracts::DingDaError::validation("账号缺少 Cookie"));
         }
-        let cookies = crate::infrastructure::storage::cookies::parse_credential(&account.cookie);
+        let cookies = crate::infrastructure::database::cookies::parse_credential(&account.cookie);
         if cookies.is_empty() {
             return Err(crate::contracts::DingDaError::validation("Cookie 解析失败"));
         }
@@ -884,9 +876,9 @@ mod connection {
             .await
             .map_err(|error| crate::contracts::DingDaError::wrap(error.to_string()))?;
 
-        let response = crate::infrastructure::channel::sidecar::channel_cookie_renew::call(
+        let response = crate::infrastructure::sidecar::channel_login::cookie_renew(
             state.lifecycle.client(),
-            crate::contracts::contracts::ChannelSidecarCookieRenewRequest {
+            crate::contracts::ChannelSidecarCookieRenewRequest {
                 account_id: request.account_id.clone(),
                 cookies,
                 punish_url: None,

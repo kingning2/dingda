@@ -4,15 +4,19 @@ pub use agent::{
     agent_reply, agent_run_cancel, agent_run_get, agent_run_list, agent_run_pause,
     agent_run_resume, agent_run_start, agent_run_status,
 };
-pub use ai::{ai_account_balance, ai_config_get, ai_config_set, ai_test_api_key};
+pub use ai::{
+    ai_account_balance, ai_config_get, ai_config_set, ai_list_models, ai_providers_catalog,
+    ai_test_api_key,
+};
 
+#[allow(clippy::module_inception)]
 mod agent {
     use crate::contracts::DingDaResult;
-    use crate::infrastructure::runtime::agent::AgentRunRecord;
+    use crate::infrastructure::sidecar::AgentRunRecord;
     use serde::{Deserialize, Serialize};
     use tauri::State;
 
-    use crate::app::state::AppState;
+    use crate::bootstrap::state::AppState;
     use crate::commands::IpcResponse;
 
     #[derive(Debug, Deserialize)]
@@ -149,7 +153,7 @@ mod agent {
         let record = state
             .supervisor
             .agent()
-            .resume_run(request.run_id, &request.mode, request.node, None)
+            .resume_run_tracked(request.run_id, &request.mode, request.node, None)
             .await
             .map_err(|e| e.to_string())?;
         Ok(IpcResponse::ok(record))
@@ -203,16 +207,19 @@ mod agent {
 mod ai {
     // AI 配置本地落盘；Key/余额探测转发 Python sidecar。
 
-    use crate::contracts::contracts::{AiIpcConfigRequest, AiIpcConfigResponse};
     use crate::contracts::DingDaResult;
+    use crate::contracts::{
+        AiIpcConfigRequest, AiIpcConfigResponse, AiIpcListModelsRequest, AiIpcListModelsResponse,
+        AiIpcProvidersCatalogResponse,
+    };
     use serde::{Deserialize, Serialize};
     use std::sync::Arc;
     use tauri::State;
 
-    use crate::app::state::AppState;
+    use crate::bootstrap::state::AppState;
     use crate::commands::IpcResponse;
     use crate::config::ConfigStore;
-    use crate::infrastructure::runtime::agent::sidecar::ai_probe::{
+    use crate::infrastructure::sidecar::agent_probe::{
         self, AiAccountBalanceRequest, AiProbeKeyRequest,
     };
 
@@ -255,6 +262,38 @@ mod ai {
         Ok(IpcResponse::ok(result))
     }
 
+    /// Python 已注册平台目录（只读，经 sidecar）。
+    #[tauri::command]
+    pub async fn ai_providers_catalog(
+        state: State<'_, AppState>,
+    ) -> DingDaResult<IpcResponse<AiIpcProvidersCatalogResponse>> {
+        let response = agent_probe::providers_catalog(state.lifecycle.client())
+            .await
+            .map_err(crate::contracts::DingDaError::wrap)?;
+        Ok(IpcResponse::ok(response))
+    }
+
+    /// 拉取平台可用模型（Python：`/v1/ai/list_models`）。
+    #[tauri::command]
+    pub async fn ai_list_models(
+        state: State<'_, AppState>,
+        base_url: String,
+        api_key: String,
+        kind: Option<String>,
+    ) -> DingDaResult<IpcResponse<AiIpcListModelsResponse>> {
+        let response = agent_probe::list_models(
+            state.lifecycle.client(),
+            AiIpcListModelsRequest {
+                base_url,
+                api_key,
+                kind,
+            },
+        )
+        .await
+        .map_err(crate::contracts::DingDaError::wrap)?;
+        Ok(IpcResponse::ok(response))
+    }
+
     /// 探测 API Key（Python：`/v1/ai/probe_key`）。
     #[tauri::command]
     pub async fn ai_test_api_key(
@@ -263,7 +302,7 @@ mod ai {
         api_key: String,
         kind: Option<String>,
     ) -> DingDaResult<IpcResponse<AiApiKeyTestResult>> {
-        let response = ai_probe::probe_key(
+        let response = agent_probe::probe_key(
             state.lifecycle.client(),
             AiProbeKeyRequest {
                 base_url,
@@ -286,7 +325,7 @@ mod ai {
         base_url: String,
         api_key: String,
     ) -> DingDaResult<IpcResponse<AiAccountBalanceResult>> {
-        let response = ai_probe::account_balance(
+        let response = agent_probe::account_balance(
             state.lifecycle.client(),
             AiAccountBalanceRequest { base_url, api_key },
         )

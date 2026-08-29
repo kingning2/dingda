@@ -1,16 +1,15 @@
 //! 闲鱼交易 IPC — 商品管理 / 商品同步 / 商品详情 / 订单管理。
 
-use crate::app::state::AppState;
+use crate::bootstrap::state::AppState;
 use crate::commands::AccountHandle;
 use crate::commands::IpcResponse;
 use crate::domain::account::{AccountService, AccountStore, AccountUpdate, XianyuAccount};
 use crate::domain::item::{Item, ItemQuery, ItemService};
 use crate::domain::order::{DeliveryInfoUpdate, Order, OrderService, OrderStatus};
-use crate::infrastructure::channel::sidecar::{
-    xianyu_item_detail::{self, ItemDetailRequest, PlatformItemDetailDto},
-    xianyu_seller_items::{self, SellerItemsRequest},
+use crate::infrastructure::database::{InMemoryItemStore, InMemoryOrderStore};
+use crate::infrastructure::sidecar::channel_product::{
+    item_detail, seller_items, ItemDetailRequest, PlatformItemDetailDto, SellerItemsRequest,
 };
-use crate::infrastructure::storage::{InMemoryItemStore, InMemoryOrderStore};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::State;
@@ -178,14 +177,14 @@ pub async fn item_sync(
 
     for account in targets {
         let cookie_header =
-            crate::infrastructure::storage::cookies::credential_to_cookie_header(&account.cookie);
+            crate::infrastructure::database::cookies::credential_to_cookie_header(&account.cookie);
         let user_id = {
             let from_account = account.extract_unb();
             if !from_account.is_empty() {
                 from_account
             } else {
-                crate::infrastructure::storage::cookies::my_id(
-                    &crate::infrastructure::storage::cookies::parse_credential(&cookie_header),
+                crate::infrastructure::database::cookies::my_id(
+                    &crate::infrastructure::database::cookies::parse_credential(&cookie_header),
                 )
                 .unwrap_or_default()
             }
@@ -201,7 +200,7 @@ pub async fn item_sync(
             format!("unb={user_id}; {cookie_header}")
         };
 
-        let response = xianyu_seller_items::call(
+        let response = seller_items(
             state.lifecycle.client(),
             SellerItemsRequest {
                 cookie: cookie_for_fetch,
@@ -337,10 +336,10 @@ pub async fn item_detail_fetch(
         .await
         .map_err(|error| crate::contracts::DingDaError::wrap(error.to_string()))?;
 
-    let response = xianyu_item_detail::call(
+    let response = item_detail(
         state.lifecycle.client(),
         ItemDetailRequest {
-            cookie: crate::infrastructure::storage::cookies::credential_to_cookie_header(
+            cookie: crate::infrastructure::database::cookies::credential_to_cookie_header(
                 &account.cookie,
             ),
             item_id: request.item_id.clone(),

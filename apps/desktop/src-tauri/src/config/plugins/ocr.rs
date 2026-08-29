@@ -4,7 +4,7 @@ use super::types::{
     assets_present, remove_asset_files, BuiltinPlugin, PluginAsset, PluginFetch, PluginVerify,
 };
 use super::{plugin_install_dir, plugin_root};
-use crate::contracts::contracts::PluginItem;
+use crate::contracts::PluginItem;
 use std::path::Path;
 
 /// 插件稳定 id。

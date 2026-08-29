@@ -13,10 +13,11 @@ name = "dingda"
 path = "src/main.rs"
 
 [features]
-default = ["xianyu", "ali1688"]
+default = ["xianyu", "ali1688", "xiaohongshu"]
 license-lock = []
 xianyu = []
 ali1688 = []
+xiaohongshu = []
 
 [build-dependencies]
 serde_json = { workspace = true }

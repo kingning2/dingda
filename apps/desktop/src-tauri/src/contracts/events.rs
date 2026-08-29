@@ -8,8 +8,8 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-18
 
-use crate::contracts::contracts::ChannelMessage;
 use crate::contracts::errors::DingDaError;
+use crate::contracts::ChannelMessage;
 use crate::contracts::DingDaResult;
 use serde::{Deserialize, Serialize};
 
@@ -260,7 +260,7 @@ pub trait EventSink: Send + Sync {
 ///
 /// # 示例
 /// ```ignore
-/// use crate::contracts::contracts::events::{emit, AppEvent, MessageAction, MessageEvent};
+/// use crate::contracts::events::{emit, AppEvent, MessageAction, MessageEvent};
 /// emit(&event_bus, &AppEvent::Message(MessageEvent { /* ... */ }))?;
 /// ```
 pub fn emit(sink: &dyn EventSink, event: &AppEvent) -> DingDaResult<()> {

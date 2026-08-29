@@ -1,15 +1,15 @@
 //! 应用系统级 IPC — 版本 / Runtime 状态 / 任务取消 / 日志 / 平台描述。
 
-use crate::app::logging::{clear_logs, recent_logs, LogEntry};
-use crate::app::route::on_route_change;
-use crate::app::state::AppState;
+use crate::bootstrap::logging::{clear_logs, recent_logs, LogEntry};
+use crate::bootstrap::state::AppState;
+use crate::bootstrap::window::on_route_change;
 use crate::commands::IpcResponse;
 use crate::contracts::DingDaResult;
+use crate::core::supervisor::RuntimeState;
 use crate::domain::channel::registry::PlatformRegistry;
-use crate::infrastructure::runtime::agent::AgentState;
-use crate::infrastructure::runtime::python::{PythonSidecarSnapshot, PythonState};
 use crate::infrastructure::runtime::tasks::Task;
-use crate::infrastructure::runtime::RuntimeState;
+use crate::infrastructure::sidecar::AgentState;
+use crate::infrastructure::sidecar::{PythonSidecarSnapshot, PythonState};
 use chrono::Local;
 use serde::Serialize;
 use std::fs::{self, OpenOptions};

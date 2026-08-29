@@ -4,7 +4,9 @@ use crate::commands::IpcResponse;
 use crate::domain::account::AccountStore;
 use crate::domain::item::{ItemQuery, ItemStore};
 use crate::domain::order::{OrderStatus, OrderStore};
-use crate::infrastructure::storage::{InMemoryAccountStore, InMemoryItemStore, InMemoryOrderStore};
+use crate::infrastructure::database::{
+    InMemoryAccountStore, InMemoryItemStore, InMemoryOrderStore,
+};
 use serde::Serialize;
 use std::sync::Arc;
 use tauri::State;

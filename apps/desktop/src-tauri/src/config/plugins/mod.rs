@@ -11,8 +11,8 @@ mod embedding;
 mod ocr;
 mod types;
 
-use crate::contracts::contracts::{PluginIpcListResponse, PluginItem};
 use crate::contracts::DingDaResult;
+use crate::contracts::{PluginIpcListResponse, PluginItem};
 use std::path::{Path, PathBuf};
 
 pub use camoufox::find_executable as find_camoufox_executable;
@@ -69,7 +69,7 @@ impl BuiltinPlugin {
 
     /// 构造列表 / 失败回写用的 PluginItem。
     pub fn to_item(
-        &self,
+        self,
         plugins_dir: &Path,
         legacy_ocr_dir: &Path,
         error: Option<String>,

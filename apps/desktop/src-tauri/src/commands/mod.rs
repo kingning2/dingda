@@ -24,7 +24,7 @@ pub use account::{
 pub use agent::{
     agent_reply, agent_run_cancel, agent_run_get, agent_run_list, agent_run_pause,
     agent_run_resume, agent_run_start, agent_run_status, ai_account_balance, ai_config_get,
-    ai_config_set, ai_test_api_key,
+    ai_config_set, ai_list_models, ai_providers_catalog, ai_test_api_key,
 };
 pub use app::{
     app_version, log_clear, log_recent, log_write, platform_descriptors, runtime_status,
@@ -83,6 +83,8 @@ macro_rules! with_shared_ipc {
             agent_run_list,
             ai_config_get,
             ai_config_set,
+            ai_providers_catalog,
+            ai_list_models,
             ai_test_api_key,
             ai_account_balance,
             plugin_list,

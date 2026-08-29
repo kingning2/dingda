@@ -6,7 +6,7 @@
 //! - [`application`] — 用例编排
 //! - [`ports`] — Port traits
 //! - [`infrastructure`] — Driven 适配器（存储 / 事件 / runtime / 渠道 IO）
-//! - [`app`] — 壳层状态与生命周期观测
+//! - [`bootstrap`] — 壳层状态与生命周期观测
 //! - [`config`] / [`contracts`] — 配置与共享 DTO
 //!
 //! 本文件仅负责 AppState 组装与 Tauri 生命周期编排。
@@ -17,31 +17,32 @@
 #[macro_use]
 extern crate tracing;
 
-pub mod app;
 pub mod application;
+pub mod bootstrap;
 pub mod commands;
 pub mod config;
 pub mod constants;
 pub mod contracts;
+pub mod core;
 pub mod domain;
 pub mod infrastructure;
 pub mod ports;
 
 // 兼容路径：`crate::state` → `app::state`（AppState）。
-pub use app::state;
+pub use bootstrap::state;
 
-use crate::app::lifecycle;
 use crate::application::channel::coordinator::ChannelCoordinator;
+use crate::bootstrap::lifecycle;
 use crate::domain::channel::ChannelDispatcher;
 use crate::infrastructure::channel::PythonWssBridge;
+use crate::infrastructure::database::ChannelRepo;
 use crate::infrastructure::event::{BusToTauri, EventBus, InMemoryEventBus, TauriEventSink};
-use crate::infrastructure::runtime::agent::RuntimeAgentSidecar;
-use crate::infrastructure::runtime::python::{
+use crate::infrastructure::sidecar::RuntimeAgentSidecar;
+use crate::infrastructure::sidecar::{
     SidecarConfig, SidecarLifecycle, RUNTIME_ERROR_TOPIC, SIDECAR_RESTARTED_TOPIC,
 };
-use crate::infrastructure::storage::ChannelRepo;
 use crate::ports::license::LicenseGate;
-use app::{init_tracing, platform_initialization_script, AppState};
+use bootstrap::{init_tracing, platform_initialization_script, AppState};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::{Manager, RunEvent};
@@ -69,9 +70,7 @@ pub fn launch(
         event_bus.clone() as Arc<dyn EventBus>,
     ));
     let gateway = Arc::new(RuntimeAgentSidecar::new(lifecycle.client().clone()));
-    let supervisor = Arc::new(crate::infrastructure::runtime::RuntimeSupervisor::new(
-        lifecycle.clone(),
-    ));
+    let supervisor = Arc::new(crate::core::RuntimeSupervisor::new(lifecycle.clone()));
     let app_state = AppState {
         lifecycle: lifecycle.clone(),
         gateway,
@@ -184,13 +183,15 @@ pub fn launch(
             app.manage(event_sink.clone());
 
             {
-                let agent_store = Arc::new(
-                    crate::infrastructure::runtime::agent::AgentRunStore::new(config_dir.clone()),
-                );
+                let agent_store = Arc::new(crate::infrastructure::sidecar::AgentRunStore::new(
+                    config_dir.clone(),
+                ));
+                let account_store = app.state::<crate::commands::AccountHandle>().store.clone();
                 app.state::<AppState>().supervisor.agent().configure(
                     event_sink.clone(),
                     config_store.clone(),
                     agent_store,
+                    account_store,
                 );
             }
 
@@ -229,13 +230,14 @@ pub fn launch(
 
             app.manage(coordinator.clone());
 
-            crate::app::platform::register_platform(
+            crate::bootstrap::window::register_platform(
                 app.handle(),
                 &dispatcher,
                 &coordinator,
                 &wss_bridge,
             )?;
             lifecycle::on_platform_ready();
+            lifecycle::spawn_startup_account_probe(app.handle());
             lifecycle::on_setup();
             Ok(())
         })

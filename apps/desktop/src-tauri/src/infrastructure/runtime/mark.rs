@@ -1,6 +1,6 @@
 //! Runtime 生命周期标记辅助 — 供 `#[runtime(...)]` 宏展开调用。
 //!
-//! 与 `#[timed]` → `crate::app::timing` 同层：宏 crate 不依赖业务类型。
+//! 与 `#[timed]` → `crate::bootstrap::timing` 同层：宏 crate 不依赖业务类型。
 
 use super::RUNTIME_TARGET;
 

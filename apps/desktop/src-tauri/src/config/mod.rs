@@ -11,10 +11,10 @@
 mod ai;
 mod plugins;
 
-use crate::contracts::contracts::{
+use crate::contracts::DingDaResult;
+use crate::contracts::{
     AiIpcConfigRequest, AiIpcConfigResponse, PluginIpcListResponse, PluginItem,
 };
-use crate::contracts::DingDaResult;
 use std::path::{Path, PathBuf};
 
 pub use ai::AiConfigStore;

@@ -165,13 +165,13 @@ fn expand_runtime(args: RuntimeArgs, func: ItemFn) -> syn::Result<proc_macro2::T
     let apply_state = |variant: &Ident| -> syn::Result<proc_macro2::TokenStream> {
         match scope.as_str() {
             "python" => Ok(quote! {
-                self.lifecycle.set(crate::infrastructure::runtime::python::PythonState::#variant);
+                self.lifecycle.set(crate::infrastructure::sidecar::PythonState::#variant);
             }),
             "agent" => Ok(quote! {
-                self.lifecycle.transition(crate::infrastructure::runtime::agent::AgentState::#variant);
+                self.lifecycle.transition(crate::infrastructure::sidecar::AgentState::#variant);
             }),
             "runtime" => Ok(quote! {
-                self.set_state(crate::infrastructure::runtime::RuntimeState::#variant);
+                self.set_state(crate::core::supervisor::RuntimeState::#variant);
             }),
             other => Err(syn::Error::new(
                 args.scope.span(),

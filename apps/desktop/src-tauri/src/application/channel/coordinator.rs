@@ -2,16 +2,16 @@
 //!
 //! 风控判定与 Cookie 续期在 Python Sidecar；本协调器只消费状态 / 消息事件。
 
-use crate::contracts::contracts::{ChannelConversation, ChannelMessage};
 use crate::contracts::events::{
     emit, AppEvent, ChannelMessageEvent, ChannelStatusEvent, EventSink,
 };
 use crate::contracts::DingDaResult;
+use crate::contracts::{ChannelConversation, ChannelMessage};
 use crate::domain::channel::{
     ChannelDispatcher, ChannelInboundMessage, ConnectionState, ConversationSync, InboundListener,
 };
 use crate::infrastructure::channel::wss_bridge::PythonWssBridge;
-use crate::infrastructure::storage::{conversation_id_for, inbound_to_message, ChannelRepo};
+use crate::infrastructure::database::{conversation_id_for, inbound_to_message, ChannelRepo};
 use async_trait::async_trait;
 
 use std::sync::Arc;

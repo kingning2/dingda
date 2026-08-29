@@ -1,14 +1,14 @@
 //! 产品管理 IPC — License 授权 / 内置插件。
 
-use crate::app::startup;
+use crate::bootstrap::startup;
 use crate::commands::IpcResponse;
 use crate::config::ConfigStore;
-use crate::contracts::contracts::{
+use crate::contracts::license::{LicenseActivateRequest, LicenseStatus};
+use crate::contracts::DingDaResult;
+use crate::contracts::{
     PluginIpcInstallRequest, PluginIpcInstallResponse, PluginIpcListResponse,
     PluginIpcUninstallRequest, PluginIpcUninstallResponse,
 };
-use crate::contracts::license::{LicenseActivateRequest, LicenseStatus};
-use crate::contracts::DingDaResult;
 use crate::infrastructure::plugins::download::{
     install_plugin, plugin_list_with_status, sync_camoufox_env, PluginDownloadTracker,
 };

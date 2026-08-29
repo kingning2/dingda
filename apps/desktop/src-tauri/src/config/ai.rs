@@ -3,8 +3,8 @@
 //! 作者：Xiaoman
 //! 创建时间：2026-08-11
 
-use crate::contracts::contracts::{AiIpcConfigRequest, AiIpcConfigResponse};
 use crate::contracts::DingDaResult;
+use crate::contracts::{AiIpcConfigRequest, AiIpcConfigResponse};
 use std::io;
 use std::path::PathBuf;
 use tokio::sync::Mutex;

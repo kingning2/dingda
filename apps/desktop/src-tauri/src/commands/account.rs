@@ -13,15 +13,11 @@ mod crud {
     //
     // 壳层组合：`InMemoryAccountStore` → `crate::domain::account::AccountService`（校验 + 编排）。
 
-    use crate::app::state::AppState;
+    use crate::application::account::probe_account_session;
+    use crate::bootstrap::state::AppState;
     use crate::commands::IpcResponse;
-    use crate::contracts::contracts::ChannelSidecarLoginProbeRequest;
-    use crate::domain::account::{
-        AccountService, AccountStatus, AccountStore, AccountUpdate, XianyuAccount,
-    };
-    use crate::infrastructure::storage::cookies::parse_credential;
-    use crate::infrastructure::storage::resolve_account_platform;
-    use crate::infrastructure::storage::stores::InMemoryAccountStore;
+    use crate::domain::account::{AccountService, AccountStatus, AccountUpdate, XianyuAccount};
+    use crate::infrastructure::database::stores::InMemoryAccountStore;
     use serde::Deserialize;
     use std::sync::Arc;
     use tauri::State;
@@ -122,118 +118,21 @@ mod crud {
         Ok(IpcResponse::ok(()))
     }
 
-    /// 探测账号 Cookie 是否仍在线（1688 → sidecar Playwright；闲鱼 → mtop 用户资料）。
+    /// 探测账号 Cookie 是否仍在线（1688 → 浏览器探针；闲鱼/小红书 → HTTP 刷新 token）。
     #[tauri::command]
     pub async fn account_probe_login(
         state: State<'_, AccountHandle>,
         app_state: State<'_, AppState>,
         request: AccountProbeRequest,
     ) -> crate::contracts::DingDaResult<IpcResponse<bool>> {
-        let account = state
-            .store
-            .get_account(request.owner_id, &request.account_id)
-            .map_err(crate::contracts::DingDaError::wrap)?
-            .ok_or_else(|| format!("账号不存在: {}", request.account_id))?;
-        let platform = resolve_account_platform(&account.account_id, &account.platform);
-
-        tracing::info!(
-            target: "dingda.platform.login_probe",
-            account_id = %request.account_id,
-            platform,
-            stored_platform = %account.platform,
-            has_cookie = account.has_cookie(),
-            unb = %account.unb,
-            "账号登录探针开始"
-        );
-
-        if !account.has_cookie() {
-            tracing::info!(
-                target: "dingda.platform.login_probe",
-                account_id = %request.account_id,
-                reason = "empty_cookie",
-                "账号登录探针跳过"
-            );
-            return Ok(IpcResponse::ok(false));
-        }
-
-        let ok = if platform == "ali1688" {
-            let cookies = parse_credential(&account.cookie);
-            if cookies.is_empty() {
-                tracing::info!(
-                    target: "dingda.platform.login_probe",
-                    account_id = %request.account_id,
-                    reason = "unparseable_cookie",
-                    "1688 登录探针跳过"
-                );
-                false
-            } else {
-                let sidecar_request = ChannelSidecarLoginProbeRequest {
-                    account_id: request.account_id.clone(),
-                    cookies,
-                    headed: Some(false),
-                    platform: Some("ali1688".to_string()),
-                    trace_id: Some(format!("ali1688-login-probe-{}", request.account_id)),
-                };
-                let sidecar = app_state.lifecycle.client();
-                match crate::infrastructure::channel::sidecar::channel_login_probe::call(
-                    sidecar,
-                    sidecar_request,
-                )
-                .await
-                {
-                    Ok(response) => {
-                        tracing::info!(
-                            target: "dingda.platform.ali1688.login_probe",
-                            account_id = %request.account_id,
-                            online = response.online,
-                            status = %response.status,
-                            detail = response.detail.as_deref().unwrap_or(""),
-                            "1688 Playwright 登录探针完成"
-                        );
-                        response.ok && response.online
-                    }
-                    Err(error) => {
-                        tracing::info!(
-                            target: "dingda.platform.ali1688.login_probe",
-                            account_id = %request.account_id,
-                            error = %error,
-                            "1688 Playwright 登录探针失败，视为离线"
-                        );
-                        false
-                    }
-                }
-            }
-        } else {
-            let _ = app_state.lifecycle.ensure_running().await;
-            match crate::infrastructure::channel::sidecar::xianyu_user_profile::call(
-                app_state.lifecycle.client(),
-                crate::infrastructure::channel::sidecar::xianyu_user_profile::UserProfileRequest {
-                    cookie: account.cookie.clone(),
-                },
-            )
-            .await
-            {
-                Ok(response) => response.ok,
-                Err(error) => {
-                    tracing::info!(
-                        target: "dingda.platform.login_probe",
-                        account_id = %request.account_id,
-                        error = %error,
-                        "闲鱼用户资料探针失败，视为离线"
-                    );
-                    false
-                }
-            }
-        };
-
-        tracing::info!(
-            target: "dingda.platform.login_probe",
-            account_id = %request.account_id,
-            platform,
-            online = ok,
-            "账号登录探针完成"
-        );
-        Ok(IpcResponse::ok(ok))
+        let online = probe_account_session(
+            state.store.as_ref(),
+            app_state.lifecycle.as_ref(),
+            request.owner_id,
+            &request.account_id,
+        )
+        .await;
+        Ok(IpcResponse::ok(online))
     }
 }
 
@@ -247,19 +146,19 @@ mod qr {
     // 作者：Xiaoman
     // 创建时间：2026-08-20
 
-    use crate::app::state::AppState;
     use crate::application::channel::dispatcher::ChannelDispatcher;
+    use crate::bootstrap::state::AppState;
     use crate::commands::IpcResponse;
-    use crate::contracts::contracts::{
+    use crate::contracts::{
         ChannelIpcQrCancelResponse, ChannelIpcQrCheckResponse, ChannelIpcQrStartResponse,
         ChannelSidecarQrCancelRequest, ChannelSidecarQrCheckRequest, ChannelSidecarQrStartRequest,
     };
     use crate::domain::account::{
         AccountService, AccountStore, AccountUpdate, LoginMethod, XianyuAccount,
     };
-    use crate::infrastructure::storage::account::normalize_account_platform;
-    use crate::infrastructure::storage::account_qr::account_from_cookies;
-    use crate::infrastructure::storage::stores::InMemoryAccountStore;
+    use crate::infrastructure::database::account::normalize_account_platform;
+    use crate::infrastructure::database::account_qr::account_from_cookies;
+    use crate::infrastructure::database::stores::InMemoryAccountStore;
     use serde::Deserialize;
     use std::future::Future;
     use std::pin::Pin;
@@ -351,12 +250,10 @@ mod qr {
             platform: Some(platform.to_string()),
         };
         let sidecar = state.lifecycle.client();
-        let response = crate::infrastructure::channel::sidecar::channel_qr_start::call(
-            sidecar,
-            sidecar_request,
-        )
-        .await
-        .map_err(crate::contracts::DingDaError::wrap)?;
+        let response =
+            crate::infrastructure::sidecar::channel_login::qr_start(sidecar, sidecar_request)
+                .await
+                .map_err(crate::contracts::DingDaError::wrap)?;
 
         Ok(IpcResponse::ok(ChannelIpcQrStartResponse {
             ok: response.ok,
@@ -391,12 +288,10 @@ mod qr {
             platform: Some(platform.to_string()),
         };
         let sidecar = state.lifecycle.client();
-        let response = crate::infrastructure::channel::sidecar::channel_qr_check::call(
-            sidecar,
-            sidecar_request,
-        )
-        .await
-        .map_err(crate::contracts::DingDaError::wrap)?;
+        let response =
+            crate::infrastructure::sidecar::channel_login::qr_check(sidecar, sidecar_request)
+                .await
+                .map_err(crate::contracts::DingDaError::wrap)?;
 
         if response.status == "success" {
             if let Some(cookies) = response.cookies.clone() {
@@ -482,12 +377,10 @@ mod qr {
             platform: Some(platform.to_string()),
         };
         let sidecar = state.lifecycle.client();
-        let response = crate::infrastructure::channel::sidecar::channel_qr_cancel::call(
-            sidecar,
-            sidecar_request,
-        )
-        .await
-        .map_err(crate::contracts::DingDaError::wrap)?;
+        let response =
+            crate::infrastructure::sidecar::channel_login::qr_cancel(sidecar, sidecar_request)
+                .await
+                .map_err(crate::contracts::DingDaError::wrap)?;
 
         Ok(IpcResponse::ok(ChannelIpcQrCancelResponse {
             ok: response.ok,

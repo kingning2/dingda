@@ -176,7 +176,7 @@ pub trait ChannelProtocol: Send + Sync {
 }
 
 /// 渠道账号（业务层复用的契约 DTO）。
-pub use crate::contracts::contracts::ChannelAccount;
+pub use crate::contracts::ChannelAccount;
 
 /// 将 [`ChannelError`] 转为全局 [`crate::contracts::DingDaError`]（协议层边界汇总）。
 impl From<ChannelError> for crate::contracts::DingDaError {

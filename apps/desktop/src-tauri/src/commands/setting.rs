@@ -3,7 +3,7 @@
 use crate::commands::IpcResponse;
 use crate::domain::risk::{RiskConfig, RiskLogPage, RiskLogQuery, RiskService};
 use crate::domain::setting::UserSettingService;
-use crate::infrastructure::storage::{InMemoryRiskStore, InMemoryUserSettingStore};
+use crate::infrastructure::database::{InMemoryRiskStore, InMemoryUserSettingStore};
 use serde::Deserialize;
 use std::sync::Arc;
 use tauri::State;

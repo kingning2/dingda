@@ -7,8 +7,8 @@ use crate::config::{
     find_builtin, find_camoufox_executable, tmp_path, ConfigStore, PluginFetch, PluginVerify,
     PLUGIN_ID_EMBEDDING,
 };
-use crate::contracts::contracts::{PluginEventProgress, PluginItem};
 use crate::contracts::DingDaResult;
+use crate::contracts::{PluginEventProgress, PluginItem};
 use crate::infrastructure::embedding::{Embedder, EmbeddingService};
 use futures_util::StreamExt;
 use reqwest::header::{CONTENT_RANGE, RANGE};
@@ -164,7 +164,7 @@ fn failed_plugin_item(store: &ConfigStore, plugin_id: &str, message: String) -> 
             item.error = Some(message);
             item
         })
-        .unwrap_or_else(|| crate::contracts::contracts::PluginItem {
+        .unwrap_or_else(|| crate::contracts::PluginItem {
             id: plugin_id.to_string(),
             name: plugin_id.to_string(),
             description: String::new(),
@@ -478,7 +478,7 @@ async fn download_asset_range_parallel(
         return Ok(None);
     }
 
-    let chunk_count = (total + DOWNLOAD_CHUNK_SIZE - 1) / DOWNLOAD_CHUNK_SIZE;
+    let chunk_count = total.div_ceil(DOWNLOAD_CHUNK_SIZE);
     if chunk_count < 2 {
         return Ok(None);
     }
@@ -598,13 +598,12 @@ async fn download_asset_range_parallel(
                 // 节流：尽量按 120ms 间隔推送进度。
                 let elapsed_ms = start_instant.elapsed().as_millis() as u64;
                 let prev = last_emit_ms.load(Ordering::Relaxed);
-                if elapsed_ms.saturating_sub(prev) >= PROGRESS_EMIT_INTERVAL.as_millis() as u64 {
-                    if last_emit_ms
+                if elapsed_ms.saturating_sub(prev) >= PROGRESS_EMIT_INTERVAL.as_millis() as u64
+                    && last_emit_ms
                         .compare_exchange(prev, elapsed_ms, Ordering::Relaxed, Ordering::Relaxed)
                         .is_ok()
-                    {
-                        emit_progress(&app, &plugin_id, &file_name, new_received, total_i64);
-                    }
+                {
+                    emit_progress(&app, &plugin_id, &file_name, new_received, total_i64);
                 }
             }
 

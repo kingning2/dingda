@@ -7,24 +7,20 @@ use std::time::{Duration, Instant};
 
 use crate::application::channel::coordinator::ChannelCoordinator;
 use crate::config::ConfigStore;
-use crate::contracts::contracts::{
-    AiIpcConfigResponse, ChannelAccount, ChannelCookie, ChannelSettings,
-};
 use crate::contracts::DingDaResult;
+use crate::contracts::{AiIpcConfigResponse, ChannelAccount, ChannelCookie, ChannelSettings};
 use crate::domain::account::{AccountService, AccountStore, AccountUpdate};
 use crate::domain::channel::{
     ChannelDispatcher, ChannelInboundMessage, ConnectionState, ConversationSync, HistoryMessage,
     InboundListener,
 };
-use crate::infrastructure::channel::sidecar::{
-    ws_connect::{self, WsConnectRequest},
-    ws_disconnect::{self, WsDisconnectRequest},
-    ws_history::{self, WsHistoryRequest},
-    ws_send::{self, WsSendRequest},
+use crate::infrastructure::database::cookies::parse_credential;
+use crate::infrastructure::database::ChannelRepo;
+use crate::infrastructure::sidecar::channel_chat::{
+    ws_connect, ws_disconnect, ws_history, ws_send, WsConnectRequest, WsDisconnectRequest,
+    WsHistoryRequest, WsSendRequest,
 };
-use crate::infrastructure::runtime::python::SidecarLifecycle;
-use crate::infrastructure::storage::cookies::parse_credential;
-use crate::infrastructure::storage::ChannelRepo;
+use crate::infrastructure::sidecar::SidecarLifecycle;
 use serde_json::Value;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::RwLock;
@@ -138,7 +134,7 @@ impl PythonWssBridge {
             None
         };
 
-        let response = ws_connect::call(
+        let response = ws_connect(
             self.sidecar.client(),
             WsConnectRequest {
                 account_id: account.id.clone(),
@@ -176,7 +172,7 @@ impl PythonWssBridge {
         self.sessions.write().await.remove(account_id);
 
         if self.sidecar.ensure_running().await.is_ok() {
-            let _ = ws_disconnect::call(
+            let _ = ws_disconnect(
                 self.sidecar.client(),
                 WsDisconnectRequest {
                     account_id: account_id.to_string(),
@@ -208,7 +204,7 @@ impl PythonWssBridge {
             .await
             .map_err(|error| crate::contracts::DingDaError::wrap(error.to_string()))?;
 
-        let response = ws_send::call(
+        let response = ws_send(
             self.sidecar.client(),
             WsSendRequest {
                 account_id: account_id.to_string(),
@@ -242,7 +238,7 @@ impl PythonWssBridge {
             .await
             .map_err(|error| crate::contracts::DingDaError::wrap(error.to_string()))?;
 
-        let response = ws_history::call(
+        let response = ws_history(
             self.sidecar.client(),
             WsHistoryRequest {
                 account_id: account_id.to_string(),
