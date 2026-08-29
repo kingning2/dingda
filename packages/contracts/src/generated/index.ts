@@ -3,5 +3,6 @@
 export * from "./agent";
 export * from "./ai";
 export * from "./channel";
+export * from "./copilot";
 export * from "./plugin";
 export * from "./runtime";

@@ -68,6 +68,12 @@ from .channel import (
     ChannelSidecarSearchResponse,
     ChannelXianyuSearchItem,
 )
+from .copilot import (
+    CopilotAguiEvent,
+    CopilotCopilotMessage,
+    CopilotRunStartRequest,
+    CopilotRunStartResponse,
+)
 from .plugin import (
     PluginEventProgress,
     PluginIpcInstallRequest,
@@ -147,6 +153,10 @@ __all__ = [
     "ChannelSidecarSearchRequest",
     "ChannelSidecarSearchResponse",
     "ChannelXianyuSearchItem",
+    "CopilotAguiEvent",
+    "CopilotCopilotMessage",
+    "CopilotRunStartRequest",
+    "CopilotRunStartResponse",
     "PluginEventProgress",
     "PluginIpcInstallRequest",
     "PluginIpcInstallResponse",

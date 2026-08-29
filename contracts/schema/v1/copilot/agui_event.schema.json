@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://copilot/agui_event/v1",
+  "title": "copilot/agui_event",
+  "description": "sidecar 经 pipe topic `copilot.run` 推送、Rust 原样转为 SSE data 帧的 AG-UI 事件（子集）。见同目录 AG_UI_MAPPING.md。",
+  "type": "object",
+  "required": ["type", "thread_id", "run_id"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "RUN_STARTED",
+        "RUN_FINISHED",
+        "RUN_ERROR",
+        "TEXT_MESSAGE_START",
+        "TEXT_MESSAGE_CONTENT",
+        "TEXT_MESSAGE_END",
+        "TOOL_CALL_START",
+        "TOOL_CALL_ARGS",
+        "TOOL_CALL_END",
+        "TOOL_CALL_RESULT"
+      ]
+    },
+    "thread_id": { "type": "string" },
+    "run_id": { "type": "string" },
+    "message_id": { "type": "string" },
+    "role": { "type": "string" },
+    "delta": { "type": "string" },
+    "content": { "type": "string" },
+    "tool_call_id": { "type": "string" },
+    "tool_name": { "type": "string" },
+    "args_delta": { "type": "string" },
+    "message": { "type": "string" },
+    "code": { "type": "string" }
+  },
+  "additionalProperties": false
+}

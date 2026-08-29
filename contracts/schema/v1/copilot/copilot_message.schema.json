@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://copilot/copilot_message/v1",
+  "title": "copilot/copilot_message",
+  "type": "object",
+  "required": ["id", "role", "content"],
+  "properties": {
+    "id": { "type": "string" },
+    "role": { "type": "string", "enum": ["user", "assistant", "system", "tool"] },
+    "content": { "type": "string" }
+  },
+  "additionalProperties": false
+}

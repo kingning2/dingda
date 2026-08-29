@@ -3,5 +3,6 @@
 pub mod agent;
 pub mod ai;
 pub mod channel;
+pub mod copilot;
 pub mod plugin;
 pub mod runtime;

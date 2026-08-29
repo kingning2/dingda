@@ -204,8 +204,64 @@ def _emit_ts_group(entries: list[SchemaEntry], group_of: dict[str, str], schema_
     return "\n".join(lines).rstrip() + "\n"
 
 
+_RUST_KEYWORDS = {
+    "as",
+    "async",
+    "await",
+    "box",
+    "break",
+    "const",
+    "continue",
+    "crate",
+    "do",
+    "dyn",
+    "else",
+    "enum",
+    "extern",
+    "false",
+    "final",
+    "fn",
+    "for",
+    "if",
+    "impl",
+    "in",
+    "let",
+    "loop",
+    "macro",
+    "match",
+    "mod",
+    "move",
+    "mut",
+    "override",
+    "priv",
+    "pub",
+    "ref",
+    "return",
+    "self",
+    "static",
+    "struct",
+    "super",
+    "trait",
+    "true",
+    "try",
+    "type",
+    "typeof",
+    "unsafe",
+    "unsized",
+    "use",
+    "virtual",
+    "where",
+    "while",
+    "yield",
+}
+
+
 def _rs_field_name(prop: str) -> str:
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", prop).lower()
+    name = re.sub(r"(?<!^)(?=[A-Z])", "_", prop).lower()
+    # serde 对 `r#type` 字段仍按 JSON key "type" 匹配。
+    if name in _RUST_KEYWORDS:
+        return f"r#{name}"
+    return name
 
 
 def _emit_rs_group(entries: list[SchemaEntry], group_of: dict[str, str], schema_root: Path) -> str:
