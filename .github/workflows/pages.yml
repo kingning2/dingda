@@ -3,7 +3,9 @@ name: Deploy site to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['site/**', '.github/workflows/pages.yml']
+    paths:
+      - 'website/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -15,6 +17,11 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  SITE_URL: https://kingning2.github.io/dingda/
+  SITEMAP_URL: https://kingning2.github.io/dingda/sitemap.xml
+  GSC_SITE_URL: https://kingning2.github.io/dingda/
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -24,25 +31,63 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
 
-      - name: Build site (Next.js static export)
-        working-directory: site
+      - name: Install & build website
+        working-directory: website
         run: |
-          npm ci
-          npm run build
+          pnpm install --frozen-lockfile
+          pnpm run build:pages
+
+      - name: Verify sitemap.xml exists
+        working-directory: website
+        run: |
+          test -f out/sitemap.xml
+          echo "--- sitemap.xml ---"
+          cat out/sitemap.xml
 
       - uses: actions/configure-pages@v6
 
-      - name: Upload site/out
+      - name: Upload website/out
         uses: actions/upload-pages-artifact@v5
         with:
-          path: site/out
-          # v4+ 默认不打包点文件；.nojekyll 必须随站点部署
+          path: website/out
           include-hidden-files: true
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  submit-sitemap:
+    needs: deploy
+    runs-on: ubuntu-latest
+    # Google 提交失败不阻断部署；Bing ping 在脚本内必跑
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Wait for GitHub Pages CDN
+        run: sleep 45
+
+      - name: Verify live sitemap
+        run: |
+          curl -fsSL "$SITEMAP_URL" | head -n 20
+
+      - name: Submit sitemap (Bing + Google Search Console)
+        env:
+          SITEMAP_URL: ${{ env.SITEMAP_URL }}
+          GSC_SITE_URL: ${{ env.GSC_SITE_URL }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: node website/scripts/submit-sitemap.mjs
