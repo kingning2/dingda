@@ -31,7 +31,6 @@ const PHASE_LABELS: Record<string, string> = {
   "frontend.js.entry": "JS 入口",
   "frontend.react.mounted": "React 已挂载",
   "frontend.gate.blocking": "授权闸门等待中",
-  "frontend.gate.redirect-503": "闸门跳转服务不可用",
   "frontend.gate.open": "授权闸门已放行",
   "frontend.license.fetch.begin": "开始拉取授权状态",
   "frontend.license.fetch.end": "授权状态拉取完成",

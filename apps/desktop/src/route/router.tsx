@@ -6,7 +6,6 @@ import { createBrowserRouter, Navigate } from "react-router";
 import { featureRoutePath, listWorkspaceFeatures } from "@feature/workspace-features";
 
 import { AccessGate } from "../app/access-gate";
-import { ServiceUnavailablePage } from "../app/pages/service-unavailable-page";
 import { AppShell } from "../app/shell";
 
 function WorkspacePathMarker() {
@@ -40,6 +39,7 @@ const PRODUCT_ROUTE_PATHS = [
   "monitoring/alerts",
   "monitoring/rules",
   "tasks",
+  "tasks/copilot",
   "tasks/:taskId",
   "settings",
   "settings/general",
@@ -51,7 +51,6 @@ const PRODUCT_ROUTE_PATHS = [
 ];
 
 export const appRouter = createBrowserRouter([
-  { path: "/503", element: <ServiceUnavailablePage /> },
   {
     path: "/",
     element: (

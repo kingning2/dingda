@@ -1,21 +1,20 @@
 /**
- * 工作区入口闸门 — 授权未通过走 401，后端不可用走 503。
+ * 工作区入口闸门 — 授权校验中拦截进入；错误态由工作区内联展示。
  */
 
 import { type ReactNode } from "react";
-import { Navigate } from "react-router";
 import { Loading } from "@desk/ui";
 import { useLicenseGateContext } from "@license";
-import { logStartupPhase, useErrorStore } from "../lifecycle";
+import { logStartupPhase } from "../lifecycle";
 
 /**
- * 拦截未授权与服务不可用，避免进入工作区壳。
+ * 授权校验未完成前不进入工作区；后端不可用与授权错误保持壳挂载，
+ * 由 WorkspaceOutlet 在内容区渲染 503，避免全屏覆盖侧栏。
  *
  * @param props.children - 已通过闸门后的工作区
  */
 export function AccessGate({ children }: { children: ReactNode }) {
-  const { loading, error } = useLicenseGateContext();
-  const backendUnavailable = useErrorStore((state) => state.backendUnavailable);
+  const { loading } = useLicenseGateContext();
 
   if (loading) {
     logStartupPhase("frontend.gate.blocking");
@@ -24,11 +23,6 @@ export function AccessGate({ children }: { children: ReactNode }) {
         <Loading size="lg" text="正在校验授权" />
       </div>
     );
-  }
-
-  if (backendUnavailable || error) {
-    logStartupPhase("frontend.gate.redirect-503");
-    return <Navigate to="/503" replace />;
   }
 
   logStartupPhase("frontend.gate.open");

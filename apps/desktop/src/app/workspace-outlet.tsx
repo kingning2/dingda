@@ -5,6 +5,8 @@
 import { type ComponentType, useEffect, useState } from "react";
 import { DISCOVERY_AVAILABLE } from "@feature/discovery";
 import { isLicensedRoute, UnlockPage, useLicenseGateContext } from "@license";
+import { useErrorStore } from "../lifecycle";
+import { ServiceUnavailablePage } from "./pages/service-unavailable-page";
 import { logFirstScreenRender } from "./first-screen-metric";
 
 type PageLoader = () => Promise<ComponentType>;
@@ -21,6 +23,10 @@ const PAGE_LOADERS: Record<string, PageLoader> = {
   "/tasks": async () => {
     const { TasksPage } = await import("@feature/tasks/tasks-page");
     return TasksPage;
+  },
+  "/tasks/copilot": async () => {
+    const { TaskCopilotRoute } = await import("@feature/tasks/copilot/task-copilot-page");
+    return TaskCopilotRoute;
   },
   "/profit/calculator": async () => {
     const { ProfitCalculatorPage } = await import("@feature/profit/calculator-page");
@@ -137,8 +143,8 @@ function resolveLoader(path: string): PageLoader | undefined {
 
   if (/^\/tasks\/[^/]+$/.test(path)) {
     return async () => {
-      const { TaskDetailPage } = await import("@feature/tasks/task-detail-page");
-      return TaskDetailPage;
+      const { TaskCopilotRoute } = await import("@feature/tasks/copilot/task-copilot-page");
+      return TaskCopilotRoute;
     };
   }
 
@@ -164,7 +170,8 @@ export interface WorkspaceOutletProps {
 }
 
 export function WorkspaceOutlet({ activePath }: WorkspaceOutletProps) {
-  const { gateBlocks } = useLicenseGateContext();
+  const { gateBlocks, error } = useLicenseGateContext();
+  const backendUnavailable = useErrorStore((state) => state.backendUnavailable);
   const [Page, setPage] = useState<ComponentType | null>(() => pageCache.get(activePath) ?? null);
 
   useEffect(() => {
@@ -206,6 +213,10 @@ export function WorkspaceOutlet({ activePath }: WorkspaceOutletProps) {
       cancelled = true;
     };
   }, [activePath]);
+
+  if (backendUnavailable || error) {
+    return <ServiceUnavailablePage />;
+  }
 
   if (gateBlocks && isLicensedRoute(activePath)) {
     return <UnlockPage inline />;

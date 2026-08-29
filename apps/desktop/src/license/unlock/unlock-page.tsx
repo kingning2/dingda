@@ -1,7 +1,7 @@
 /**
  * License 解锁页 — 沉浸式激活流程（Locked → Verifying → Unlocking → Ready）。
  *
- * 授权刷新后由既有闸门（AccessGate / UnauthorizedPage）导航回工作区。
+ * 授权刷新后由既有闸门（AccessGate / WorkspaceOutlet）导航回工作区。
  *
  * @author coisini
  * @created 2026-08-24
