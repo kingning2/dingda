@@ -19,7 +19,16 @@
     "resume_from_run_id": { "type": "string" },
     "resume_state_json": { "type": "string" },
     "resume_node": { "type": "string" },
-    "trace_id": { "type": "string" }
+    "trace_id": { "type": "string" },
+    "channel_account_id": {
+      "type": "string",
+      "description": "渠道账号 id，供 crawl 节点 search_xianyu / search_alibaba 使用"
+    },
+    "cookies": {
+      "type": "array",
+      "description": "渠道浏览器 Cookie 列表",
+      "items": { "$ref": "../../channel/cookie.schema.json" }
+    }
   },
   "additionalProperties": false
 }

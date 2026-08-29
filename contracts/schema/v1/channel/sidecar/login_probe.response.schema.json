@@ -10,7 +10,11 @@
     "status": { "type": "string" },
     "final_url": { "type": "string" },
     "detail": { "type": "string" },
-    "trace_id": { "type": "string" }
+    "trace_id": { "type": "string" },
+    "cookies": {
+      "type": "array",
+      "items": { "$ref": "../cookie.schema.json" }
+    }
   },
   "additionalProperties": false
 }
