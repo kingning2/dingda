@@ -35,3 +35,13 @@ pnpm dev
 pnpm build
 pnpm build:pages    # GitHub Pages（/dingda 子路径）
 ```
+
+## 头条搜索站长平台
+
+1. 打开 [zhanzhang.toutiao.com](https://zhanzhang.toutiao.com/)，添加站点 `https://kingning2.github.io/dingda/`
+2. 选择 **HTML 标签验证**，复制 `content` 值
+3. 在 GitHub 仓库 Settings → Secrets → Actions 添加 `TOUTIAO_SITE_VERIFICATION`（重新部署后 meta 生效）
+
+或使用 **文件验证**：将平台下载的文件重命名为 `ByteDanceVerify.html`，放到 `website/public/`，部署后访问 `https://kingning2.github.io/dingda/ByteDanceVerify.html`
+
+验证通过后提交 sitemap：`https://kingning2.github.io/dingda/sitemap.xml`

@@ -1,5 +1,5 @@
 import Providers from "@/app/providers";
-import { SITE_DISCOVERY_URLS, rootMetadata } from "@/lib/seo";
+import { SITE_DISCOVERY_URLS, SITE_VERIFICATION, TOUTIAO_WEBMASTER, rootMetadata } from "@/lib/seo";
 import { cn } from "@/utils/cn";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
@@ -34,6 +34,8 @@ export default function RootLayout({
       className={cn("h-full overflow-hidden antialiased", inter.className)}
     >
       <head>
+        <meta name="google-site-verification" content={SITE_VERIFICATION.google} />
+        <meta name={TOUTIAO_WEBMASTER.verifyMetaName} content={SITE_VERIFICATION.toutiao} />
         {discoveryLinks.map((link) => (
           <link
             key={link.href}

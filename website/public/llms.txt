@@ -16,7 +16,15 @@
 - Robots：https://kingning2.github.io/dingda/robots.txt
 - Sitemap：https://kingning2.github.io/dingda/sitemap.xml
 
-建议在豆包中检索品牌词「叮答」「DingDa 选品」验证引用效果；可配合头条搜索站长平台提交 sitemap。
+建议在豆包中检索品牌词「叮答」「DingDa 选品」验证引用效果。
+
+## 头条搜索站长平台
+
+- 平台入口：https://zhanzhang.toutiao.com/
+- 站点 URL：https://kingning2.github.io/dingda/
+- Sitemap 提交地址：https://kingning2.github.io/dingda/sitemap.xml
+- 验证方式：首页 `<meta name="bytedance-verification-code" content="…" />` 或根目录 `ByteDanceVerify.html`（GitHub Pages 子路径下为 `/dingda/ByteDanceVerify.html`）
+- 验证通过后：数据提交 → sitemap 提交 → 可选官网认证（关键词「叮答」「DingDa」）
 
 ## 一句话
 

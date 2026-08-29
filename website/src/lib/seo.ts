@@ -68,6 +68,22 @@ export const SITE_DISCOVERY_URLS = {
   doubaoGeo: () => publicUrl(GEO_FILES.doubaoGeo),
 } as const;
 
+/** 头条搜索站长平台（豆包/Bytespider 同源索引） */
+export const TOUTIAO_WEBMASTER = {
+  portal: "https://zhanzhang.toutiao.com/",
+  verifyMetaName: "bytedance-verification-code",
+  verifyFileName: "ByteDanceVerify.html",
+  sitemapUrl: () => SITE_DISCOVERY_URLS.sitemap(),
+} as const;
+
+export const SITE_VERIFICATION = {
+  google:
+    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ??
+    "cP79W1SgEeVV9gNafyqYLpUMVKK5oYM2Hj7R6YUKrvU",
+  toutiao:
+    process.env.NEXT_PUBLIC_TOUTIAO_SITE_VERIFICATION?.trim() ?? "qta2MU7bXS7qhnAiCMUM",
+} as const;
+
 /** 全站 GEO / 发现性元数据：写入 head，供搜索引擎与各 AI 爬虫读取。 */
 export function siteDiscoveryMetadata(): Pick<Metadata, "alternates" | "other"> {
   const robotsTxt = SITE_DISCOVERY_URLS.robotsTxt();
@@ -93,8 +109,25 @@ export function siteDiscoveryMetadata(): Pick<Metadata, "alternates" | "other"> 
       "geo-platforms": GEO_PLATFORM_IDS.join(","),
       "ai-crawler": AI_CRAWLER_USER_AGENTS.join(","),
       "ai-crawler-policy": "allow",
+      "toutiao-webmaster": TOUTIAO_WEBMASTER.portal,
+      "toutiao-sitemap": sitemap,
     },
   };
+}
+
+function buildSiteVerification(): NonNullable<Metadata["verification"]> {
+  const verification: NonNullable<Metadata["verification"]> = {
+    google: SITE_VERIFICATION.google,
+  };
+
+  if (SITE_VERIFICATION.toutiao) {
+    verification.other = {
+      ...verification.other,
+      [TOUTIAO_WEBMASTER.verifyMetaName]: SITE_VERIFICATION.toutiao,
+    };
+  }
+
+  return verification;
 }
 
 export function createPageMetadata({
@@ -180,11 +213,7 @@ export const rootMetadata: Metadata = {
     apple: asset("assets/logo.webp"),
     shortcut: asset("assets/logo.webp"),
   },
-  verification: {
-    google:
-      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ??
-      "cP79W1SgEeVV9gNafyqYLpUMVKK5oYM2Hj7R6YUKrvU",
-  },
+  verification: buildSiteVerification(),
 };
 
 export function buildJsonLd() {

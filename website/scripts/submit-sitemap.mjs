@@ -109,18 +109,20 @@ async function main() {
     console.log(
       "[google] also add the service account email as Owner in Search Console",
     );
-    return;
+  } else {
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(SA_JSON);
+    } catch {
+      throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON");
+    }
+
+    const token = await getGoogleAccessToken(serviceAccount);
+    await submitGoogleSearchConsole(token);
   }
 
-  let serviceAccount;
-  try {
-    serviceAccount = JSON.parse(SA_JSON);
-  } catch {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON is not valid JSON");
-  }
-
-  const token = await getGoogleAccessToken(serviceAccount);
-  await submitGoogleSearchConsole(token);
+  console.log("[toutiao] manual — verify at https://zhanzhang.toutiao.com/");
+  console.log(`[toutiao] then submit sitemap: ${SITEMAP_URL}`);
 }
 
 main().catch((error) => {

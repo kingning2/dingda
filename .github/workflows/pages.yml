@@ -46,6 +46,8 @@ jobs:
         env:
           NEXT_PUBLIC_BASE_PATH: /dingda
           NEXT_PUBLIC_SITE_URL: https://kingning2.github.io/dingda
+          # 头条站长平台 HTML 验证：在 zhanzhang.toutiao.com 获取后写入仓库 Secret
+          NEXT_PUBLIC_TOUTIAO_SITE_VERIFICATION: ${{ secrets.TOUTIAO_SITE_VERIFICATION }}
         run: |
           pnpm install --frozen-lockfile
           pnpm run build
