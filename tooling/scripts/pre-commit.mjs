@@ -57,6 +57,13 @@ function hasSensitivePattern(text) {
   return patterns.some((pattern) => pattern.test(text));
 }
 
+// Windows cmd.exe 对参数长度有上限；批量调用外部命令时同样需要分批
+function runBatched(command, baseArgs, files, batchSize = 40) {
+  for (let i = 0; i < files.length; i += batchSize) {
+    run(command, [...baseArgs, ...files.slice(i, i + batchSize)]);
+  }
+}
+
 function restage(files) {
   if (files.length === 0) {
     return;
@@ -68,7 +75,10 @@ function restage(files) {
   }
 }
 
-const siteFile = (file) => file.replaceAll("\\", "/").startsWith("site/");
+const siteFile = (file) => {
+  const normalized = file.replaceAll("\\", "/");
+  return normalized.startsWith("site/") || normalized.startsWith("website/");
+};
 const vendorFile = (file) =>
   file.replaceAll("\\", "/").includes("crawlers/vendor/");
 const tsFiles = stagedFiles(/\.(ts|tsx)$/).filter((file) => !siteFile(file));
@@ -78,7 +88,7 @@ const pyFiles = stagedFiles(/\.py$/).filter((file) => !vendorFile(file));
 const allStaged = stagedFiles();
 
 if (tsFiles.length > 0) {
-  run("eslint", ["--fix", ...tsFiles]);
+  runBatched("eslint", ["--fix"], tsFiles);
   restage(tsFiles);
   run("pnpm", ["lint:types"]);
 }
@@ -93,15 +103,11 @@ if (rsFiles.length > 0) {
 if (pyFiles.length > 0) {
   const useUv = hasCommand("uv");
   const runner = useUv ? "uv" : "python";
-  const checkArgs = useUv
-    ? ["run", "ruff", "check", "--fix", ...pyFiles]
-    : ["-m", "ruff", "check", "--fix", ...pyFiles];
-  const formatArgs = useUv
-    ? ["run", "ruff", "format", ...pyFiles]
-    : ["-m", "ruff", "format", ...pyFiles];
+  const checkArgs = useUv ? ["run", "ruff", "check", "--fix"] : ["-m", "ruff", "check", "--fix"];
+  const formatArgs = useUv ? ["run", "ruff", "format"] : ["-m", "ruff", "format"];
 
-  run(runner, checkArgs);
-  run(runner, formatArgs);
+  runBatched(runner, checkArgs, pyFiles);
+  runBatched(runner, formatArgs, pyFiles);
   restage(pyFiles);
 }
 
