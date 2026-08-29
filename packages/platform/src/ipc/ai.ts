@@ -5,7 +5,12 @@
  * @created 2026-08-13
  */
 
-import type { AiIpcConfigRequest, AiIpcConfigResponse } from "@desk/contracts";
+import type {
+  AiIpcConfigRequest,
+  AiIpcConfigResponse,
+  AiIpcListModelsResponse,
+  AiIpcProvidersCatalogResponse,
+} from "@desk/contracts";
 
 import { call } from "./invoke";
 
@@ -32,6 +37,24 @@ export function aiConfigGet(): Promise<AiIpcConfigResponse> {
  */
 export function aiConfigSet(config: AiIpcConfigRequest): Promise<AiIpcConfigResponse> {
   return call<AiIpcConfigResponse>("ai_config_set", { config });
+}
+
+/**
+ * LangGraph 可直连的平台目录（只读）。
+ */
+export function aiProvidersCatalog(): Promise<AiIpcProvidersCatalogResponse> {
+  return call<AiIpcProvidersCatalogResponse>("ai_providers_catalog");
+}
+
+/**
+ * 拉取平台可用模型列表（填 API Key 后调用）。
+ */
+export function aiListModels(
+  baseUrl: string,
+  apiKey: string,
+  kind?: string,
+): Promise<AiIpcListModelsResponse> {
+  return call<AiIpcListModelsResponse>("ai_list_models", { baseUrl, apiKey, kind });
 }
 
 /**

@@ -13,7 +13,7 @@ import { callRequest } from "./invoke";
 export type AccountStatus = "active" | "disabled";
 
 /** 账号所属平台。 */
-export type AccountPlatform = "xianyu" | "ali1688";
+export type AccountPlatform = "xianyu" | "ali1688" | "xiaohongshu";
 
 /** 账号（与 Rust `app::account::XianyuAccount` 对齐的核心字段）。 */
 export interface XianyuAccount {
@@ -111,7 +111,7 @@ export function accountDelete(ownerId: number, accountId: string): Promise<void>
   }).then(() => undefined);
 }
 
-/** 探测账号 Cookie 是否仍在线。 */
+/** 探测账号 Cookie 是否仍在线（1688 → 浏览器；闲鱼/小红书 → HTTP 刷新 token）。 */
 export function accountProbeLogin(ownerId: number, accountId: string): Promise<boolean> {
   return callRequest<boolean>("account_probe_login", {
     request: { owner_id: ownerId, account_id: accountId },

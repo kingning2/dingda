@@ -21,6 +21,8 @@ export const IPC_COMMAND_LABELS: Readonly<Record<string, string>> = {
   agent_run_list: "Agent Run 列表",
   ai_config_get: "读取 AI 配置",
   ai_config_set: "保存 AI 配置",
+  ai_providers_catalog: "读取 AI 平台目录",
+  ai_list_models: "拉取 AI 模型列表",
   ai_account_balance: "查询 AI 余额",
   ["ai_test_api_key"]: "测试 API 密钥",
   plugin_list: "插件列表",
