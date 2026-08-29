@@ -15,9 +15,9 @@ from typing import Any
 import websockets
 from websockets.asyncio.client import ClientConnection
 
-from crawlers.xianyu.risk import RiskControlError
-from crawlers.xianyu.ws import frames
-from crawlers.xianyu.ws.constants import (
+from crawlers.goofish.risk import RiskControlError
+from crawlers.goofish.ws import frames
+from crawlers.goofish.ws.constants import (
     HEARTBEAT_INTERVAL_SEC,
     HISTORY_FIRST_CURSOR,
     HISTORY_MAX_PAGES,
@@ -32,7 +32,7 @@ from crawlers.xianyu.ws.constants import (
     WEB_ORIGIN,
     WS_URL,
 )
-from crawlers.xianyu.ws.cookies import (
+from crawlers.goofish.ws.cookies import (
     clean_cookie_header,
     cookies_to_header,
     device_id_from_cookie,
@@ -40,11 +40,11 @@ from crawlers.xianyu.ws.cookies import (
     now_ms,
     parse_cookies,
 )
-from crawlers.xianyu.ws.history import parse_history_message
-from crawlers.xianyu.ws.push import PushBatch, parse_sync_push_package
-from crawlers.xianyu.ws.token import TokenError, fetch_ws_token, refresh_login
+from crawlers.goofish.ws.history import parse_history_message
+from crawlers.goofish.ws.push import PushBatch, parse_sync_push_package
+from crawlers.goofish.ws.token import TokenError, fetch_ws_token, refresh_login
 
-logger = logging.getLogger("dingda.crawlers.xianyu.ws.client")
+logger = logging.getLogger("dingda.crawlers.goofish.ws.client")
 
 EventCallback = Callable[[dict[str, Any]], Awaitable[None] | None]
 RiskRenewCallback = Callable[[RiskControlError], Awaitable[list[dict[str, Any]] | None]]

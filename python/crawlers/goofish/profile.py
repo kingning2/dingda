@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from crawlers.xianyu.mtop import MtopClient, MtopRequest
+from crawlers.goofish.mtop import MtopClient, MtopRequest
 
 
 def fetch_user_profile(cookie_str: str) -> tuple[dict[str, str], str]:

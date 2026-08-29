@@ -1,4 +1,4 @@
-"""闲鱼滑块自动求解 — 对齐商业版 human 拖动轨迹与反检测。
+"""阿里系滑块自动求解（闲鱼 / 1688 / 淘宝 Baxia / NoCaptcha）— 拟人拖动轨迹与反检测。
 
 负责：
 - 在主页 / iframe 中定位 `#nc_1_n1z` 滑块与轨道（含启发式兜底）；
@@ -16,6 +16,7 @@ from __future__ import annotations
 import contextlib
 import logging
 import math
+import os
 import random
 import time
 from typing import Any
@@ -89,6 +90,12 @@ def has_x5sec(cookies: list[dict[str, Any]]) -> bool:
         if name.startswith("x5") or "x5sec" in name:
             return True
     return False
+
+
+def auto_slider_enabled() -> bool:
+    """是否启用自动拖滑块（默认开，设 DINGDA_SLIDER_AUTO=0 关闭）。"""
+    value = os.getenv("DINGDA_SLIDER_AUTO", "1").strip().lower()
+    return value not in {"0", "false", "no", "off"}
 
 
 async def clear_risk_cookies(context: Any) -> None:

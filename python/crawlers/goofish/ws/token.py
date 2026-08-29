@@ -13,9 +13,9 @@ import urllib.request
 from http.cookiejar import CookieJar
 from typing import Any
 
-from crawlers.xianyu.risk import RiskControlError, extract_punish_url, is_risk_control_text
-from crawlers.xianyu.ws.constants import APP_KEY, LOGIN_TOKEN_URL, REG_APP_KEY, TOKEN_CACHE_TTL_SEC
-from crawlers.xianyu.ws.cookies import (
+from crawlers.goofish.risk import RiskControlError, extract_punish_url, is_risk_control_text
+from crawlers.goofish.ws.constants import APP_KEY, LOGIN_TOKEN_URL, REG_APP_KEY, TOKEN_CACHE_TTL_SEC
+from crawlers.goofish.ws.cookies import (
     cookies_to_header,
     device_id_from_cookie,
     merge_cookie_header,
@@ -23,9 +23,9 @@ from crawlers.xianyu.ws.cookies import (
     parse_cookies,
     sign_token,
 )
-from crawlers.xianyu.ws.sign import generate_sign
+from crawlers.goofish.ws.sign import generate_sign
 
-logger = logging.getLogger("dingda.crawlers.xianyu.ws.token")
+logger = logging.getLogger("dingda.crawlers.goofish.ws.token")
 
 _token_cache: dict[str, tuple[str, float]] = {}
 
@@ -58,7 +58,7 @@ def refresh_login(
     cookies: str | list[dict[str, Any]],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """长连保活：调用 ``mtop.taobao.idlemessage.pc.loginuser.get``。"""
-    from crawlers.xianyu.mtop import MtopClient, MtopRequest
+    from crawlers.goofish.mtop import MtopClient, MtopRequest
 
     header = cookies_to_header(cookies)
     client = MtopClient(header)
@@ -120,7 +120,7 @@ def _fetch_once(header: str, token_part: str, jar: CookieJar) -> str:
     if not device_id:
         raise TokenError("无法解析 deviceId")
 
-    from crawlers.xianyu.ws.cookies import now_ms
+    from crawlers.goofish.ws.cookies import now_ms
 
     data_val = json.dumps({"appKey": REG_APP_KEY, "deviceId": device_id}, separators=(",", ":"))
     timestamp = str(now_ms())

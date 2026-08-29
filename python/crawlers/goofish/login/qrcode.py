@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from crawlers.core.login.qrcode import QrcodeLogin
-from crawlers.xianyu.browser import XianyuBrowser
+from crawlers.goofish.browser import XianyuBrowser
 
 
 class XianyuQrcode(QrcodeLogin):

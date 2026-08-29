@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import hashlib
 
-from crawlers.xianyu.ws.constants import APP_KEY
+from crawlers.goofish.ws.constants import APP_KEY
 
 
 def generate_sign(token: str, timestamp: str, data: str) -> str:

@@ -7,8 +7,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from crawlers.xianyu.mtop import MtopClient, MtopRequest
-from crawlers.xianyu.ws.cookies import my_id, parse_cookies
+from crawlers.goofish.mtop import MtopClient, MtopRequest
+from crawlers.goofish.ws.cookies import my_id, parse_cookies
 
 ITEM_URL_PREFIX = "https://www.goofish.com/item?id="
 

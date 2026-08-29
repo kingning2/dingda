@@ -9,8 +9,8 @@ import json
 import random
 from typing import Any
 
-from crawlers.xianyu.ws.constants import REG_APP_KEY
-from crawlers.xianyu.ws.cookies import now_ms
+from crawlers.goofish.ws.constants import REG_APP_KEY
+from crawlers.goofish.ws.cookies import now_ms
 
 
 def generate_mid() -> str:

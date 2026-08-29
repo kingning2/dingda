@@ -10,7 +10,7 @@ from typing import Any
 
 from crawlers.core.browser.base import BrowserPlatform
 from crawlers.core.playwright_common import CHROME_DESKTOP_UA, inject_init_script
-from crawlers.xianyu.browser.session import (
+from crawlers.goofish.browser.session import (
     looks_blocked,
     prepare_cookies,
     profile_dir,

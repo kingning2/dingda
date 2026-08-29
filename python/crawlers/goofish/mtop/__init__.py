@@ -13,16 +13,16 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
 
-from crawlers.xianyu.ws.constants import APP_KEY, USER_AGENT, WEB_ORIGIN
-from crawlers.xianyu.ws.cookies import (
+from crawlers.goofish.ws.constants import APP_KEY, USER_AGENT, WEB_ORIGIN
+from crawlers.goofish.ws.cookies import (
     credential_to_cookie_header,
     now_ms,
     parse_cookies,
     sign_token,
 )
-from crawlers.xianyu.ws.sign import generate_sign
+from crawlers.goofish.ws.sign import generate_sign
 
-logger = logging.getLogger("dingda.crawlers.xianyu.mtop")
+logger = logging.getLogger("dingda.crawlers.goofish.mtop")
 
 H5_API_BASE = "https://h5api.m.goofish.com/h5/"
 

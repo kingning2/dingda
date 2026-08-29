@@ -20,6 +20,8 @@ dingda-sidecar = { path = "python", editable = true }
 target-version = "py313"
 line-length = 100
 src = ["python"]
+# vendored 第三方爬虫源码不参与本仓库风格约束（见 python/crawlers/vendor/VENDOR.md）
+exclude = ["**/crawlers/vendor/**"]
 
 [tool.ruff.lint]
 select = [

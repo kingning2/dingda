@@ -23,7 +23,12 @@ from crawlers.core.playwright_common import (
     clear_profile_locks,
     to_serializable_cookies,
 )
-from crawlers.xianyu.login.slider import clear_risk_cookies, has_x5sec, try_solve_slider
+from crawlers.core.slider import (
+    auto_slider_enabled,
+    clear_risk_cookies,
+    has_x5sec,
+    try_solve_slider,
+)
 
 logger = logging.getLogger("dingda.sidecar.cookie-renew")
 
@@ -94,12 +99,6 @@ def _looks_logged_in(page_url: str, cookies: list[dict[str, Any]], login_cookie:
     if has_unb and has_tk and has_x5sec(cookies):
         return True
     return has_unb and has_tk and not blocked
-
-
-def _want_auto_slider() -> bool:
-    """是否启用自动拖滑块（默认开，设 DINGDA_SLIDER_AUTO=0 关闭）。"""
-    value = os.getenv("DINGDA_SLIDER_AUTO", "1").strip().lower()
-    return value not in {"0", "false", "no", "off"}
 
 
 def _resolve_headless(*, has_punish: bool, force_headed: bool, try_auto: bool = False) -> bool:
@@ -471,7 +470,7 @@ async def renew_cookies(
 
     punish = (punish_url or "").strip()
     target = punish or config.home_url
-    want_auto = _want_auto_slider()
+    want_auto = auto_slider_enabled()
 
     # 1) 自动滑块（默认有头；不强制要求 punish URL）
     if want_auto:

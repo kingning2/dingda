@@ -9,8 +9,8 @@ from typing import Any
 from crawlers.channel import Channel
 from crawlers.core.browser.base import BrowserPlatform
 from crawlers.core.login.qrcode import QrcodeLogin
-from crawlers.xianyu.browser import XianyuBrowser
-from crawlers.xianyu.login.qrcode import XianyuQrcode
+from crawlers.goofish.browser import XianyuBrowser
+from crawlers.goofish.login.qrcode import XianyuQrcode
 
 
 class XianyuChannel(Channel):
@@ -33,7 +33,7 @@ class XianyuChannel(Channel):
         punish_url: str | None = None,
         timeout_secs: int = 180,
     ) -> tuple[bool, str, dict[str, Any]]:
-        from crawlers.xianyu.login.cookie_renew import renew_cookies
+        from crawlers.goofish.login.cookie_renew import renew_cookies
 
         return await renew_cookies(
             cookies,

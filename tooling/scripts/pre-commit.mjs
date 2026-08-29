@@ -69,9 +69,12 @@ function restage(files) {
 }
 
 const siteFile = (file) => file.replaceAll("\\", "/").startsWith("site/");
+const vendorFile = (file) =>
+  file.replaceAll("\\", "/").includes("crawlers/vendor/");
 const tsFiles = stagedFiles(/\.(ts|tsx)$/).filter((file) => !siteFile(file));
 const rsFiles = stagedFiles(/\.rs$/);
-const pyFiles = stagedFiles(/\.py$/);
+// vendored 第三方爬虫源码不参与 lint（见 python/crawlers/vendor/VENDOR.md）
+const pyFiles = stagedFiles(/\.py$/).filter((file) => !vendorFile(file));
 const allStaged = stagedFiles();
 
 if (tsFiles.length > 0) {
