@@ -11,18 +11,18 @@ React → Tauri IPC → Rust → Python Sidecar
 ```
 python/
 ├── pyproject.toml
-├── application/sidecar/     # 进程入口 + channel handlers
-├── runtime/                 # 宿主 IPC / lifecycle
-├── runtimes/                # 子运行时生命周期
-├── agent/ skills/ tools/
-├── crawlers/
-├── contracts/
-└── sidecar.spec
+└── src/dingda_sidecar/      # 包根（src 布局）
+    ├── main.py              # 进程入口（--ipc 必填）
+    ├── runtime/             # 宿主 IPC / lifecycle
+    ├── agent/ skills/ tools/
+    ├── crawlers/
+    ├── services/ common/ config/
+    └── contracts/
 ```
 
 ## 开发
 
 ```bash
 uv sync
-uv run python -m application.sidecar.main --port 8787
+uv run python -m dingda_sidecar.main --port 8787
 ```

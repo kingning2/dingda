@@ -42,7 +42,7 @@ Rust 负责 Sidecar 生命周期、权限、业务状态、存储和前端事件
 
 ## 当前状态
 
-产品入口要求 `--ipc`（`runtime.ipc_server`，`sidecar.invoke` + Event）。进程模块：`application.sidecar.main`。`--shm` + `--ipc` hybrid 预留大文件，非默认。`--port` HTTP 仅供手工调试。
+产品入口要求 `--ipc`（`runtime.ipc_server`，`sidecar.invoke` + Event）。进程模块：`dingda_sidecar.main`。`--shm` + `--ipc` hybrid 预留大文件，非默认。`--port` HTTP 仅供手工调试。
 
 ## 日志边界
 

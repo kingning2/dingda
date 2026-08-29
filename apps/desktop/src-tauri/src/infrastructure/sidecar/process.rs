@@ -453,7 +453,7 @@ fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecyc
             .arg(&sidecar_dir)
             .arg("python")
             .arg("-m")
-            .arg("application.sidecar.main");
+            .arg("dingda_sidecar.main");
         append_sidecar_args(&mut cmd, config);
         return Ok(configure_stdio(cmd));
     }
@@ -470,7 +470,7 @@ fn build_spawn_command(config: &SidecarConfig) -> Result<Command, SidecarLifecyc
         let mut cmd = Command::new(&candidate);
         cmd.current_dir(&config.sidecar_dir)
             .arg("-m")
-            .arg("application.sidecar.main");
+            .arg("dingda_sidecar.main");
         append_sidecar_args(&mut cmd, config);
         info!(executable = %candidate, "使用 python 启动侧车");
         return Ok(configure_stdio(cmd));
