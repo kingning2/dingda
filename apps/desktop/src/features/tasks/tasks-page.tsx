@@ -99,9 +99,14 @@ export function TasksPage() {
       ambient="none"
       containerPadding="sm"
       extra={
-        <Button type="button" size="sm" variant="outline" onClick={() => void refresh()}>
-          刷新
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => selectTab("/tasks/copilot")}>
+            AI 副驾
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => void refresh()}>
+            刷新
+          </Button>
+        </div>
       }
     >
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">

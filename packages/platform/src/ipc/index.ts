@@ -7,3 +7,4 @@
 
 export { call } from "./invoke";
 export * from "./chain";
+export * from "./copilot";
