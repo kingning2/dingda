@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "dingda://ai/ipc/providers_catalog.response/v1",
+  "title": "ai/ipc/providers_catalog.response",
+  "type": "object",
+  "required": ["providers"],
+  "properties": {
+    "providers": {
+      "type": "array",
+      "items": {
+        "$ref": "../provider.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}
