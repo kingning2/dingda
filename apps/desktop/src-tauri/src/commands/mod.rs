@@ -6,6 +6,7 @@ pub mod account;
 pub mod agent;
 pub mod app;
 pub mod channel;
+pub mod copilot;
 pub mod manage;
 pub mod response;
 
@@ -39,6 +40,7 @@ pub use channel::{
 pub use channel::{
     channel_connect, channel_disconnect, channel_send, channel_state_get, channel_state_set,
 };
+pub use copilot::copilot_endpoint;
 #[cfg(platform_xianyu)]
 pub use dashboard::{dashboard_stats, DashboardHandle};
 pub use manage::{
@@ -87,6 +89,7 @@ macro_rules! with_shared_ipc {
             ai_list_models,
             ai_test_api_key,
             ai_account_balance,
+            copilot_endpoint,
             plugin_list,
             plugin_install,
             plugin_uninstall,
