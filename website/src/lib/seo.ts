@@ -78,10 +78,10 @@ export const TOUTIAO_WEBMASTER = {
 
 export const SITE_VERIFICATION = {
   google:
-    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ??
+    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ||
     "cP79W1SgEeVV9gNafyqYLpUMVKK5oYM2Hj7R6YUKrvU",
   toutiao:
-    process.env.NEXT_PUBLIC_TOUTIAO_SITE_VERIFICATION?.trim() ?? "qta2MU7bXS7qhnAiCMUM",
+    process.env.NEXT_PUBLIC_TOUTIAO_SITE_VERIFICATION?.trim() || "qta2MU7bXS7qhnAiCMUM",
 } as const;
 
 /** 全站 GEO / 发现性元数据：写入 head，供搜索引擎与各 AI 爬虫读取。 */
