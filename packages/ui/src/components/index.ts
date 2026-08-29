@@ -81,3 +81,5 @@ export {
 export * from "./layout";
 export * from "./effects";
 export * from "./aceternity";
+export * from "./ai";
+export * from "./agent";
