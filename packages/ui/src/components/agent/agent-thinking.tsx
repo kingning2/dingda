@@ -15,6 +15,9 @@ export interface AgentThought {
   label: string;
   status: AgentThoughtStatus;
   detail?: ReactNode;
+  /** 纯文本详情，供聊天区流式/渐进展示。 */
+  detailText?: string;
+  detailStreaming?: boolean;
 }
 
 export interface AgentThinkingProps {

@@ -1,13 +1,32 @@
 /**
- * CopilotKit 副驾 IPC — 直连端点发现。
- *
- * 边界（CHG-20260829-007）：React 直连 Python 仅限副驾对话流（AG-UI SSE）；
- * 文件 / SQLite 等持久化一律由 Rust 处理。
+ * 任务副驾 IPC — 经 Rust pipe 中转（不经 HTTP 直连 Python）。
  */
 
 import { call } from "./invoke";
 
-/** 副驾直连端点 URL；sidecar 未就绪或辅助 HTTP 未启动时为 null。 */
-export function copilotEndpoint(): Promise<string | null> {
-  return call<string | null>("copilot_endpoint");
+export interface CopilotRunStartParams {
+  threadId?: string;
+  runId?: string;
+  messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
+  state?: Record<string, unknown>;
+}
+
+export interface CopilotRunStartResult {
+  runId: string;
+  threadId: string;
+}
+
+/** sidecar 管道就绪即可使用副驾。 */
+export function copilotReady(): Promise<boolean> {
+  return call<boolean>("copilot_ready");
+}
+
+/** 启动一轮副驾对话；事件经 `listenCopilotAgui` 接收。 */
+export function copilotRunStart(params: CopilotRunStartParams): Promise<CopilotRunStartResult> {
+  return call<CopilotRunStartResult>("copilot_run_start", { request: params });
+}
+
+/** 取消指定副驾对话轮。 */
+export function copilotRunAbort(runId: string): Promise<void> {
+  return call<void>("copilot_run_abort", { request: { runId } });
 }

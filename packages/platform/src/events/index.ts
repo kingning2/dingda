@@ -32,4 +32,5 @@ export * from "./plugin";
 export * from "./channel";
 export * from "./agent";
 export * from "./account";
+export * from "./copilot";
 
