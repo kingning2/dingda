@@ -13,8 +13,6 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@ag-ui/client": "^0.0.59",
-    "@copilotkit/react-core": "^1.69.3",
     "@desk/contracts": "workspace:*",
     "@desk/platform": "workspace:*",
     "@desk/store": "workspace:*",
@@ -28,7 +26,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
-    "react-router": "^7.6.3"
+    "react-router": "^7.6.3",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.7",
