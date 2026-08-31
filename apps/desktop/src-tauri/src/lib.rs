@@ -193,6 +193,14 @@ pub fn launch(
                     agent_store,
                     account_store,
                 );
+                app.state::<AppState>()
+                    .supervisor
+                    .agent()
+                    .spawn_pipe_listener();
+                crate::infrastructure::sidecar::copilot_runtime::spawn_copilot_pipe_listener_from_lifecycle(
+                    app.state::<AppState>().lifecycle.clone(),
+                    app.handle().clone(),
+                );
             }
 
             {

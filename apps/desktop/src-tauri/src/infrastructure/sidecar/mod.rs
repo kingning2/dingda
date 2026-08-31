@@ -22,6 +22,7 @@ pub mod channel_login;
 pub mod channel_product;
 pub mod client;
 pub mod connection;
+pub mod copilot_runtime;
 pub mod events;
 pub mod health;
 pub mod process;

@@ -40,7 +40,7 @@ pub use channel::{
 pub use channel::{
     channel_connect, channel_disconnect, channel_send, channel_state_get, channel_state_set,
 };
-pub use copilot::copilot_endpoint;
+pub use copilot::{copilot_ready, copilot_run_abort, copilot_run_start};
 #[cfg(platform_xianyu)]
 pub use dashboard::{dashboard_stats, DashboardHandle};
 pub use manage::{
@@ -89,7 +89,9 @@ macro_rules! with_shared_ipc {
             ai_list_models,
             ai_test_api_key,
             ai_account_balance,
-            copilot_endpoint,
+            copilot_ready,
+            copilot_run_start,
+            copilot_run_abort,
             plugin_list,
             plugin_install,
             plugin_uninstall,

@@ -79,6 +79,14 @@ impl AgentRuntime {
         *self.store.write().expect("agent store") = Some(store);
     }
 
+    /// 全局订阅 pipe `agent.run`（含副驾直连 Python 启动的 run）。
+    pub fn spawn_pipe_listener(self: &Arc<Self>) {
+        let runtime = Arc::clone(self);
+        tauri::async_runtime::spawn(async move {
+            spawn_agent_run_pipe_listener(runtime).await;
+        });
+    }
+
     pub fn state(&self) -> AgentState {
         self.lifecycle.state()
     }
@@ -480,6 +488,10 @@ struct AgentRunPush {
     run_id: String,
     state: String,
     #[serde(default)]
+    kind: Option<String>,
+    #[serde(default)]
+    user: Option<String>,
+    #[serde(default)]
     reply: Option<String>,
     #[serde(default)]
     error: Option<String>,
@@ -489,6 +501,93 @@ struct AgentRunPush {
     failed_node: Option<String>,
     #[serde(default)]
     step: Option<AgentSidecarRunStep>,
+}
+
+fn new_record_from_push(push: &AgentRunPush) -> AgentRunRecord {
+    let now = Utc::now().timestamp_millis();
+    AgentRunRecord {
+        id: push.run_id.clone(),
+        kind: push
+            .kind
+            .clone()
+            .unwrap_or_else(|| "price_compare".to_string()),
+        state: push.state.clone(),
+        user: push.user.clone().unwrap_or_default(),
+        reply: push.reply.clone(),
+        error: push.error.clone(),
+        error_kind: push.error_kind.clone(),
+        failed_node: push.failed_node.clone(),
+        steps: vec![],
+        created_at: now,
+        updated_at: now,
+        finished_at: None,
+    }
+}
+
+fn merge_push_into_run(run: &mut AgentRunRecord, push: &AgentRunPush) {
+    run.state = push.state.clone();
+    run.updated_at = Utc::now().timestamp_millis();
+    if push.reply.is_some() {
+        run.reply = push.reply.clone();
+    }
+    if push.error.is_some() {
+        run.error = push.error.clone();
+    }
+    if push.error_kind.is_some() {
+        run.error_kind = push.error_kind.clone();
+    }
+    if push.failed_node.is_some() {
+        run.failed_node = push.failed_node.clone();
+    }
+    if run.user.is_empty() {
+        if let Some(user) = push.user.as_ref().filter(|value| !value.is_empty()) {
+            run.user = user.clone();
+        }
+    }
+    if run.kind.is_empty() {
+        if let Some(kind) = push.kind.as_ref().filter(|value| !value.is_empty()) {
+            run.kind = kind.clone();
+        }
+    }
+}
+
+/// 全局 pipe 监听：副驾等不经 `start_run` 的路径也能落库。
+async fn spawn_agent_run_pipe_listener(runtime: Arc<AgentRuntime>) {
+    loop {
+        let mut rx = match runtime.client.subscribe_events().await {
+            Ok(rx) => rx,
+            Err(error) => {
+                warn!(
+                    target: RUNTIME_TARGET,
+                    %error,
+                    "[runtime] agent.run.global.subscribe.failed"
+                );
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                continue;
+            }
+        };
+        info!(target: RUNTIME_TARGET, "[runtime] agent.run.global.subscribe");
+        loop {
+            match rx.recv().await {
+                Ok(event) => {
+                    if event.method != AGENT_RUN_EVENT {
+                        continue;
+                    }
+                    let Ok(push) = serde_json::from_value::<AgentRunPush>(event.params) else {
+                        continue;
+                    };
+                    apply_run_push(&runtime, &push).await;
+                }
+                Err(RecvError::Lagged(_)) => {
+                    warn!(target: RUNTIME_TARGET, "[runtime] agent.run.global.lagged");
+                }
+                Err(RecvError::Closed) => {
+                    warn!(target: RUNTIME_TARGET, "[runtime] agent.run.global.closed");
+                    break;
+                }
+            }
+        }
+    }
 }
 
 fn run_is_terminal(runtime: &AgentRuntime, run_id: &str) -> bool {
@@ -576,6 +675,8 @@ async fn catch_up_from_status(runtime: &Arc<AgentRuntime>, run_id: &str) -> bool
     let push = AgentRunPush {
         run_id: status.run_id,
         state: status.state,
+        kind: None,
+        user: None,
         reply: status.reply,
         error: status.error,
         error_kind: status.error_kind,
@@ -605,6 +706,26 @@ async fn apply_pipe_event(runtime: &Arc<AgentRuntime>, run_id: &str, event: RpcE
 
 async fn apply_run_push(runtime: &Arc<AgentRuntime>, push: &AgentRunPush) -> bool {
     let run_id = &push.run_id;
+    if push.step.is_none() && runtime.store_get(run_id).is_none() {
+        let record = new_record_from_push(push);
+        let _ = runtime.store_upsert(record.clone());
+        *runtime.active_run_id.write().expect("active") = Some(run_id.clone());
+        runtime.lifecycle.transition(AgentState::Running);
+        runtime.emit_progress(&AgentProgressEvent {
+            run_id: run_id.clone(),
+            step_id: None,
+            node: None,
+            index: None,
+            total: Some(8),
+            status: "running".to_string(),
+            message: "run started".to_string(),
+            detail: None,
+            error_kind: None,
+            account_id: None,
+            model: None,
+            content: None,
+        });
+    }
     if let Some(step) = push.step.as_ref() {
         apply_step(runtime, run_id, push, step);
     }
@@ -748,27 +869,23 @@ fn apply_step(
         state_before_json: step.state_before_json.clone(),
     };
     let mut status_changed = true;
-    if let Some(mut run) = runtime.store_get(run_id) {
-        if let Some(existing) = run.steps.iter().find(|s| s.index == rec.index) {
-            rec.id = existing.id.clone();
-            if existing.status == rec.status && existing.content == rec.content {
-                return;
-            }
-            status_changed = existing.status != rec.status;
+    let mut run = runtime
+        .store_get(run_id)
+        .unwrap_or_else(|| new_record_from_push(push));
+    if let Some(existing) = run.steps.iter().find(|s| s.index == rec.index) {
+        rec.id = existing.id.clone();
+        if existing.status == rec.status && existing.content == rec.content {
+            return;
         }
-        if let Some(existing) = run.steps.iter_mut().find(|s| s.index == rec.index) {
-            *existing = rec.clone();
-        } else {
-            run.steps.push(rec.clone());
-        }
-        run.state = push.state.clone();
-        run.updated_at = Utc::now().timestamp_millis();
-        run.reply = push.reply.clone();
-        run.error = push.error.clone();
-        run.error_kind = push.error_kind.clone();
-        run.failed_node = push.failed_node.clone();
-        let _ = runtime.store_upsert(run);
+        status_changed = existing.status != rec.status;
     }
+    if let Some(existing) = run.steps.iter_mut().find(|s| s.index == rec.index) {
+        *existing = rec.clone();
+    } else {
+        run.steps.push(rec.clone());
+    }
+    merge_push_into_run(&mut run, push);
+    let _ = runtime.store_upsert(run);
     if status_changed {
         let content_preview = rec
             .content
