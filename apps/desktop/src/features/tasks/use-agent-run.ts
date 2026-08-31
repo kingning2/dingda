@@ -11,6 +11,7 @@ import {
   type AgentRunRecord,
   type AgentRunStep,
 } from "@desk/platform/ipc/agent-run";
+import { stringifyError } from "@desk/platform/error";
 import {
   listenAgentProgress,
   type AgentProgressPayload,
@@ -69,6 +70,25 @@ const TERMINAL_PROGRESS = new Set([
   "waiting_network",
   "paused",
 ]);
+
+async function agentRunGetWithRetry(runId: string): Promise<AgentRunRecord> {
+  const maxAttempts = 20;
+  const delayMs = 150;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      return await agentRunGet(runId);
+    } catch (error) {
+      lastError = error;
+      const message = stringifyError(error);
+      if (!message.includes("不存在") || attempt === maxAttempts - 1) {
+        throw error;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
 
 function appendLog(prev: RunLogLine[], payload: AgentProgressPayload): RunLogLine[] {
   const streamId = `${payload.runId}:${payload.node ?? payload.index ?? "run"}:stream`;
@@ -151,7 +171,7 @@ export function useAgentRun(runId: string | undefined) {
     setLoading(true);
     setError(null);
 
-    void agentRunGet(runId)
+    void agentRunGetWithRetry(runId)
       .then((run) => {
         if (cancelled) {
           return;

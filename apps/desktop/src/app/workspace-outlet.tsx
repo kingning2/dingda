@@ -21,12 +21,12 @@ const PAGE_LOADERS: Record<string, PageLoader> = {
     return ProductsPage;
   },
   "/tasks": async () => {
-    const { TasksPage } = await import("@feature/tasks/tasks-page");
-    return TasksPage;
+    const { TasksChatRoute } = await import("@feature/tasks/page");
+    return TasksChatRoute;
   },
   "/tasks/copilot": async () => {
-    const { TaskCopilotRoute } = await import("@feature/tasks/copilot/task-copilot-page");
-    return TaskCopilotRoute;
+    const { TasksChatRoute } = await import("@feature/tasks/page");
+    return TasksChatRoute;
   },
   "/profit/calculator": async () => {
     const { ProfitCalculatorPage } = await import("@feature/profit/calculator-page");
@@ -126,6 +126,12 @@ const PAGE_LOADERS: Record<string, PageLoader> = {
     : {}),
 };
 
+function isTasksChatPath(path: string): boolean {
+  return path === "/tasks" || path === "/tasks/copilot" || /^\/tasks\/[^/]+$/.test(path);
+}
+
+const TASKS_CHAT_CACHE_KEY = "__tasks_chat__";
+
 const pageCache = new Map<string, ComponentType>();
 
 function resolveLoader(path: string): PageLoader | undefined {
@@ -143,16 +149,21 @@ function resolveLoader(path: string): PageLoader | undefined {
 
   if (/^\/tasks\/[^/]+$/.test(path)) {
     return async () => {
-      const { TaskCopilotRoute } = await import("@feature/tasks/copilot/task-copilot-page");
-      return TaskCopilotRoute;
+      const { TasksChatRoute } = await import("@feature/tasks/page");
+      return TasksChatRoute;
     };
   }
 
   return undefined;
 }
 
+function pageCacheKey(path: string): string {
+  return isTasksChatPath(path) ? TASKS_CHAT_CACHE_KEY : path;
+}
+
 async function loadWorkspacePage(path: string): Promise<ComponentType | null> {
-  const cached = pageCache.get(path);
+  const cacheKey = pageCacheKey(path);
+  const cached = pageCache.get(cacheKey);
   if (cached) {
     return cached;
   }
@@ -161,7 +172,7 @@ async function loadWorkspacePage(path: string): Promise<ComponentType | null> {
     return null;
   }
   const Page = await loader();
-  pageCache.set(path, Page);
+  pageCache.set(cacheKey, Page);
   return Page;
 }
 
@@ -172,7 +183,9 @@ export interface WorkspaceOutletProps {
 export function WorkspaceOutlet({ activePath }: WorkspaceOutletProps) {
   const { gateBlocks, error } = useLicenseGateContext();
   const backendUnavailable = useErrorStore((state) => state.backendUnavailable);
-  const [Page, setPage] = useState<ComponentType | null>(() => pageCache.get(activePath) ?? null);
+  const [Page, setPage] = useState<ComponentType | null>(
+    () => pageCache.get(pageCacheKey(activePath)) ?? null,
+  );
 
   useEffect(() => {
     if (!Page) {
@@ -196,7 +209,8 @@ export function WorkspaceOutlet({ activePath }: WorkspaceOutletProps) {
 
   useEffect(() => {
     let cancelled = false;
-    const cached = pageCache.get(activePath);
+    const cacheKey = pageCacheKey(activePath);
+    const cached = pageCache.get(cacheKey);
     if (cached) {
       setPage(() => cached);
       return;

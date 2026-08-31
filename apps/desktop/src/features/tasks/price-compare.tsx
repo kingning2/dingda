@@ -379,12 +379,15 @@ export function buildAgentThoughts(run: AgentRunRecord | null): AgentThought[] {
     }
 
     const status = mapThoughtStatus(step.status);
+    const plainDetail = formatStepLogText(step.node, step.content ?? step.detail);
     const detail = renderStepDetail(step.node, step.content ?? step.detail, status === "running");
     thoughts.push({
       id: `${step.node}:${step.index}`,
       label: thoughtLabelForNode(step.node),
       status,
       detail: detail ?? undefined,
+      detailText: plainDetail || undefined,
+      detailStreaming: status === "running",
     });
   }
 

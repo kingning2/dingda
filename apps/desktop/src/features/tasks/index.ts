@@ -6,7 +6,7 @@ import { ListTodo } from "@desk/ui/icons";
 
 export { TasksPage } from "./tasks-page";
 export { TaskDetailPage } from "./task-detail-page";
-export { TaskCopilotRoute } from "./copilot/task-copilot-page";
+export { TasksChatRoute } from "./page";
 
 export const TASKS_PATH = "/tasks" as const;
 

@@ -64,7 +64,7 @@ export function getPageMeta(pathname: string): PageMeta {
     return { title: "商品详情", description: "这个商品为什么值得卖" };
   }
   if (pathname.startsWith("/tasks/") && pathname !== "/tasks") {
-    return { title: "任务详情" };
+    return { title: "任务中心" };
   }
 
   return pageMetaByPath[pathname] ?? { title: "DingDa" };
