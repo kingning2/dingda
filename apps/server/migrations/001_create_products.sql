@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS products (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    platform VARCHAR(32) NOT NULL,
+    external_id VARCHAR(128) NOT NULL,
+    title VARCHAR(512) NOT NULL,
+    url TEXT NOT NULL,
+    image VARCHAR(1024) NULL,
+    price JSON NULL,
+    location VARCHAR(256) NULL,
+    seller JSON NULL,
+    tags JSON NULL,
+    extra JSON NULL,
+    keyword VARCHAR(256) NULL,
+    source VARCHAR(128) NULL,
+    crawled_at DATETIME(6) NULL,
+    created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+    UNIQUE KEY uq_products_platform_external_id (platform, external_id),
+    KEY ix_products_platform (platform),
+    KEY ix_products_keyword (keyword),
+    KEY ix_products_crawled_at (crawled_at)
+);

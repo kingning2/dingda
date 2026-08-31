@@ -1,0 +1,41 @@
+services:
+  mysql:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mysql
+    container_name: dingda-server-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: dingda_products
+      MYSQL_USER: dingda
+      MYSQL_PASSWORD: dingda
+    ports:
+      - "3306:3306"
+    volumes:
+      - server_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build: .
+    container_name: dingda-server
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://dingda:dingda@mysql:3306/dingda_products
+      API_HOST: 0.0.0.0
+      API_PORT: 8080
+      RUST_LOG: info
+      JWT_SECRET: change-me-in-production
+      MALLOC_ARENA_MAX: "2"
+    ports:
+      - "8080:8080"
+
+volumes:
+  server_mysql_data:
