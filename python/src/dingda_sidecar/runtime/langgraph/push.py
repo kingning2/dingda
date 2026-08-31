@@ -14,6 +14,8 @@ def emit_run_progress(run: GraphRun, step: StepRecord | None = None) -> None:
     with run.lock:
         params: dict[str, Any] = {
             "run_id": run.run_id,
+            "kind": run.kind,
+            "user": run.user,
             "state": run.status,
             "reply": run.reply or None,
             "error": run.error or None,

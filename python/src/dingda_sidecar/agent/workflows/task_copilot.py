@@ -1,16 +1,15 @@
-"""任务副驾 — CopilotKit 对话 agent（AG-UI 事件流）。
+"""任务副驾 — LangGraph ReAct 图（AG-UI 事件流经 pipe ``copilot.run`` 推送）。
 
-与比价六节点可控图不同：本工作流是对话式 ReAct agent，
-每轮消费前端直连（SSE 端点 /v1/copilot/agui）请求体的对话历史 + 任务上下文快照，
-以 AG-UI 事件子集（见 contracts/schema/v1/copilot/AG_UI_MAPPING.md）
-经 sink 回调产出事件帧（HTTP 模式写入 SSE 队列）。
+显式 StateGraph（与比价/买家回复同构）::
 
-服务端工具::
+    prepare → agent ⇄ tools → END
 
-    start_price_compare  发起比价任务（复用 /v1/agent/run/start 全链路）
-    control_run          暂停/继续/取消/重启比价任务（复用 run_control）
+- ``prepare``：注入任务上下文快照（HumanMessage）
+- ``agent``：System prompt + 对话历史，绑定工具调 LLM
+- ``tools``：``start_price_compare`` / ``control_run``
 
-任务列表 / 详情由前端经 state 快照注入，不在此处持久化。
+``graph.stream(..., stream_mode="messages")`` 产出 token/tool 流，
+经 ``_AguiEmitter`` 翻译为 AG-UI 子集 → ``emit_event(copilot.run)`` → Rust → 前端。
 """
 
 from __future__ import annotations
@@ -24,11 +23,15 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from langchain_core.messages import AIMessageChunk, BaseMessage, HumanMessage, ToolMessage
-from langgraph.prebuilt import create_react_agent
 
+from dingda_sidecar.agent.graph.state import CopilotGraphState
 from dingda_sidecar.runtime.observability import track_workflow
 
 logger = logging.getLogger("dingda.agent.task_copilot")
+
+COPILOT_RUN_EVENT = "copilot.run"
+
+COPILOT_GRAPH_STEPS: tuple[str, ...] = ("prepare", "agent", "tools")
 
 SYSTEM_PROMPT = """你是钉达（DingDa）选品平台的任务管理副驾。
 你帮助用户管理比价任务：回答任务状态与进度、解读比价分析结论、按需求发起新的比价任务、暂停/恢复/取消任务。
@@ -51,7 +54,7 @@ SYSTEM_PROMPT = """你是钉达（DingDa）选品平台的任务管理副驾。
 class CopilotRun:
     """一次副驾对话轮。
 
-    ``sink`` 接收 AG-UI 事件 dict（HTTP SSE 模式为队列 put）；
+    ``sink`` 接收 AG-UI 事件 dict（pipe 模式经 ``emit_event(copilot.run)``）；
     ``done`` 在本轮结束（含失败/取消）后置位，供 SSE 写循环退出。
     """
 
@@ -73,7 +76,6 @@ _registry: dict[str, CopilotRun] = {}
 
 def register_run(run: CopilotRun) -> None:
     with _registry_lock:
-        # 同会话旧轮自然过期，防泄漏；上限兜底。
         if len(_registry) > 64:
             for old in list(_registry)[:-64]:
                 _registry.pop(old, None)
@@ -90,9 +92,14 @@ def remove_run(run_id: str) -> None:
         _registry.pop(run_id, None)
 
 
-# ---------------------------------------------------------------------------
-# 服务端工具
-# ---------------------------------------------------------------------------
+def make_pipe_sink() -> Callable[[dict[str, Any]], None]:
+    """产品路径：经 pipe Event ``copilot.run`` 推送 AG-UI 事件。"""
+    from dingda_sidecar.runtime.ipc_push import emit_event
+
+    def _sink(event: dict[str, Any]) -> None:
+        emit_event(COPILOT_RUN_EVENT, event)
+
+    return _sink
 
 
 def _build_tools(default: dict[str, str], run_id: str) -> list[Any]:
@@ -133,6 +140,48 @@ def _build_tools(default: dict[str, str], run_id: str) -> list[Any]:
 
 
 # ---------------------------------------------------------------------------
+# LangGraph 编译
+# ---------------------------------------------------------------------------
+
+
+def _compile_copilot_graph(model: Any, tools: list[Any]) -> Any:
+    """编译副驾 ReAct 图：prepare → agent ⇄ tools。"""
+    from langchain_core.messages import SystemMessage
+    from langgraph.graph import END, START, StateGraph
+    from langgraph.prebuilt import ToolNode, tools_condition
+
+    bound_model = model.bind_tools(tools)
+
+    def prepare_node(state: CopilotGraphState) -> dict[str, Any]:
+        if state.get("context_injected"):
+            return {}
+        ctx = state.get("task_context") or {}
+        return {
+            "messages": [HumanMessage(content=_context_message(ctx))],
+            "context_injected": True,
+        }
+
+    def agent_node(state: CopilotGraphState) -> dict[str, Any]:
+        messages = [SystemMessage(content=SYSTEM_PROMPT), *state["messages"]]
+        response = bound_model.invoke(messages)
+        return {"messages": [response]}
+
+    graph = StateGraph(CopilotGraphState)
+    graph.add_node("prepare", prepare_node)
+    graph.add_node("agent", agent_node)
+    graph.add_node("tools", ToolNode(tools))
+    graph.add_edge(START, "prepare")
+    graph.add_edge("prepare", "agent")
+    graph.add_conditional_edges(
+        "agent",
+        tools_condition,
+        {"tools": "tools", END: END},
+    )
+    graph.add_edge("tools", "agent")
+    return graph.compile()
+
+
+# ---------------------------------------------------------------------------
 # AG-UI 事件发射器
 # ---------------------------------------------------------------------------
 
@@ -157,6 +206,15 @@ class _AguiEmitter:
     def text_end(self, message_id: str) -> None:
         self.emit(type="TEXT_MESSAGE_END", message_id=message_id)
 
+    def reasoning_start(self, message_id: str) -> None:
+        self.emit(type="REASONING_MESSAGE_START", message_id=message_id, role="assistant")
+
+    def reasoning_content(self, message_id: str, delta: str) -> None:
+        self.emit(type="REASONING_MESSAGE_CONTENT", message_id=message_id, delta=delta)
+
+    def reasoning_end(self, message_id: str) -> None:
+        self.emit(type="REASONING_MESSAGE_END", message_id=message_id)
+
     def tool_start(self, tool_call_id: str, tool_name: str) -> None:
         self.emit(type="TOOL_CALL_START", tool_call_id=tool_call_id, tool_name=tool_name)
 
@@ -167,7 +225,13 @@ class _AguiEmitter:
         self.emit(type="TOOL_CALL_END", tool_call_id=tool_call_id)
 
     def tool_result(self, tool_call_id: str, content: str) -> None:
-        self.emit(type="TOOL_CALL_RESULT", tool_call_id=tool_call_id, content=content)
+        self.emit(
+            type="TOOL_CALL_RESULT",
+            message_id=tool_call_id,
+            tool_call_id=tool_call_id,
+            content=content,
+            role="tool",
+        )
 
     def finished(self) -> None:
         self.emit(type="RUN_FINISHED")
@@ -234,13 +298,14 @@ def _execute(run: CopilotRun) -> None:
             },
             run.run_id,
         )
-        agent = create_react_agent(model, tools=tools, state_modifier=SYSTEM_PROMPT)
-        input_messages: list[BaseMessage] = [
-            *run.messages,
-            HumanMessage(content=_context_message(run.state)),
-        ]
+        compiled = _compile_copilot_graph(model, tools)
+        initial: CopilotGraphState = {
+            "messages": list(run.messages),
+            "task_context": run.state,
+            "context_injected": False,
+        }
 
-        _stream(agent, input_messages, run, emitter)
+        _stream_graph(compiled, initial, run, emitter)
         emitter.finished()
     except Exception as error:  # noqa: BLE001
         logger.exception("copilot run crashed run_id=%s", run.run_id)
@@ -250,27 +315,67 @@ def _execute(run: CopilotRun) -> None:
         run.done.set()
 
 
-def _stream(
-    agent: Any,
-    input_messages: list[BaseMessage],
+def _extract_text_parts(chunk: AIMessageChunk) -> tuple[str, str]:
+    """从 AIMessageChunk 拆分 reasoning 与正文（兼容 DeepSeek / 方舟 reasoning_content）。"""
+    reasoning = ""
+    content = ""
+    extra = getattr(chunk, "additional_kwargs", None) or {}
+    if isinstance(extra, dict):
+        reasoning = str(extra.get("reasoning_content") or extra.get("reasoning") or "")
+
+    raw = chunk.content
+    if isinstance(raw, str):
+        content = raw
+    elif isinstance(raw, list):
+        for block in raw:
+            if isinstance(block, str):
+                content += block
+            elif isinstance(block, dict):
+                block_type = block.get("type")
+                if block_type in ("reasoning", "thinking"):
+                    reasoning += str(block.get("text") or block.get("reasoning") or "")
+                elif block_type == "text":
+                    content += str(block.get("text") or "")
+    return reasoning, content
+
+
+def _stream_graph(
+    graph: Any,
+    initial: CopilotGraphState,
     run: CopilotRun,
     emitter: _AguiEmitter,
 ) -> None:
-    """消费 ``stream_mode="messages"``，翻译为 AG-UI 事件。"""
+    """消费 LangGraph ``stream_mode="messages"``，翻译为 AG-UI 事件。"""
     message_id = ""
     message_open = False
+    reasoning_id = ""
+    reasoning_open = False
     open_tools: dict[str, bool] = {}
 
-    for chunk, _meta in agent.stream(
-        {"messages": input_messages},
-        stream_mode="messages",
-    ):
+    def close_text() -> None:
+        nonlocal message_open
+        if message_open:
+            emitter.text_end(message_id)
+            message_open = False
+
+    def close_reasoning() -> None:
+        nonlocal reasoning_open
+        if reasoning_open:
+            emitter.reasoning_end(reasoning_id)
+            reasoning_open = False
+
+    def close_open_messages() -> None:
+        close_text()
+        close_reasoning()
+
+    for chunk, _meta in graph.stream(initial, stream_mode="messages"):
         if run.cancelled.is_set():
             break
 
         if isinstance(chunk, ToolMessage):
             tool_call_id = str(chunk.tool_call_id or "")
             if tool_call_id:
+                close_open_messages()
                 if open_tools.pop(tool_call_id, False):
                     emitter.tool_end(tool_call_id)
                 emitter.tool_result(
@@ -287,24 +392,30 @@ def _stream(
         for call in chunk.tool_call_chunks:
             call_id = str(call.get("id") or "")
             if call_id and call_id not in open_tools:
-                if message_open:
-                    emitter.text_end(message_id)
-                    message_open = False
+                close_open_messages()
                 open_tools[call_id] = True
                 emitter.tool_start(call_id, str(call.get("name") or ""))
             args_delta = call.get("args")
             if call_id and isinstance(args_delta, str) and args_delta:
                 emitter.tool_args(call_id, args_delta)
 
-        text = chunk.content if isinstance(chunk.content, str) else ""
-        if text:
+        reasoning_delta, text_delta = _extract_text_parts(chunk)
+        if reasoning_delta:
+            if not reasoning_open:
+                close_text()
+                reasoning_id = uuid.uuid4().hex
+                emitter.reasoning_start(reasoning_id)
+                reasoning_open = True
+            emitter.reasoning_content(reasoning_id, reasoning_delta)
+
+        if text_delta:
             if not message_open:
+                close_reasoning()
                 message_id = uuid.uuid4().hex
                 emitter.text_start(message_id)
                 message_open = True
-            emitter.text_content(message_id, text)
+            emitter.text_content(message_id, text_delta)
 
-    if message_open:
-        emitter.text_end(message_id)
+    close_open_messages()
     for tool_call_id in open_tools:
         emitter.tool_end(tool_call_id)

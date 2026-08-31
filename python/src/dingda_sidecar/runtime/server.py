@@ -32,6 +32,16 @@ class RuntimeHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: object) -> None:
         del format, args
 
+    def do_OPTIONS(self) -> None:
+        path = self.path.split("?")[0]
+        if path == COPILOT_SSE_PATH:
+            self.send_response(204)
+            self._send_cors_headers()
+            self.end_headers()
+            return
+        self.send_response(404)
+        self.end_headers()
+
     def do_GET(self) -> None:
         if self.path == "/health":
             self._send_json(200, {"status": "ok"})
@@ -80,6 +90,7 @@ class RuntimeHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
+        self._send_cors_headers()
         self.end_headers()
         try:
             while True:
@@ -105,6 +116,14 @@ class RuntimeHandler(BaseHTTPRequestHandler):
             )
         finally:
             abort_copilot_stream(stream)
+
+    def _send_cors_headers(self) -> None:
+        """WebView 直连副驾 SSE 为跨域 fetch，须回显 Origin 并允许预检。"""
+        origin = self.headers.get("Origin")
+        self.send_header("Access-Control-Allow-Origin", origin or "*")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Accept")
+        self.send_header("Access-Control-Max-Age", "86400")
 
     def _read_json(self) -> Any:
         length = int(self.headers.get("Content-Length", "0"))

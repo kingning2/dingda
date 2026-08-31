@@ -22,7 +22,10 @@
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from typing import Annotated, Any, TypedDict
+
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 
 class GraphState(TypedDict, total=False):
@@ -53,6 +56,21 @@ class GraphState(TypedDict, total=False):
     analysis: str  # 先文章结论，后核验结论；article_analyze / analyze 写
     reply: str  # finalize 写
     crawl_skipped: str  # crawl 跳过原因（如无 cookies）
+
+
+class CopilotGraphState(TypedDict, total=False):
+    """任务副驾 ReAct 图状态。
+
+    节点顺序::
+
+        prepare → agent ⇄ tools → END
+
+    ``prepare`` 注入任务上下文快照；``agent`` 调 LLM；``tools`` 执行服务端工具。
+    """
+
+    messages: Annotated[list[BaseMessage], add_messages]
+    task_context: dict[str, Any]
+    context_injected: bool
 
 
 class BuyerReplyState(TypedDict, total=False):

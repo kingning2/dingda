@@ -27,7 +27,11 @@ from dingda_sidecar.runtime.handlers.channel.qr import (
 )
 from dingda_sidecar.runtime.handlers.channel.search import handle_search
 from dingda_sidecar.runtime.handlers.channel.sessions_batch import handle_sessions_batch
-from dingda_sidecar.runtime.handlers.copilot import handle_copilot_http_info
+from dingda_sidecar.runtime.handlers.copilot import (
+    handle_copilot_http_info,
+    handle_copilot_run_abort,
+    handle_copilot_run_start,
+)
 from dingda_sidecar.runtime.handlers.xianyu_mtop import (
     handle_xianyu_item_detail,
     handle_xianyu_message_headinfo,
@@ -75,6 +79,8 @@ ROUTES: dict[str, tuple[str, str]] = {
     "/v1/ai/providers_catalog": ("POST", "handle_ai_providers_catalog"),
     "/v1/ai/list_models": ("POST", "handle_ai_list_models"),
     "/v1/copilot/http_info": ("POST", "handle_copilot_http_info"),
+    "/v1/copilot/run_start": ("POST", "handle_copilot_run_start"),
+    "/v1/copilot/run_abort": ("POST", "handle_copilot_run_abort"),
     "/v1/ws/connect": ("POST", "handle_ws_connect"),
     "/v1/ws/disconnect": ("POST", "handle_ws_disconnect"),
     "/v1/ws/send": ("POST", "handle_ws_send"),
@@ -107,6 +113,8 @@ HANDLERS: dict[str, Handler] = {
     "handle_ai_providers_catalog": handle_ai_providers_catalog,
     "handle_ai_list_models": handle_ai_list_models,
     "handle_copilot_http_info": handle_copilot_http_info,
+    "handle_copilot_run_start": handle_copilot_run_start,
+    "handle_copilot_run_abort": handle_copilot_run_abort,
     "handle_ws_connect": handle_ws_connect,
     "handle_ws_disconnect": handle_ws_disconnect,
     "handle_ws_send": handle_ws_send,

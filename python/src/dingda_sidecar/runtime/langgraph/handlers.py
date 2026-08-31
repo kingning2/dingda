@@ -122,6 +122,7 @@ def handle_agent_run_start(payload: dict[str, Any] | None, *, trace_id: str) -> 
         state_before=state_before,
     )
     get_run_registry().create(run)
+    emit_run_progress(run)
     _spawn(run)
     logger.info(
         "agent_run.start run_id=%s kind=%s user=%s resume_node=%s nodes=%s default=%s",
