@@ -1,3 +1,0 @@
-# 独立 pnpm 项目，不纳入仓库根 workspace（apps/*、packages/*）
-packages:
-  - '.'

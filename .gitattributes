@@ -1,6 +1,0 @@
-* text=auto eol=lf
-
-*.rs text eol=lf
-*.py text eol=lf
-*.{js,ts,tsx,mjs} text eol=lf
-*.{json,yml,yaml,toml,md} text eol=lf
