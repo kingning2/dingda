@@ -1,0 +1,128 @@
+---
+description: React 状态管理与数据流 — 单向流、状态下沉、单一数据源、Zustand 仅共享 UI
+globs: apps/desktop/**/*.{ts,tsx},packages/ui/**/*.{ts,tsx},packages/platform/**/*.{ts,tsx},packages/store/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# React 状态管理与数据流（必须遵守）
+
+编写任何 React 代码前，先分析状态应放在哪里，再动手实现。
+
+## 核心原则
+
+- 单向数据流（One Way Data Flow）
+- State 下沉（State Colocation）
+- 单一数据源（Single Source of Truth）
+- 最少共享（Only Share When Necessary）
+- UI = State 的映射；禁止直接操作 DOM
+
+禁止为了方便把所有状态塞进全局 Store。
+
+---
+
+## 一、状态分类
+
+### 1. 本地状态（`useState`）
+
+仅当前组件使用的数据，一律 `useState`（或抽到同 Feature 的 hook，内部仍用 `useState`）。
+
+例如：Input、Dialog 开关、Tabs、局部 Loading、Hover、展开折叠、分页/排序、表单草稿、Step。
+
+禁止放入 Zustand。
+
+### 2. 共享 UI 状态（Zustand / `@desk/store`）
+
+只有**多个页面或多个组件**共同使用的数据，才能进 Zustand。
+
+例如：当前登录用户、工作空间、当前聊天会话、主题、Sidebar 折叠、Layout、全局通知/Modal、快捷键。
+
+Store 必须保持最小；每个 Store 只负责一个领域（`auth.store` / `layout.store`），禁止巨型 `app.store`。
+
+读取必须用 Selector：`useXxxStore((s) => s.theme)`，禁止 `useXxxStore()` 整包订阅。
+
+### 3. 服务器 / IPC 数据
+
+来自 HTTP、WebSocket、Rust IPC、Python、数据库的数据：
+
+- **真实来源**：`@desk/platform` IPC（或后续 HTTP 客户端），经 Feature hook 拉取。
+- **允许**：Feature 内 `useState` / 自定义 hook（如 `useCustomers`）缓存当前页所需结果。
+- **禁止**：把服务器列表/详情复制进 Zustand「再当数据源」。
+- **不强制** TanStack Query；若引入须单独评审，且不得与 Zustand 双写同一份服务器数据。
+
+### 4. Context
+
+仅允许：Theme、i18n、Config、Permission。
+
+禁止：聊天消息、用户/商品/工单/邮件/客户列表等业务数据。Context 不做大型状态管理。
+
+---
+
+## 二、状态作用域
+
+State 尽量靠近使用它的组件。不要为了传参方便提升到 App/Shell。
+
+弹窗表单、局部 Loading 优先留在弹窗/面板内部（State Colocation）。
+
+---
+
+## 三、禁止重复状态
+
+可计算得到的不要存第二份。
+
+```tsx
+// ❌ users + onlineUsers 两份
+// ✅
+const onlineUsers = useMemo(() => users.filter((u) => u.online), [users]);
+```
+
+（仓库启用 React Compiler：禁止仅为重渲染优化乱加 `useMemo`/`useCallback`；**派生数据**与文档化单一数据源时可用 `useMemo`。）
+
+---
+
+## 四、组件通信
+
+- 父 → 子：props
+- 子 → 父：callback
+- 禁止子组件直接改父 state；禁止跨 Feature 互相引用对方内部 state
+
+两层 props 即可；多层再考虑 Context（低频）或 Zustand（真共享），不要一上来全局。
+
+---
+
+## 五、组件职责
+
+- 组件：展示与交互
+- 业务逻辑：抽到 `features/*/use-*.ts` hooks
+- 禁止把大段 IPC/编排全写进页面 JSX
+
+---
+
+## 六、性能
+
+优先拆组件 → 确认有问题再 `memo` → 再 `useMemo` / `useCallback`。禁止到处乱加 memo。
+
+---
+
+## 七、数据流与 DOM
+
+```
+User Action → State Change → React Render → UI Update
+```
+
+禁止：`document.querySelector` / `getElementById` / `innerHTML` 等直接改 DOM（平台桥接除外且须隔离在 `packages/platform`）。
+
+---
+
+## 八、完成页面后自检
+
+- [ ] 状态是否放得过高？
+- [ ] 是否有重复/可派生却存了的 state？
+- [ ] 是否误用 Zustand（本地 UI 进了 Store）？
+- [ ] 服务器/IPC 数据是否被复制进 Store？
+- [ ] 能否用本地 `useState` / Feature hook？
+- [ ] Store 是否过大、是否缺 Selector？
+- [ ] 组件是否职责过多（该抽 hook / 子组件）？
+- [ ] Context 是否被滥用？
+- [ ] 是否符合单向数据流？
+
+有问题先重构，再继续加功能。

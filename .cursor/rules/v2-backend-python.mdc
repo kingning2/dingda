@@ -1,0 +1,59 @@
+---
+description: v2 Python 后端 — 写文件前先弄清目录职责，且每个文件必须有中文注释
+globs: v2/backend/**/*.py
+alwaysApply: false
+---
+
+# v2 Backend Python 规范
+
+## 写文件之前（强制）
+
+1. **先读目录**：打开目标路径的父级 `__init__.py`（若有）及同级已有文件，弄清该目录职责
+2. **放对层**：不确定时对照下表，禁止把业务逻辑写进 `api/`，禁止在 `domains/` 里写 FastAPI 路由
+3. **再动手**：新建或大幅改动文件前，用一句话确认「这个文件属于哪一层、做什么」
+
+## 目录职责速查
+
+| 路径 | 职责 |
+|------|------|
+| `src/api/` | HTTP 路由（薄）：校验参数 → 调 domain → 返回 |
+| `src/domains/` | 业务核心：Agent / 爬虫 / 调研 / 渠道 / 知识库 |
+| `src/infrastructure/` | DB、事件总线、外部适配器 |
+| `src/contracts/` | Pydantic 请求/响应模型 |
+| `src/core/` | 配置、日志、lifespan |
+| `src/adapters/` | 第三方稳定适配层（业务唯一入口） |
+| `third_party/` | vendored 上游包，可整目录替换 |
+| `tests/` | 测试；结构镜像 `api/`、`domains/` |
+
+## 注释（强制）
+
+每个 `.py` 文件**必须有**顶部中文模块 docstring，说明：
+
+- 本文件职责
+- 在分层中的位置（被谁调用、调用谁）
+- 主要端点/类/迁移来源（如适用）
+
+公开类与对外函数补充中文 docstring。业务代码用 `logging.getLogger("dingda.xxx")`，禁止裸 `print()`。
+
+## 示例
+
+```python
+"""爬虫领域服务。
+
+职责：管理爬虫任务生命周期与 Provider 调度。
+由 api/crawler 路由调用，不直接处理 HTTP。
+"""
+
+class CrawlerService:
+    """创建、执行、查询爬虫任务。"""
+
+    def run(self, task_id: str) -> None:
+        """执行指定任务。"""
+```
+
+## 禁止
+
+- 未读目录结构就新建文件
+- 无模块 docstring 的 `.py` 文件
+- 在 `api/` 写数据库/SQL、在 `domains/` 写 `APIRouter`
+- 在 `domains/` / `api/` 直接 `import xhs_cli`、`goofish_cli` 或 `third_party` 下任意模块
