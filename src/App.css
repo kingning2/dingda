@@ -1,0 +1,259 @@
+:root {
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #e8e8e8;
+  background-color: #1a1a1a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── App shell ── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #1a1a1a;
+}
+
+.app-shell-main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── Title bar ── */
+
+.title-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  flex-shrink: 0;
+  background: #141414;
+  border-bottom: 1px solid #2a2a2a;
+  user-select: none;
+}
+
+.title-bar-drag {
+  cursor: default;
+  display: flex;
+  align-items: center;
+}
+
+.title-bar-drag-fill {
+  flex: 1;
+  min-width: 2rem;
+  align-self: stretch;
+}
+
+.title-bar-brand-wrap {
+  padding: 0 12px;
+}
+
+.title-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.title-bar-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.title-bar-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #f0f0f0;
+  white-space: nowrap;
+}
+
+.title-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.title-bar-controls {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.title-bar-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: #a0a0a0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.title-bar-control:hover {
+  background: #2a2a2a;
+  color: #f0f0f0;
+}
+
+.title-bar-control-close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+.title-bar-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.title-bar-mac-spacer {
+  display: flex;
+  width: 4.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-bar-mac-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #3a3a3a;
+}
+
+.title-bar-mac-trail {
+  width: 2rem;
+  flex-shrink: 0;
+}
+
+/* ── Page content ── */
+
+.page {
+  padding: 2rem;
+  max-width: 720px;
+}
+
+.page h1 {
+  margin: 0 0 1rem;
+  font-size: 1.75rem;
+}
+
+.page p {
+  margin: 0.5rem 0;
+  color: #c8c8c8;
+}
+
+.row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid #3a3a3a;
+  padding: 0.55em 1.1em;
+  font-size: 0.95em;
+  font-weight: 500;
+  font-family: inherit;
+  color: #f0f0f0;
+  background-color: #262626;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+button:hover {
+  border-color: #5a7fd6;
+  background-color: #2e2e2e;
+}
+
+button:active {
+  background-color: #222;
+}
+
+.button-secondary {
+  border-color: #4a4a4a;
+  background-color: #1f1f1f;
+}
+
+.button-secondary:hover {
+  border-color: #6a6a6a;
+  background-color: #262626;
+}
+
+.error-test-actions {
+  flex-wrap: wrap;
+}
+
+.error-test-hint {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #9a9a9a;
+}
+
+.error-test-hint code {
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  background: #262626;
+  color: #e0e0e0;
+}
+
+/* ── HTTP status pages (404 / 501) ── */
+
+.status-page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: calc(100vh - 44px);
+  padding: 2rem 2.5rem;
+  max-width: 560px;
+}
+
+.status-page-code {
+  margin: 0 0 0.5rem;
+  font-size: 4rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: #f0f0f0;
+}
+
+.status-page-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f0f0f0;
+}
+
+.status-page-description {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #a8a8a8;
+}
