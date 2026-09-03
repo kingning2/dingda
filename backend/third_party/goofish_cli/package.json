@@ -1,0 +1,64 @@
+{
+  "name": "openclaw-goofish",
+  "version": "0.3.0",
+  "description": "OpenClaw plugin for goofish-cli MCP tools and Xianyu operation skills.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fancyboi999/goofish-cli.git"
+  },
+  "homepage": "https://github.com/fancyboi999/goofish-cli",
+  "bugs": {
+    "url": "https://github.com/fancyboi999/goofish-cli/issues"
+  },
+  "keywords": [
+    "openclaw",
+    "clawhub",
+    "xianyu",
+    "goofish",
+    "mcp"
+  ],
+  "files": [
+    ".codex-plugin/plugin.json",
+    ".mcp.json",
+    "openclaw.plugin.json",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE",
+    "README.md",
+    "docs",
+    "skills"
+  ],
+  "scripts": {
+    "test": "node --test openclaw-plugin/package.test.mjs",
+    "pack:check": "npm pack --dry-run"
+  },
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.6.1"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "install": {
+      "clawhubSpec": "clawhub:openclaw-goofish",
+      "defaultChoice": "clawhub",
+      "minHostVersion": ">=2026.6.1"
+    },
+    "compat": {
+      "pluginApi": ">=2026.6.1",
+      "minGatewayVersion": "2026.6.1"
+    },
+    "release": {
+      "publishToClawHub": true,
+      "publishToNpm": false,
+      "bundleRuntimeDependencies": false
+    }
+  }
+}

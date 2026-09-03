@@ -1,0 +1,14 @@
+# 第三方 vendor 版本锁（由 tooling/sync_vendor.py 维护）
+#
+# 日常同步使用此文件中的 rev，不会自动跟踪 upstream.ref 的最新提交。
+# 需要升级上游时显式执行：
+#   uv run python tooling/sync_vendor.py --update xhs_cli
+#   uv run python tooling/sync_vendor.py --update --all
+
+vendors:
+  xhs_cli:
+    repo: https://github.com/jackwener/xhs-cli
+    rev: b008d534cd46ca6345f51cd458a85f5fe4c2a66f
+  goofish_cli:
+    repo: https://github.com/fancyboi999/goofish-cli
+    rev: ffbc16c54714c0064a0e43ea3246436d30fa16e6

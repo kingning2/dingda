@@ -1,0 +1,38 @@
+{
+  "name": "goofish",
+  "version": "0.3.0",
+  "description": "Xianyu tools and operating skills backed by goofish-cli.",
+  "author": {
+    "name": "fancy",
+    "email": "saral96@mail.com",
+    "url": "https://github.com/fancyboi999"
+  },
+  "homepage": "https://github.com/fancyboi999/goofish-cli",
+  "repository": "https://github.com/fancyboi999/goofish-cli",
+  "license": "Apache-2.0",
+  "keywords": [
+    "xianyu",
+    "goofish",
+    "mcp",
+    "openclaw"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Goofish",
+    "shortDescription": "Operate a Xianyu shop with guarded MCP tools.",
+    "longDescription": "Inspect, publish, diagnose, and reply on Xianyu through goofish-cli MCP tools and task-specific skills.",
+    "developerName": "fancy",
+    "category": "Productivity",
+    "capabilities": [
+      "MCP tools",
+      "Skills"
+    ],
+    "websiteURL": "https://github.com/fancyboi999/goofish-cli",
+    "defaultPrompt": [
+      "Check my Xianyu shop status and identify any risks.",
+      "Help me prepare a Xianyu listing for review.",
+      "Review unread buyer messages and draft replies."
+    ]
+  }
+}
