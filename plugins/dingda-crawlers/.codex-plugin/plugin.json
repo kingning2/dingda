@@ -1,0 +1,37 @@
+{
+  "name": "dingda-crawlers",
+  "version": "0.1.0",
+  "description": "DingDa crawler tools for Codex — Xianyu (goofish) via vendored goofish-cli registry.",
+  "author": {
+    "name": "DingDa",
+    "url": "https://github.com/kingning2/dingda"
+  },
+  "homepage": "https://github.com/kingning2/dingda",
+  "repository": "https://github.com/kingning2/dingda",
+  "license": "Proprietary",
+  "keywords": [
+    "dingda",
+    "xianyu",
+    "goofish",
+    "crawler",
+    "mcp"
+  ],
+  "skills": "../../backend/third_party/goofish_cli/skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "DingDa Crawlers",
+    "shortDescription": "Operate Xianyu with DingDa-backed MCP tools.",
+    "longDescription": "Expose vendored goofish-cli commands as MCP tools (mcp__goofish__*) for Codex, with bundled Xianyu operation skills.",
+    "developerName": "DingDa",
+    "category": "Productivity",
+    "capabilities": [
+      "MCP tools",
+      "Skills"
+    ],
+    "defaultPrompt": [
+      "检查我的闲鱼店铺状态并标出风控风险。",
+      "帮我准备一条闲鱼上架文案和类目建议。",
+      "查看未读买家消息并草拟回复。"
+    ]
+  }
+}
