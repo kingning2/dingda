@@ -1,3 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.ruff_cache/
+.pytest_cache/
+uv.lock
+
+# Rust
+target/
+
 # Logs
 logs
 *.log
@@ -12,29 +24,6 @@ dist
 dist-ssr
 *.local
 
-# Rust
-target/
-
-# Python
-.venv/
-__pycache__/
-*.py[cod]
-.pytest_cache/
-.ruff_cache/
-.ruff_cache/
-
-# 临时目录（本地参考/实验，不提交）
-.tmp/
-
-# Sidecar 运行时数据（Playwright 浏览器配置目录）
-python/browser_data/
-python/sidecar/browser_data/
-
-# setuptools / editable 产物
-*.egg-info/
-python/**/*.egg-info/
-
-# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -44,20 +33,3 @@ python/**/*.egg-info/
 *.njsproj
 *.sln
 *.sw?
-
-.cursor/*
-
-.codegraph/*
-
-# Vendored Strawberry Perl (for openssl-src on Windows) — do not commit
-tooling/strawberry-perl/
-
-# Portable NASM (for BoringSSL / wreq on Windows) — do not commit
-.tools/
-
-docs/managed/changes/*
-
-.agents
-
-# Python sidecar 运行时数据
-python/.data/
