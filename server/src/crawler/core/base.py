@@ -1,4 +1,13 @@
-"""爬虫浏览器会话基类：统一 context、代理、指纹，供各平台 Source 继承。"""
+"""爬虫会话基类：浏览器 Source 与 API Source 共用插座。
+
+职责：
+    BrowserCrawler 统一 context、代理、指纹与开关页；
+    ApiCrawler 给官方 HTTP 找货等无浏览器平台用。
+
+设计说明：
+    - 禁止平台 crawler 自己 launch 浏览器
+    - API 平台不依赖 BrowserPort
+"""
 
 from __future__ import annotations
 
@@ -82,6 +91,24 @@ class BrowserCrawler(ABC):
 
     async def detail(self, ctx: CrawlContext, item_id: str) -> CrawlResult:
         """平台商品详情；默认未实现，仅支持的 Source 覆盖。"""
+        raise AppError(
+            "crawler.detail_unsupported",
+            f"平台 {self.platform} 暂不支持商品详情",
+            status_code=501,
+        )
+
+
+class ApiCrawler(ABC):
+    """API 爬虫插座：无浏览器，子类只实现平台 HTTP 搜品。"""
+
+    platform: str
+
+    @abstractmethod
+    async def search(self, ctx: CrawlContext, query: str) -> CrawlResult:
+        """平台搜品（官方 API / 签名 HTTP）。"""
+
+    async def detail(self, ctx: CrawlContext, item_id: str) -> CrawlResult:
+        """平台商品详情；默认未实现。"""
         raise AppError(
             "crawler.detail_unsupported",
             f"平台 {self.platform} 暂不支持商品详情",

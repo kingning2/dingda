@@ -11,7 +11,13 @@ import pytest
 from src.browser.port import BrowserPort, Cookie, LaunchOptions, Page
 from src.crawler.core.base import BrowserSessionOptions
 from src.crawler.core.types import CrawlContext
-from src.crawler.registry import cookies_for, create_crawler, list_platforms
+from src.crawler.registry import (
+    cookies_for,
+    create_api_crawler,
+    create_crawler,
+    is_api_platform,
+    list_platforms,
+)
 from src.crawler.sources.xianyu.extractor import items_from_payload
 from src.shared.errors import AppError
 
@@ -140,6 +146,23 @@ class _FakePort(BrowserPort):
 def test_list_platforms() -> None:
     assert "xianyu" in list_platforms()
     assert "xiaohongshu" in list_platforms()
+    assert "ali1688" in list_platforms()
+
+
+def test_is_api_platform() -> None:
+    assert is_api_platform("ali1688") is True
+    assert is_api_platform("xianyu") is False
+
+
+def test_create_api_crawler() -> None:
+    crawler = create_api_crawler("ali1688")
+    assert crawler.platform == "ali1688"
+
+
+def test_create_crawler_api_only_raises() -> None:
+    with pytest.raises(AppError) as exc:
+        create_crawler("ali1688", _FakePort())
+    assert exc.value.code == "crawler.platform_api_only"
 
 
 def test_create_crawler_unknown() -> None:

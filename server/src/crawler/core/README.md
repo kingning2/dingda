@@ -8,8 +8,9 @@
 
 - `BrowserSessionOptions` — 代理、指纹、cookies、`cookie_domain`（dict cookie 注入时必填，如 `.goofish.com`）
 - `BrowserCrawler` — 打开/关闭带 ContextOptions 的 Page；子类实现 `search`，`detail` 默认未实现可覆盖
+- `ApiCrawler` — 无浏览器插座（官方 HTTP 找货等）；子类实现 `search`
 
-开页策略只写一遍：Source 不要自己 `launch` 浏览器。
+开页策略只写一遍：Source 不要自己 `launch` 浏览器。API 平台走 `ApiCrawler`，不 acquire BrowserPort。
 
 ### `types.py`
 
