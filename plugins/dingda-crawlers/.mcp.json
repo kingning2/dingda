@@ -1,25 +1,17 @@
 {
   "mcpServers": {
-    "goofish": {
+    "dingda": {
       "transport": "stdio",
       "command": "uv",
       "args": [
         "run",
         "--directory",
-        "../../backend",
+        "../../server",
         "dingda-mcp"
       ],
       "connectionTimeoutMs": 120000,
       "requestTimeoutMs": 120000,
-      "supportsParallelToolCalls": false,
-      "toolFilter": {
-        "exclude": [
-          "auth_login",
-          "auth_reset_guard",
-          "message_watch",
-          "skills_install"
-        ]
-      }
+      "supportsParallelToolCalls": false
     }
   }
 }
