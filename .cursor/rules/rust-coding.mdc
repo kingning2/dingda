@@ -1,0 +1,22 @@
+---
+description: 叮答 Rust（src-tauri/）编码规范。编辑 src-tauri/**/*.rs 时必须先读 Skill 示例并照抄结构。
+globs: src-tauri/**/*.rs
+alwaysApply: false
+---
+
+# Rust 编码规范
+
+**先读并照抄示例**：`.agents/skills/rust-coding/SKILL.md`
+
+硬约束摘要：
+
+1. 文件头 `//!`（本文件在模块里干什么）
+2. 函数 `///`（解决什么问题）
+3. 多实现：Definition/trait 插座 + defs 插头 + registry（参考 Skill 示例 B）
+4. 少写边界防御
+5. `runtime/defs/codex.rs` ✅，禁止 `codex_lib.rs`
+6. 业务方法：start / 进展 / done|failed 日志
+
+未按 Skill 示例形状写的补丁视为不合格。产品 API 不要做成 Tauri command。
+
+每个有 `.rs` 的目录有 `README.md`（树形：上层只链下层；本层每个文件写清职责、关键符号、谁调用）。根地图：`src-tauri/src/README.md`。

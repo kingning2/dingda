@@ -1,0 +1,21 @@
+---
+description: 叮答 Agent / Crawler / Browser / Tool / 前端能力注入的详细架构入口。修改这些模块或新增平台/浏览器适配器时应用。
+globs: server/src/agent/**,server/src/crawler/**,server/src/browser/**,server/src/tools/**,server/src/domains/agent/**,server/src/domains/crawler/**,server/src/mcp/**,server/src/api/agent.py,server/src/api/crawler.py,src/contracts/**,src/lib/capabilities.ts,src/lib/server.ts,src/lib/agent-*.ts,src/components/agent/**,src/components/crawler/**,src/pages/assets-page.tsx,src-tauri/src/commands/**,src-tauri/src/runtime/**,src-tauri/src/python/**
+alwaysApply: false
+---
+
+# 架构 Skill 入口
+
+全局硬约束见 `dingda-coding.mdc`（alwaysApply）。本规则触发时**先读再写**：
+
+1. `.agents/skills/layers.md`
+2. 按任务选一份：
+   - 产品 Agent / Workflow → `agent-architecture/SKILL.md`
+   - 爬虫 / Source / 快照 / 去重 → `crawler-architecture/SKILL.md`
+   - Playwright / Camoufox → `browser-architecture/SKILL.md`
+   - Tool / MCP → `tool-architecture/SKILL.md`
+   - Web vs 桌面注入 → `frontend-architecture/SKILL.md`
+
+未读完对应 SKILL 不得跨层 import，不得新增 Tauri 产品 command，不得在浏览器侧接入外部 CLI Agent。
+
+核心规则（必遵）：Browser 无平台业务；Crawler 不直连 Playwright/Camoufox；扩展只改 `sources/<platform>/` 或 `adapters/<browser>/`；登录在 `channels/`；Agent/MCP/Tool 走 Tool → Crawler → Browser；禁止新增 Rust Crawler/Browser/DB。全文见 `.agents/skills/layers.md`。
