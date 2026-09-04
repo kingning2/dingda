@@ -1,17 +1,23 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import type { ComposerAgentOption } from "@/contracts/composer";
-import { getAgentRuntimes, subscribeAgentRuntimes } from "@/components/agent/agent-mock-data";
+import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import { useDiscoveryStore } from "@/stores/discovery-store";
 
-/** 已接入（PATH 可探测）的 Agent，供输入框选择。 */
-export function getComposerAgentOptions(): ComposerAgentOption[] {
-  return getAgentRuntimes()
+function toComposerOptions(agents: AgentRuntimeItem[]): ComposerAgentOption[] {
+  return agents
     .filter((agent) => agent.available)
     .map((agent) => ({
       id: agent.id,
       name: agent.name,
       is_default: agent.is_default,
+      preferred_model_id: agent.preferred_model_id ?? null,
       models: agent.models ?? [],
     }));
+}
+
+/** 已接入（PATH 可探测）的 Agent，供输入框选择。 */
+export function getComposerAgentOptions(): ComposerAgentOption[] {
+  return toComposerOptions(useDiscoveryStore.getState().agents);
 }
 
 export function resolveDefaultAgentId(agents: ComposerAgentOption[]): string | null {
@@ -26,6 +32,10 @@ export function resolveModelId(
   if (!agent?.models?.length) return null;
   if (modelId && agent.models.some((model) => model.id === modelId)) {
     return modelId;
+  }
+  const preferred = agent.preferred_model_id?.trim() || null;
+  if (preferred && agent.models.some((model) => model.id === preferred)) {
+    return preferred;
   }
   return agent.models[0]?.id ?? null;
 }
@@ -49,42 +59,9 @@ export function resolveComposerSelection(
   };
 }
 
-function composerAgentOptionsEqual(
-  prev: ComposerAgentOption[],
-  next: ComposerAgentOption[],
-): boolean {
-  if (prev.length !== next.length) return false;
-  return prev.every((agent, index) => {
-    const other = next[index];
-    if (!other) return false;
-    if (
-      agent.id !== other.id ||
-      agent.name !== other.name ||
-      agent.is_default !== other.is_default
-    ) {
-      return false;
-    }
-    const prevModels = agent.models ?? [];
-    const nextModels = other.models ?? [];
-    if (prevModels.length !== nextModels.length) return false;
-    return prevModels.every(
-      (model, modelIndex) =>
-        model.id === nextModels[modelIndex]?.id &&
-        model.label === nextModels[modelIndex]?.label,
-    );
-  });
-}
-
-/** 订阅接入页扫描结果，输入框 Agent 列表会随之更新。 */
+/** 订阅探测结果，输入框 Agent 列表随之更新。 */
 export function useComposerAgentOptions(): ComposerAgentOption[] {
-  const [agents, setAgents] = useState(getComposerAgentOptions);
-
-  useEffect(() => {
-    return subscribeAgentRuntimes(() => {
-      const next = getComposerAgentOptions();
-      setAgents((prev) => (composerAgentOptionsEqual(prev, next) ? prev : next));
-    });
-  }, []);
-
-  return agents;
+  // 必须先取稳定引用再 map：selector 里每次 new 数组会触发 Zustand 无限重渲染
+  const agents = useDiscoveryStore((state) => state.agents);
+  return useMemo(() => toComposerOptions(agents), [agents]);
 }

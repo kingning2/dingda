@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { stashWorkDraft } from "@/components/ai-work/mock-api";
+import { stashWorkDraft } from "@/components/ai-work/work-draft";
 import { HomeView } from "@/components/home/home-view";
 import type { ComposerSubmitPayload } from "@/contracts/composer";
 import { MOCK_PROJECTS } from "@/lib/mock-data";

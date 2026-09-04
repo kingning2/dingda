@@ -8,14 +8,23 @@ const HANDLE_WIDTH = 8;
 
 interface AiWorkSplitProps {
   chat: ReactNode;
-  workspace: ReactNode;
+  /** 有过程/结果内容时传入；与 showWorkspace 同时控制。 */
+  workspace?: ReactNode | null;
+  /** 显式开关：无真实过程/结果时聊天全宽。 */
+  showWorkspace?: boolean;
   className?: string;
 }
 
-export function AiWorkSplit({ chat, workspace, className }: AiWorkSplitProps) {
+export function AiWorkSplit({
+  chat,
+  workspace = null,
+  showWorkspace = false,
+  className,
+}: AiWorkSplitProps) {
   const splitRef = useRef<HTMLDivElement>(null);
   const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
   const [resizing, setResizing] = useState(false);
+  const workspaceVisible = showWorkspace && workspace != null;
 
   const clampWidth = useCallback((width: number) => {
     const splitWidth = splitRef.current?.clientWidth ?? window.innerWidth;
@@ -46,6 +55,19 @@ export function AiWorkSplit({ chat, workspace, className }: AiWorkSplitProps) {
     },
     [chatWidth, clampWidth],
   );
+
+  if (!workspaceVisible) {
+    return (
+      <div
+        className={cn(
+          "flex h-full min-h-0 min-w-0 overflow-hidden bg-[color-mix(in_srgb,var(--bg-panel)_72%,transparent)]",
+          className,
+        )}
+      >
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">{chat}</div>
+      </div>
+    );
+  }
 
   return (
     <div

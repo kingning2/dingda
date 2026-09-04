@@ -20,6 +20,7 @@ interface AgentRuntimeCardProps {
   loggingIn?: boolean;
   onLogin?: () => void;
   onSetDefault?: () => void;
+  onPreferredModelChange?: (modelId: string) => void;
 }
 
 function authBadgeClass(state: string | undefined): string {
@@ -38,18 +39,31 @@ export function AgentRuntimeCard({
   loggingIn = false,
   onLogin,
   onSetDefault,
+  onPreferredModelChange,
 }: AgentRuntimeCardProps) {
   const { status } = agent;
   const guideUrl = getAgentGuideUrl(agent);
   const models = agent.models ?? [];
   const probing = status.state === "probing";
-  const [selectedModelId, setSelectedModelId] = useState(models[0]?.id ?? "");
+  const preferredInList =
+    agent.preferred_model_id && models.some((model) => model.id === agent.preferred_model_id)
+      ? agent.preferred_model_id
+      : null;
+  const [selectedModelId, setSelectedModelId] = useState(
+    preferredInList ?? models[0]?.id ?? "",
+  );
 
   useEffect(() => {
-    if (models.length > 0) {
-      setSelectedModelId(models[0].id);
+    if (models.length === 0) {
+      setSelectedModelId("");
+      return;
     }
-  }, [agent.id, models]);
+    const next =
+      agent.preferred_model_id && models.some((model) => model.id === agent.preferred_model_id)
+        ? agent.preferred_model_id
+        : models[0]!.id;
+    setSelectedModelId(next);
+  }, [agent.id, agent.preferred_model_id, agent.models]);
 
   const showLogin =
     agent.available && agent.auth?.can_login && agent.auth.state !== "authenticated" && onLogin;
@@ -125,7 +139,9 @@ export function AgentRuntimeCard({
             <Select
               value={selectValue}
               onValueChange={(value) => {
-                if (value) setSelectedModelId(value);
+                if (!value || value === selectedModelId) return;
+                setSelectedModelId(value);
+                onPreferredModelChange?.(value);
               }}
               disabled={probing || models.length === 0}
             >

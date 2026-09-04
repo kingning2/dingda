@@ -7,6 +7,7 @@ export type AgentEvent =
   | { type: "toolCall"; id: string; name: string; input: unknown }
   | { type: "toolResult"; id: string; output: unknown }
   | { type: "fileChanged"; path: string }
+  | { type: "session"; sessionId: string }
   | { type: "error"; message: string }
   | { type: "runCompleted"; exitCode: number };
 

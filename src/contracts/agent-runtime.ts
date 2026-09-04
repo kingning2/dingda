@@ -90,6 +90,10 @@ export interface AgentRuntimeItem {
 
   is_default?: boolean;
 
+  /** 用户为该 Agent 持久化的默认模型 id（来自 SQLite）。 */
+
+  preferred_model_id?: string | null;
+
   /**
 
    * 叮答向该 Agent 注入 MCP 的方式（由 daemon 定义，如 claude-mcp-json）。
@@ -161,6 +165,60 @@ export interface AgentRuntimeLoginResult {
   started: boolean;
 
   message: string;
+
+}
+
+
+
+/** Python `/v1/agent/default` 响应（SQLite 默认 Agent）。 */
+
+export interface AgentDefaultView {
+
+  ok?: boolean;
+
+  default_agent_id: string | null;
+
+}
+
+
+
+/** Python `/v1/agent/preferences` 响应。 */
+
+export interface AgentPreferencesView {
+
+  ok?: boolean;
+
+  default_agent_id: string | null;
+
+  default_models: Record<string, string>;
+
+}
+
+
+
+/** Python `/v1/agent/default-model` 响应。 */
+
+export interface AgentDefaultModelView {
+
+  ok?: boolean;
+
+  agent_id: string;
+
+  model_id: string;
+
+  default_models: Record<string, string>;
+
+}
+
+
+
+/** Python `/v1/agent/runtimes` 扫描目录缓存。 */
+
+export interface AgentRuntimesCatalogView {
+
+  ok?: boolean;
+
+  agents: AgentRuntimeItem[];
 
 }
 

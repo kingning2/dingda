@@ -22,6 +22,8 @@ interface PromptComposerProps {
   defaultModelId?: string | null;
   defaultMessage?: string;
   onSubmit: (payload: ComposerSubmitPayload) => void;
+  /** 输入区内容/高度变化时回调（用于聊天区滚到底）。 */
+  onInputActivity?: () => void;
   className?: string;
   textareaClassName?: string;
   minRows?: number;
@@ -36,6 +38,7 @@ export function PromptComposer({
   defaultModelId = null,
   defaultMessage = "",
   onSubmit,
+  onInputActivity,
   className,
   textareaClassName,
   minRows = 4,
@@ -73,10 +76,11 @@ export function PromptComposer({
     }
   }, [defaultModelId]);
 
+  const requiresExternalAgent = agents.length > 0;
   const canSubmit =
     !disabled &&
     !busy &&
-    Boolean(resolvedAgentId) &&
+    (!requiresExternalAgent || Boolean(resolvedAgentId)) &&
     (message.trim().length > 0 || attachments.length > 0);
 
   async function appendFiles(files: FileList | File[]) {
@@ -85,6 +89,7 @@ export function PromptComposer({
     const next = await filesToComposerAttachments(list, attachments.length);
     if (next.length === 0) return;
     setAttachments((current) => [...current, ...next]);
+    onInputActivity?.();
   }
 
   function handleRemoveAttachment(id: string) {
@@ -93,14 +98,16 @@ export function PromptComposer({
       if (target) revokeComposerAttachmentUrl(target);
       return current.filter((item) => item.id !== id);
     });
+    onInputActivity?.();
   }
 
   function handleSubmit() {
-    if (!canSubmit || !resolvedAgentId) return;
+    if (!canSubmit) return;
+    if (requiresExternalAgent && !resolvedAgentId) return;
     const trimmed = message.trim();
     onSubmit({
       message: trimmed,
-      agent_id: resolvedAgentId,
+      agent_id: resolvedAgentId ?? "product",
       model_id: resolvedModelId,
       attachments: attachments.map((item) => ({ ...item })),
     });
@@ -115,7 +122,10 @@ export function PromptComposer({
 
       <Textarea
         value={message}
-        onChange={(event) => setMessage(event.target.value)}
+        onChange={(event) => {
+          setMessage(event.target.value);
+          onInputActivity?.();
+        }}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
@@ -152,16 +162,18 @@ export function PromptComposer({
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <ComposerAgentPicker
-            agents={agents}
-            agentId={resolvedAgentId}
-            modelId={resolvedModelId}
-            onChange={(nextAgentId, nextModelId) => {
-              setAgentId(nextAgentId);
-              setModelId(nextModelId);
-            }}
-            disabled={disabled || busy}
-          />
+          {requiresExternalAgent ? (
+            <ComposerAgentPicker
+              agents={agents}
+              agentId={resolvedAgentId}
+              modelId={resolvedModelId}
+              onChange={(nextAgentId, nextModelId) => {
+                setAgentId(nextAgentId);
+                setModelId(nextModelId);
+              }}
+              disabled={disabled || busy}
+            />
+          ) : null}
           <Button
             type="button"
             variant="ghost"

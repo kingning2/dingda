@@ -196,10 +196,10 @@ export function accountFromQrLogin(
   platform: string,
   platformName: string,
   result: AccountQrCheckResponse,
-  backendSession?: { session: AccountSessionView; actions: AccountActionsView },
+  serverSession?: { session: AccountSessionView; actions: AccountActionsView },
 ): AccountListItem {
-  const session = backendSession?.session ?? MOCK_SESSIONS.loggedIn;
-  const actions = backendSession?.actions ?? {
+  const session = serverSession?.session ?? MOCK_SESSIONS.loggedIn;
+  const actions = serverSession?.actions ?? {
     can_connect: platform === "xianyu",
     can_disconnect: false,
     can_rescan: false,

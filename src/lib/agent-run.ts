@@ -9,6 +9,12 @@ export interface LaunchAgentRunRequest {
   prompt: string;
   cwd?: string | null;
   modelId?: string | null;
+  /** CLI 续聊 session / thread id。 */
+  sessionId?: string | null;
+  /** 推理强度 / OpenCode variant。 */
+  reasoning?: string | null;
+  /** 额外可写目录（Codex/Claude --add-dir）。 */
+  extraAllowedDirs?: string[] | null;
   runId?: string | null;
 }
 
@@ -34,6 +40,9 @@ export async function launchAgentRun(
     prompt: request.prompt,
     cwd: request.cwd ?? null,
     modelId: request.modelId ?? null,
+    sessionId: request.sessionId ?? null,
+    reasoning: request.reasoning ?? null,
+    extraAllowedDirs: request.extraAllowedDirs ?? null,
     runId,
   });
 
@@ -41,11 +50,6 @@ export async function launchAgentRun(
     runId: response.runId ?? runId,
     started: response.started ?? true,
   };
-}
-
-export async function cancelAgentRun(runId: string): Promise<void> {
-  if (!isTauri()) return;
-  await invoke("cancel_agent_runtime", { runId });
 }
 
 export async function subscribeAgentEvents(

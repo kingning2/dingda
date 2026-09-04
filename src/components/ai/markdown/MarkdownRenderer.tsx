@@ -29,7 +29,9 @@ const markdownComponents: Components = {
   tr: ({ node: _node, ...props }) => <MarkdownTableRow {...props} />,
   th: ({ node: _node, ...props }) => <MarkdownTableHeaderCell {...props} />,
   td: ({ node: _node, ...props }) => <MarkdownTableCell {...props} />,
-  p: ({ node: _node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+  p: ({ node: _node, ...props }) => (
+    <p className="mb-2 last:mb-0 break-words leading-relaxed" {...props} />
+  ),
   ul: ({ node: _node, ...props }) => <ul className="mb-2 list-disc space-y-1 pl-5 last:mb-0" {...props} />,
   ol: ({ node: _node, ...props }) => <ol className="mb-2 list-decimal space-y-1 pl-5 last:mb-0" {...props} />,
   li: ({ node: _node, ...props }) => <li className="leading-relaxed" {...props} />,
@@ -54,7 +56,12 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
   if (!content.trim()) return null;
 
   return (
-    <div className={cn("text-sm text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className)}>
+    <div
+      className={cn(
+        "min-w-0 overflow-x-auto break-words text-sm text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        className,
+      )}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>

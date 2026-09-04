@@ -83,7 +83,7 @@ const MOCK_RESULTS: Record<CrawlPlatform, CrawlProductItem[]> = {
 };
 
 /** 模拟后端：爬取进行中的完整响应快照。 */
-function mockBackendRunningResponse(taskId: string): CrawlSearchResponse {
+function mockServerRunningResponse(taskId: string): CrawlSearchResponse {
   return {
     task_id: taskId,
     status: {
@@ -98,7 +98,7 @@ function mockBackendRunningResponse(taskId: string): CrawlSearchResponse {
 }
 
 /** 模拟后端：爬取成功的完整响应快照。 */
-function mockBackendSuccessResponse(taskId: string, platform: CrawlPlatform, query: string): CrawlSearchResponse {
+function mockServerSuccessResponse(taskId: string, platform: CrawlPlatform, query: string): CrawlSearchResponse {
   const keyword = query.trim().toLowerCase();
   const pool = MOCK_RESULTS[platform];
   const items = keyword
@@ -132,13 +132,13 @@ export async function mockCrawlSearchApi(
   onUpdate?: (response: CrawlSearchResponse) => void,
 ): Promise<CrawlSearchResponse> {
   const taskId = `task-${Date.now()}`;
-  onUpdate?.(mockBackendRunningResponse(taskId));
+  onUpdate?.(mockServerRunningResponse(taskId));
 
   await new Promise((resolve) => {
     window.setTimeout(resolve, 900);
   });
 
-  return mockBackendSuccessResponse(taskId, request.platform, request.query);
+  return mockServerSuccessResponse(taskId, request.platform, request.query);
 }
 
 export const MOCK_CRAWL_HISTORY: CrawlHistoryItem[] = [

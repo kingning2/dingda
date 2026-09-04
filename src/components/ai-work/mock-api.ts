@@ -14,37 +14,7 @@ import type { ComposerSubmitPayload } from "@/contracts/composer";
 import type { CrawlProductItem } from "@/contracts/crawler";
 import { getComposerAgentOptions, resolveDefaultAgentId } from "@/components/composer/composer-agents";
 import { mockBrowserScreenshot } from "./mock-screenshots";
-
-const WORK_DRAFT_PREFIX = "dingda:work-draft:";
-
-export function stashWorkDraft(workId: string, draft: ComposerSubmitPayload): void {
-  try {
-    sessionStorage.setItem(`${WORK_DRAFT_PREFIX}${workId}`, JSON.stringify(draft));
-  } catch {
-    // sessionStorage may be unavailable in hardened contexts.
-  }
-}
-
-/** @deprecated 使用 stashWorkDraft */
-export function stashWorkPrompt(workId: string, prompt: string): void {
-  stashWorkDraft(workId, {
-    message: prompt,
-    agent_id: resolveDefaultAgentId(getComposerAgentOptions()) ?? "codex",
-    attachments: [],
-  });
-}
-
-function takeWorkDraft(workId: string): ComposerSubmitPayload | null {
-  try {
-    const key = `${WORK_DRAFT_PREFIX}${workId}`;
-    const value = sessionStorage.getItem(key);
-    if (!value) return null;
-    sessionStorage.removeItem(key);
-    return JSON.parse(value) as ComposerSubmitPayload;
-  } catch {
-    return null;
-  }
-}
+import { takeWorkDraft } from "./work-draft";
 
 function mockComposerFields(agentId?: string | null, modelId?: string | null) {
   const agents = getComposerAgentOptions();
@@ -272,30 +242,39 @@ function buildInitialDetail(
   seed?: Pick<ComposerSubmitPayload, "message" | "agent_id" | "model_id"> | null,
 ): AgentWorkDetailView {
   const seedPrompt = seed?.message ?? null;
-  const title = seedPrompt ? mockTitleFromPrompt(seedPrompt) : "露营椅选品分析";
+  const title = seedPrompt ? mockTitleFromPrompt(seedPrompt) : "新任务";
   const composer = mockComposerFields(seed?.agent_id, seed?.model_id);
-  if (seedPrompt) {
-    return {
-      work_id: workId,
-      title,
-      status: status("ready", "就绪", "bg-muted text-muted-foreground", "正在启动任务…"),
-      messages: [],
-      products: emptyProducts(),
-      recommendations: emptyRecommendations(),
-      browser_live: idleLive(),
-      browser_history: [],
-      composer_placeholder: "补充筛选条件或修改任务…",
-      can_send: false,
-      ...composer,
-    };
-  }
+  return {
+    work_id: workId,
+    title,
+    status: seedPrompt
+      ? status("ready", "就绪", "bg-muted text-muted-foreground", "正在启动任务…")
+      : status("ready", "就绪", "bg-muted text-muted-foreground", "输入需求后开始执行"),
+    messages: [],
+    products: emptyProducts(),
+    recommendations: emptyRecommendations(),
+    browser_live: idleLive(),
+    browser_history: [],
+    composer_placeholder: "补充筛选条件或修改任务…",
+    can_send: !seedPrompt,
+    ...composer,
+  };
+}
 
+/** 营销 demo 工作 id（非 createWorkId 的 work-*）。留给后续 demo 页使用。 */
+export function isDemoWorkId(workId: string): boolean {
+  return !workId.startsWith("work-");
+}
+
+/** 营销演示：露营椅选品完整快照（仅 mock，不写 SQLite）。 */
+function buildDemoDetail(workId: string): AgentWorkDetailView {
+  const composer = mockComposerFields();
   const homeFrameId = `${workId}-frame-home`;
   const loginFrameId = `${workId}-frame-login`;
 
   return {
     work_id: workId,
-    title,
+    title: "露营椅选品分析",
     status: status("ready", "就绪", "bg-muted text-muted-foreground", "输入需求后开始执行"),
     messages: [
       {
@@ -437,10 +416,26 @@ export interface AgentWorkDetailLoadResult {
 }
 
 export interface MockFetchAgentWorkDetailOptions {
-  /** 为 false 时仅构建初始详情，不自动 mock 发送（Tauri 下由 CLI 发送）。默认 true。 */
+  /** 为 false 时仅构建初始详情，不自动 mock 发送。默认 true。 */
   autoSend?: boolean;
 }
 
+function hydrateComposerAgents(detail: AgentWorkDetailView): AgentWorkDetailView {
+  const agents = getComposerAgentOptions();
+  return {
+    ...detail,
+    composer_agents: agents,
+    composer_agent_id:
+      detail.composer_agent_id && agents.some((agent) => agent.id === detail.composer_agent_id)
+        ? detail.composer_agent_id
+        : resolveDefaultAgentId(agents),
+  };
+}
+
+/**
+ * 营销 demo 加载（仅内存 mock）。
+ * 真实工作页请用 ``loadAgentWorkDetail``，不要引用本函数。
+ */
 export async function mockFetchAgentWorkDetail(
   workId: string,
   onUpdate?: (detail: AgentWorkDetailView) => void,
@@ -448,7 +443,7 @@ export async function mockFetchAgentWorkDetail(
 ): Promise<AgentWorkDetailLoadResult> {
   const cached = detailCache.get(workId);
   if (cached && isSettledDetail(cached)) {
-    const detail = cloneWorkDetail(cached);
+    const detail = hydrateComposerAgents(cloneWorkDetail(cached));
     onUpdate?.(detail);
     return { detail, pendingSend: null };
   }
@@ -456,7 +451,7 @@ export async function mockFetchAgentWorkDetail(
   const existing = inflightLoads.get(workId);
   if (existing) {
     if (onUpdate) {
-      if (cached) onUpdate(cloneWorkDetail(cached));
+      if (cached) onUpdate(hydrateComposerAgents(cloneWorkDetail(cached)));
       existing.listeners.add(onUpdate);
     }
     return existing.promise;
@@ -467,13 +462,16 @@ export async function mockFetchAgentWorkDetail(
 
   const promise = (async (): Promise<AgentWorkDetailLoadResult> => {
     const seedDraft = takeWorkDraft(workId);
+
     if (!seedDraft && cached) {
-      const detail = cloneWorkDetail(cached);
+      const detail = hydrateComposerAgents(cloneWorkDetail(cached));
       listeners.forEach((listener) => listener(detail));
       return { detail, pendingSend: null };
     }
 
-    const detail = buildInitialDetail(workId, seedDraft ?? undefined);
+    const detail = seedDraft
+      ? buildInitialDetail(workId, seedDraft)
+      : buildDemoDetail(workId);
     detailCache.set(workId, detail);
     listeners.forEach((listener) => listener(cloneWorkDetail(detail)));
 

@@ -85,6 +85,8 @@ export function reduceAgentEvent(
     }
     case "fileChanged":
       return state;
+    case "session":
+      return state;
     case "error": {
       const errorLine = `[错误] ${event.message}`;
       return {
@@ -104,10 +106,21 @@ export function applyRunStateToAssistantMessage(
   message: AgentWorkMessageView,
   state: AgentRunMessageState,
 ): AgentWorkMessageView {
+  const startedAt = message.thinking_started_at ?? message.created_at;
+  let thinking_duration_sec = message.thinking_duration_sec ?? null;
+  if (state.completed && thinking_duration_sec == null && startedAt) {
+    const start = Date.parse(startedAt);
+    if (!Number.isNaN(start)) {
+      thinking_duration_sec = Math.max(0, Math.floor((Date.now() - start) / 1000));
+    }
+  }
+
   return {
     ...message,
     content: state.content,
     thinking: state.thinking || null,
+    thinking_started_at: startedAt,
+    thinking_duration_sec,
     steps: state.steps.length > 0 ? state.steps : message.steps,
   };
 }
@@ -167,13 +180,23 @@ export function createOptimisticSendDetail(
     content: "",
     thinking: "",
     created_at: now,
+    thinking_started_at: now,
+    thinking_duration_sec: null,
     steps: [],
   };
+
+  const nextTitle =
+    detail.messages.length === 0 && userText.trim()
+      ? userText.trim().length > 24
+        ? `${userText.trim().slice(0, 24)}…`
+        : userText.trim()
+      : detail.title;
 
   return {
     assistantMessageId,
     detail: {
       ...detail,
+      title: nextTitle,
       can_send: false,
       composer_agent_id: agentId,
       composer_model_id: modelId ?? null,

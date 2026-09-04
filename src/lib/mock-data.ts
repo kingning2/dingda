@@ -49,9 +49,7 @@ export type HomeTypeChipId = (typeof HOME_TYPE_CHIPS)[number]["id"];
 
 export const NAV_ITEMS = [
   { id: "home" as const, label: "首页", icon: "home" as const },
-  { id: "community" as const, label: "社区", icon: "users" as const },
   { id: "projects" as const, label: "全部项目", icon: "folder" as const },
-  { id: "design-systems" as const, label: "设计系统", icon: "palette" as const },
   { id: "assets" as const, label: "资产", icon: "wallet" as const },
   { id: "crawler" as const, label: "爬虫", icon: "spider" as const },
 ] as const;

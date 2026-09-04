@@ -1,16 +1,16 @@
 import { RouterProvider } from "react-router-dom";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BackendProvider } from "@/providers/backend-provider";
+import { ServerProvider } from "@/providers/server-provider";
 import { router } from "@/routes/router";
 
 function App() {
   return (
-    <BackendProvider>
+    <ServerProvider>
       <TooltipProvider>
         <RouterProvider router={router} />
       </TooltipProvider>
-    </BackendProvider>
+    </ServerProvider>
   );
 }
 

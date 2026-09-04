@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isTauri } from "@tauri-apps/api/core";
 import type { ComposerSubmitPayload } from "@/contracts/composer";
 import type { AgentWorkDetailView, AgentWorkStepView } from "@/contracts/ai-work";
+import { supportsExternalAgents } from "@/lib/capabilities";
+import { putAgentWorkDetail } from "@/lib/agent-api";
+import { useServer } from "@/providers/server-provider";
+import { loadAgentWorkDetail } from "./agent-work-loader";
+import { clearWorkDraft, stashWorkSnapshot } from "./work-draft";
 import { AiWorkSplit } from "./ai-work-split";
 import { AgentChatPanel } from "./agent-chat-panel";
 import { AgentWorkspacePanel, type WorkspaceTab } from "./agent-workspace-panel";
 import type { BrowserSelection } from "./browser-history-strip";
 import { sendAgentWorkViaCli } from "./agent-cli-send";
-import { mockAgentWorkSend, mockFetchAgentWorkDetail } from "./mock-api";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
@@ -22,85 +25,139 @@ function browserSelectionForStep(detail: AgentWorkDetailView, step: AgentWorkSte
   return { kind: "history", frameId: step.browser_frame_id };
 }
 
+function isBlankBrowserUrl(url: string | null | undefined): boolean {
+  const trimmed = (url ?? "").trim();
+  return trimmed.length === 0 || trimmed === "about:blank";
+}
+
+/** 有真实浏览页或推荐结果时才显示右侧工作区（空 about:blank / 待命占位不算）。 */
+function hasWorkspaceContent(detail: AgentWorkDetailView): boolean {
+  const hasProcess =
+    !isBlankBrowserUrl(detail.browser_live.url) ||
+    detail.browser_history.some(
+      (frame) => !isBlankBrowserUrl(frame.url) || Boolean(frame.screenshot_url),
+    );
+  const hasResults = detail.recommendations.items.length > 0;
+  return hasProcess || hasResults;
+}
+
+const PERSIST_DEBOUNCE_MS = 400;
+
 export function AiWorkView({ workId, onBack }: AiWorkViewProps) {
+  const server = useServer();
   const [detail, setDetail] = useState<AgentWorkDetailView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("process");
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [browserSelection, setBrowserSelection] = useState<BrowserSelection>({ kind: "live" });
-  const pendingDetailRef = useRef<AgentWorkDetailView | null>(null);
-  const detailFrameRef = useRef<number | null>(null);
-  const hasDetailRef = useRef(false);
+  const detailRef = useRef<AgentWorkDetailView | null>(null);
+  const persistTimerRef = useRef<number | null>(null);
+  const loadGenerationRef = useRef(0);
 
-  const applyDetailUpdate = useCallback((next: AgentWorkDetailView) => {
-    pendingDetailRef.current = next;
-
-    const commit = () => {
-      const pending = pendingDetailRef.current;
-      if (!pending) return;
-      pendingDetailRef.current = null;
-      setDetail(pending);
-      setLoading(false);
-      hasDetailRef.current = true;
-      if (pending.recommendations.items.length > 0 && pending.can_send) {
-        setWorkspaceTab("results");
-      }
-    };
-
-    // 首次加载同步提交，避免 loading 已结束但 detail 仍为 null
-    if (!hasDetailRef.current) {
-      commit();
-      return;
+  const schedulePersist = useCallback((next: AgentWorkDetailView) => {
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
     }
+    persistTimerRef.current = window.setTimeout(() => {
+      persistTimerRef.current = null;
+      const snapshot = detailRef.current;
+      if (!snapshot) return;
+      stashWorkSnapshot(snapshot);
+      void putAgentWorkDetail(snapshot).catch(() => {
+        // 落库失败不打断对话
+      });
+    }, PERSIST_DEBOUNCE_MS);
+  }, []);
 
-    if (detailFrameRef.current !== null) return;
-
-    detailFrameRef.current = requestAnimationFrame(() => {
-      detailFrameRef.current = null;
-      commit();
+  const flushPersist = useCallback((next?: AgentWorkDetailView | null, keepalive = false) => {
+    const snapshot = next ?? detailRef.current;
+    if (!snapshot) return;
+    if (persistTimerRef.current !== null) {
+      window.clearTimeout(persistTimerRef.current);
+      persistTimerRef.current = null;
+    }
+    stashWorkSnapshot(snapshot);
+    void putAgentWorkDetail(snapshot, {
+      keepalive,
+      // keepalive 场景下页面可能马上卸掉，不要弹窗
+    }).catch(() => {
+      // 落库失败不打断对话；本地 snapshot 已写入
     });
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (detailFrameRef.current !== null) {
-        cancelAnimationFrame(detailFrameRef.current);
+  const applyDetailUpdate = useCallback(
+    (next: AgentWorkDetailView, options?: { hydrate?: boolean }) => {
+      detailRef.current = next;
+      setDetail(next);
+      setLoading(false);
+      // 每次变更同步写本地快照，保证 Ctrl+R 能立刻读回
+      stashWorkSnapshot(next);
+      if (options?.hydrate) {
+        // 刚从库/快照加载，不必立刻再 PUT（避免空壳覆盖）
+      } else if (next.can_send || next.messages.length > 0) {
+        flushPersist(next, false);
+      } else {
+        schedulePersist(next);
       }
-    };
-  }, []);
+      if (next.recommendations.items.length > 0 && next.can_send) {
+        setWorkspaceTab("results");
+      }
+    },
+    [schedulePersist, flushPersist],
+  );
 
   useEffect(() => {
+    const onPageHide = () => {
+      flushPersist(undefined, true);
+    };
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onPageHide);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onPageHide);
+      flushPersist(undefined, true);
+    };
+  }, [flushPersist]);
+
+  useEffect(() => {
+    if (!server.ready) return;
+
+    const generation = ++loadGenerationRef.current;
     let cancelled = false;
-    hasDetailRef.current = false;
-    pendingDetailRef.current = null;
     setLoading(true);
     setError(null);
     setDetail(null);
+    detailRef.current = null;
     setWorkspaceTab("process");
     setSelectedStepId(null);
     setBrowserSelection({ kind: "live" });
 
-    void mockFetchAgentWorkDetail(
-      workId,
-      (progress) => {
-        if (!cancelled) applyDetailUpdate(progress);
-      },
-      { autoSend: !isTauri() },
-    )
+    void loadAgentWorkDetail(workId)
       .then(async (result) => {
-        if (cancelled) return;
-        applyDetailUpdate(result.detail);
-        if (result.pendingSend && isTauri()) {
+        if (cancelled || generation !== loadGenerationRef.current) return;
+        applyDetailUpdate(result.detail, { hydrate: true });
+        if (result.pendingSend && supportsExternalAgents()) {
+          clearWorkDraft(workId);
           try {
-            await sendAgentWorkViaCli(result.detail, result.pendingSend, applyDetailUpdate);
-          } catch {
-            if (!cancelled) setError("发送失败，请重试");
+            await sendAgentWorkViaCli(result.detail, result.pendingSend, (next) => {
+              if (cancelled || generation !== loadGenerationRef.current) return;
+              applyDetailUpdate(next);
+            });
+          } catch (err) {
+            if (!cancelled && generation === loadGenerationRef.current) {
+              setError(err instanceof Error ? err.message : "发送失败，请重试");
+            }
+          }
+        } else if (result.pendingSend && !supportsExternalAgents()) {
+          clearWorkDraft(workId);
+          if (!cancelled && generation === loadGenerationRef.current) {
+            setError("外部 Agent 仅桌面端可用");
           }
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelled && generation === loadGenerationRef.current) {
           setError("加载 AI 工作详情失败");
           setLoading(false);
         }
@@ -108,51 +165,39 @@ export function AiWorkView({ workId, onBack }: AiWorkViewProps) {
 
     return () => {
       cancelled = true;
-      if (detailFrameRef.current !== null) {
-        cancelAnimationFrame(detailFrameRef.current);
-        detailFrameRef.current = null;
-      }
     };
-  }, [workId, applyDetailUpdate]);
+  }, [workId, applyDetailUpdate, server.ready]);
 
   const handleSelectStep = useCallback(
     (step: AgentWorkStepView) => {
-      if (!detail) return;
+      const current = detailRef.current;
+      if (!current) return;
       setSelectedStepId(step.id);
-      setBrowserSelection(browserSelectionForStep(detail, step));
+      setBrowserSelection(browserSelectionForStep(current, step));
       setWorkspaceTab("process");
     },
-    [detail],
+    [],
   );
 
   const handleSend = useCallback(
     async (payload: ComposerSubmitPayload) => {
-      if (!detail) return;
+      const current = detailRef.current;
+      if (!current) return;
       setError(null);
       setSelectedStepId(null);
       setWorkspaceTab("process");
       setBrowserSelection({ kind: "live" });
+      if (!supportsExternalAgents()) {
+        setError("外部 Agent 仅桌面端可用");
+        return;
+      }
       try {
-        if (isTauri()) {
-          await sendAgentWorkViaCli(detail, payload, applyDetailUpdate);
-        } else {
-          const result = await mockAgentWorkSend(
-            {
-              work_id: detail.work_id,
-              message: payload.message,
-              agent_id: payload.agent_id,
-              model_id: payload.model_id,
-              attachments: payload.attachments,
-            },
-            applyDetailUpdate,
-          );
-          applyDetailUpdate(result);
-        }
-      } catch {
-        setError("发送失败，请重试");
+        await sendAgentWorkViaCli(current, payload, applyDetailUpdate);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "发送失败，请重试");
       }
     },
-    [detail, applyDetailUpdate],
+    [applyDetailUpdate],
   );
 
   if (loading && !detail) {
@@ -184,12 +229,16 @@ export function AiWorkView({ workId, onBack }: AiWorkViewProps) {
     );
   }
 
+  const showWorkspace = hasWorkspaceContent(detail);
+
   return (
     <AiWorkSplit
+      showWorkspace={showWorkspace}
       chat={
         <AgentChatPanel
           detail={detail}
           busy={!detail.can_send}
+          error={error}
           selectedStepId={selectedStepId}
           onBack={onBack}
           onSend={(payload) => void handleSend(payload)}
@@ -197,15 +246,17 @@ export function AiWorkView({ workId, onBack }: AiWorkViewProps) {
         />
       }
       workspace={
-        <AgentWorkspacePanel
-          live={detail.browser_live}
-          history={detail.browser_history}
-          recommendations={detail.recommendations}
-          tab={workspaceTab}
-          onTabChange={setWorkspaceTab}
-          selection={browserSelection}
-          onSelect={setBrowserSelection}
-        />
+        showWorkspace ? (
+          <AgentWorkspacePanel
+            live={detail.browser_live}
+            history={detail.browser_history}
+            recommendations={detail.recommendations}
+            tab={workspaceTab}
+            onTabChange={setWorkspaceTab}
+            selection={browserSelection}
+            onSelect={setBrowserSelection}
+          />
+        ) : null
       }
     />
   );

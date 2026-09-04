@@ -8,6 +8,7 @@ import type {
   AgentRuntimeProbeResult,
   AgentRuntimeStatusView,
 } from "@/contracts/agent-runtime";
+import { fetchAgentPreferences } from "@/lib/agent-api";
 
 let mockCodexAuthenticated = false;
 
@@ -67,12 +68,63 @@ export function normalizeAgentRuntimeItem(raw: RawAgentRuntimeItem): AgentRuntim
   };
 }
 
-export async function listAgentRuntimes(): Promise<AgentRuntimeItem[]> {
-  if (isTauri()) {
-    const response = await invoke<AgentListResponse>("list_agent_runtimes_command");
-    return response.agents.map((agent) => normalizeAgentRuntimeItem(agent as RawAgentRuntimeItem));
+/** 将 SQLite 偏好盖到 is_default / preferred_model_id。 */
+export function applyAgentPreferences(
+  agents: AgentRuntimeItem[],
+  preferences: {
+    default_agent_id?: string | null;
+    default_models?: Record<string, string> | null;
+  },
+): AgentRuntimeItem[] {
+  const preferredAgent = preferences.default_agent_id?.trim() || null;
+  const hasModels = preferences.default_models != null;
+  const models = preferences.default_models ?? {};
+  return agents.map((agent) => ({
+    ...agent,
+    is_default: preferredAgent
+      ? agent.id === preferredAgent && agent.available
+      : Boolean(agent.is_default),
+    // 未传入 default_models 时保留原 preferred_model_id，避免「设为默认」把模型打回第一项
+    preferred_model_id: hasModels
+      ? models[agent.id]?.trim() || null
+      : (agent.preferred_model_id ?? null),
+  }));
+}
+
+/**
+ * 拉取本地 Agent 目录（Tauri PATH 探测）。
+ * 若传入 apiBaseUrl，会再读 SQLite 偏好，并盖到 is_default / preferred_model_id。
+ */
+export async function listAgentRuntimes(
+  apiBaseUrl?: string | null,
+): Promise<AgentRuntimeItem[]> {
+  if (!isTauri()) return [];
+
+  const response = await invoke<AgentListResponse>("list_agent_runtimes_command");
+  const agents = response.agents.map((agent) =>
+    normalizeAgentRuntimeItem(agent as RawAgentRuntimeItem),
+  );
+
+  if (!apiBaseUrl) return agents;
+
+  try {
+    const preferences = await fetchAgentPreferences({ baseUrl: apiBaseUrl });
+    return applyAgentPreferences(agents, preferences);
+  } catch {
+    return agents;
   }
-  return [];
+}
+
+/**
+ * 仅取注册表占位（不扫 PATH），全部为「未安装」。
+ * 用于尚未手动扫描、库中无缓存时的首屏展示。
+ */
+export async function listAgentRegistryPlaceholders(): Promise<AgentRuntimeItem[]> {
+  if (!isTauri()) return [];
+  const response = await invoke<AgentListResponse>("list_agent_registry_command");
+  return response.agents.map((agent) =>
+    normalizeAgentRuntimeItem(agent as RawAgentRuntimeItem),
+  );
 }
 
 export function buildAuthView(
@@ -233,52 +285,21 @@ function replaceAgent(agents: AgentRuntimeItem[], updated: AgentRuntimeItem): Ag
   return agents.map((agent) => (agent.id === updated.id ? updated : agent));
 }
 
-/** 将后端 PATH 探测结果合并进列表，不触发慢速 probe（模型/版本留待后台更新）。 */
-export function mergeListDetection(
-  base: AgentRuntimeItem[],
-  detected: AgentRuntimeItem[],
-): AgentRuntimeItem[] {
-  const detectedById = new Map(detected.map((agent) => [agent.id, agent]));
-  return base.map((agent) => {
-    const fresh = detectedById.get(agent.id);
-    if (!fresh) return agent;
-    return {
-      ...agent,
-      available: fresh.available,
-      install_url: fresh.install_url ?? agent.install_url,
-      docs_url: fresh.docs_url ?? agent.docs_url,
-      is_default: fresh.is_default ?? agent.is_default,
-      external_mcp_injection: fresh.external_mcp_injection ?? agent.external_mcp_injection,
-      can_login: fresh.can_login ?? agent.can_login,
-      can_probe: fresh.can_probe ?? agent.can_probe,
-      command: fresh.available ? (fresh.command ?? agent.command ?? null) : null,
-      source: fresh.available ? (fresh.source ?? agent.source ?? null) : null,
-      version: null,
-      auth: fresh.available && supportsAgentLogin(agent) ? buildAuthView(agent.id, null) : null,
-      models: null,
-      status: fresh.available
-        ? PROBING_STATUS
-        : {
-            state: "missing",
-            label: "未安装",
-            hint: fresh.status.hint ?? null,
-            badge_class: "bg-muted text-muted-foreground",
-          },
-    };
-  });
-}
-
 /**
  * 后台并行 probe 已安装的 Agent，按帧合并 onUpdate（避免每个 Agent 完成都触发订阅）。
- * 返回取消函数。
+ * 返回取消函数；全部结束后调用 onComplete。
  */
 export function probeAgentsInBackground(
   agents: AgentRuntimeItem[],
   onUpdate: (agents: AgentRuntimeItem[]) => void,
+  onComplete?: (agents: AgentRuntimeItem[]) => void,
 ): () => void {
   let cancelled = false;
   const targets = agents.filter((agent) => agent.available);
-  if (targets.length === 0) return () => undefined;
+  if (targets.length === 0) {
+    onComplete?.(agents);
+    return () => undefined;
+  }
 
   const probingIds = new Set(targets.map((agent) => agent.id));
   let snapshot = markAgentsProbing(agents, probingIds);
@@ -312,6 +333,7 @@ export function probeAgentsInBackground(
       rafId = null;
     }
     flush();
+    onComplete?.(snapshot);
   })();
 
   return () => {
@@ -321,15 +343,6 @@ export function probeAgentsInBackground(
       rafId = null;
     }
   };
-}
-
-export async function enrichAvailableAgents(agents: AgentRuntimeItem[]): Promise<AgentRuntimeItem[]> {
-  const available = agents.filter((agent) => agent.available);
-  if (available.length === 0) return agents;
-
-  const probed = await Promise.all(available.map((agent) => probeAgentRuntime(agent)));
-  const probedById = new Map(probed.map((agent) => [agent.id, agent]));
-  return agents.map((agent) => probedById.get(agent.id) ?? agent);
 }
 
 export async function loginAgentRuntime(agentId: string): Promise<AgentRuntimeLoginResult> {

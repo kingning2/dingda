@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { isTauri } from "@tauri-apps/api/core";
 import { Loader2 } from "lucide-react";
 import type { AccountQrCheckResponse } from "@/contracts/account";
 import type { AccountPanelConfig } from "./types";
 import { checkAccountQrLogin, startAccountQrLogin } from "@/lib/account-qr";
-import { useBackend } from "@/providers/backend-provider";
+import { getHostCapabilities } from "@/lib/capabilities";
+import { useServer } from "@/providers/server-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,7 +45,7 @@ function qrImageSrc(qrBase64: string | null | undefined): string | null {
   return `data:image/png;base64,${qrBase64}`;
 }
 
-/** 扫码登录弹窗：Tauri + Python 后端就绪时走 HTTP，否则保留 mock。 */
+/** 扫码登录：Server 就绪走 HTTP；仅桌面壳启动中显示等待态。 */
 export function AccountQrDialog({
   open,
   onClose,
@@ -54,11 +54,12 @@ export function AccountQrDialog({
   title = "扫码登录",
   hint,
 }: AccountQrDialogProps) {
-  const backend = useBackend();
+  const server = useServer();
+  const { desktop } = getHostCapabilities();
   const defaultHint = `请用 ${config.appName} App 扫码`;
-  const useLiveApi = isTauri() && backend.ready && Boolean(backend.apiBaseUrl);
-  const waitingBackend = isTauri() && !backend.ready && backend.phase !== "error";
-  const backendError = isTauri() && backend.phase === "error" ? backend.error : null;
+  const useLiveApi = server.ready && Boolean(server.apiBaseUrl);
+  const waitingServer = desktop && !server.ready && server.phase !== "error";
+  const serverError = desktop && server.phase === "error" ? server.error : null;
 
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState<AccountQrCheckResponse | null>(null);
@@ -92,7 +93,7 @@ export function AccountQrDialog({
     }
 
     if (!useLiveApi) {
-      if (waitingBackend) {
+      if (waitingServer) {
         setLoading(true);
         setResponse(null);
         setError(null);
@@ -112,7 +113,7 @@ export function AccountQrDialog({
 
     void (async () => {
       try {
-        const started = await startAccountQrLogin(backend.apiBaseUrl!, config.platform);
+        const started = await startAccountQrLogin(config.platform);
         if (cancelled) return;
         sessionIdRef.current = started.session_id ?? null;
         setResponse({
@@ -125,10 +126,7 @@ export function AccountQrDialog({
 
         const pollOnce = async () => {
           try {
-            const checked = await checkAccountQrLogin(
-              backend.apiBaseUrl!,
-              started.session_id!,
-            );
+            const checked = await checkAccountQrLogin(started.session_id!);
             if (cancelled) return;
             setResponse(checked);
 
@@ -178,17 +176,17 @@ export function AccountQrDialog({
         pollTimerRef.current = null;
       }
     };
-  }, [open, useLiveApi, waitingBackend, backend.apiBaseUrl, config.platform, hint, defaultHint]);
+  }, [open, useLiveApi, waitingServer, server.apiBaseUrl, config.platform, hint, defaultHint]);
 
   const status = response?.status ?? (loading ? "ready" : "");
   const message = error
     ? error
-    : backendError
-      ? `Python 后端启动失败：${backendError}`
-    : waitingBackend
-      ? "Python 后端启动中，请稍候…"
+    : serverError
+      ? `Server 启动失败：${serverError}`
+      : waitingServer
+      ? "Server 启动中，请稍候…"
       : loading && useLiveApi
-        ? "正在启动 Camoufox 生成二维码（首次约 20–30 秒）…"
+        ? "正在生成二维码…"
       : loading
       ? "正在生成二维码…"
       : response
@@ -242,7 +240,7 @@ export function AccountQrDialog({
             className={`text-center text-sm ${
               status === "scanned"
                 ? "text-amber-600"
-                : status === "failed" || status === "expired" || error || backendError
+                : status === "failed" || status === "expired" || error || serverError
                   ? "text-destructive"
                   : status === "success"
                     ? "text-emerald-600"
@@ -252,7 +250,7 @@ export function AccountQrDialog({
             {message}
           </p>
 
-          {!useLiveApi && !waitingBackend && !backendError ? (
+          {!useLiveApi && !waitingServer && !serverError ? (
             <p className="text-center text-xs text-amber-700">
               当前为演示模式（浏览器 或 后端未就绪），扫码为 UI 占位
             </p>

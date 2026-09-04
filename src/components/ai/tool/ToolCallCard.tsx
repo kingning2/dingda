@@ -45,7 +45,9 @@ export function ToolCallCard({
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-foreground">{step.label}</p>
             {step.hint ? (
-              <p className="mt-0.5 text-[11px] text-muted-foreground">{step.hint}</p>
+              <p className="mt-0.5 max-w-full overflow-x-auto whitespace-pre-wrap break-all text-[11px] text-muted-foreground">
+                {step.hint}
+              </p>
             ) : null}
             {pageUrl ? (
               <Badge

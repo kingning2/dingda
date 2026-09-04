@@ -11,5 +11,8 @@ export function WorkRoute() {
     return <Navigate to={paths.home} replace />;
   }
 
+  console.log(workId);
+  
+
   return <AiWorkPage workId={workId} onBack={() => navigate(paths.home)} />;
 }

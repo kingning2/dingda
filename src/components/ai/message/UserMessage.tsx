@@ -61,7 +61,9 @@ export function UserMessage({ content, attachments, className }: UserMessageProp
         {attachments && attachments.length > 0 ? (
           <MessageAttachments items={attachments} variant="user" />
         ) : null}
-        {content ? <p className="whitespace-pre-wrap">{content}</p> : null}
+        {content ? (
+          <p className="whitespace-pre-wrap break-words">{content}</p>
+        ) : null}
       </CardContent>
     </Card>
   );

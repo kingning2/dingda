@@ -12,6 +12,8 @@ export interface ComposerAgentOption {
   id: string;
   name: string;
   is_default?: boolean;
+  /** 资产页为该 Agent 持久化的默认模型。 */
+  preferred_model_id?: string | null;
   models?: ComposerModelOption[];
 }
 

@@ -48,19 +48,9 @@ export const router = createHashRouter([
                 handle: entry("全部项目"),
               },
               {
-                path: "community",
-                element: <CommunityPage />,
-                handle: entry("社区"),
-              },
-              {
                 path: "plugins",
                 element: <PluginsPage />,
                 handle: entry("扩展"),
-              },
-              {
-                path: "design-systems",
-                element: <DesignSystemsPage />,
-                handle: entry("设计系统"),
               },
               {
                 path: "assets",

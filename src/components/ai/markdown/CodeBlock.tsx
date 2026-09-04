@@ -14,7 +14,7 @@ export function MarkdownCode({ className, children, inline, ...props }: Markdown
     return (
       <code
         className={cn(
-          "rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground",
+          "break-all rounded-md bg-muted px-1.5 py-0.5 font-mono text-[0.9em] text-foreground",
           className,
         )}
         {...props}

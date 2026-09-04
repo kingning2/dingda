@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { isTauri } from "@tauri-apps/api/core";
 import { Check, Loader2, QrCode, Trash2 } from "lucide-react";
 import type { AccountListItem, AccountPanelConfig } from "./types";
 import {
@@ -9,20 +8,21 @@ import {
   mockAccountAfterDisconnect,
   mockAccountWhileConnecting,
 } from "./mock-data";
-import type { AccountQrCheckResponse } from "@/contracts/account";
+import type { AccountProfileView, AccountQrCheckResponse } from "@/contracts/account";
 import {
   connectStoredAccount,
   deleteStoredAccount,
   disconnectStoredAccount,
-  listStoredAccounts,
+  fetchAccountProfile,
   patchStoredAccount,
 } from "@/lib/account-store";
-import { useBackend } from "@/providers/backend-provider";
+import { refreshAccountsForPlatform } from "@/lib/discovery-scan";
+import { useDiscoveryStore } from "@/stores/discovery-store";
+import { useServer } from "@/providers/server-provider";
 import { AccountQrDialog } from "./account-qr-dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -38,72 +38,55 @@ interface AccountsPanelProps {
 }
 
 export function AccountsPanel({ config }: AccountsPanelProps) {
-  const backend = useBackend();
-  const useLiveApi = isTauri() && backend.ready && Boolean(backend.apiBaseUrl);
+  const server = useServer();
+  const useLiveApi = server.ready && Boolean(server.apiBaseUrl);
   const isLoginSession = !config.supportsConnection;
   const defaultQrHint = `请用 ${config.appName} App 扫码`;
   const sessionLabel = isLoginSession ? "登录状态" : "连接状态";
 
-  const [accounts, setAccounts] = useState<AccountListItem[]>(() =>
-    isTauri() ? [] : filterAccountsByPlatform(config.platform),
+  const storeAccounts = useDiscoveryStore((state) => state.accounts);
+  const storeAutoConnectIds = useDiscoveryStore((state) => state.autoConnectIds);
+  const accountsError = useDiscoveryStore((state) => state.accountsError);
+  const upsertAccount = useDiscoveryStore((state) => state.upsertAccount);
+  const removeAccount = useDiscoveryStore((state) => state.removeAccount);
+  const setAutoConnectIds = useDiscoveryStore((state) => state.setAutoConnectIds);
+
+  const [mockAccounts, setMockAccounts] = useState(() =>
+    filterAccountsByPlatform(config.platform),
   );
+  const [mockAutoConnectIds, setMockAutoConnectIds] = useState<string[]>([]);
   const [keyword, setKeyword] = useState("");
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [autoConnectOnStart, setAutoConnectOnStart] = useState(false);
-  const [autoConnectIds, setAutoConnectIds] = useState<string[]>([]);
 
   const [qrOpen, setQrOpen] = useState(false);
   const [qrTitle, setQrTitle] = useState("扫码登录");
   const [qrHint, setQrHint] = useState(defaultQrHint);
 
   const [deleteTarget, setDeleteTarget] = useState<AccountListItem | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<AccountListItem | null>(null);
-  const [editorDisplayName, setEditorDisplayName] = useState("");
-  const [editorCookie, setEditorCookie] = useState("");
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profile, setProfile] = useState<AccountProfileView | null>(null);
+
+  const accounts = useMemo(() => {
+    if (!useLiveApi) return mockAccounts;
+    return storeAccounts.filter((item) => item.platform === config.platform);
+  }, [useLiveApi, mockAccounts, storeAccounts, config.platform]);
+
+  const autoConnectIds = useLiveApi ? storeAutoConnectIds : mockAutoConnectIds;
+  const loadError = useLiveApi ? accountsError : null;
 
   useEffect(() => {
-    if (!useLiveApi) {
-      return;
-    }
-
-    let cancelled = false;
-    void listStoredAccounts(backend.apiBaseUrl!, config.platform)
-      .then(({ accounts: loaded, autoConnectIds: loadedAutoConnect }) => {
-        if (cancelled) {
-          return;
-        }
-        setAccounts(loaded);
-        setAutoConnectIds(loadedAutoConnect);
-        setLoadError(null);
-      })
-      .catch((error) => {
-        if (cancelled) {
-          return;
-        }
-        setLoadError(error instanceof Error ? error.message : "加载账号失败");
-      });
+    if (!useLiveApi) return;
 
     const timer = window.setInterval(() => {
-      void listStoredAccounts(backend.apiBaseUrl!, config.platform)
-        .then(({ accounts: loaded, autoConnectIds: loadedAutoConnect }) => {
-          if (cancelled) {
-            return;
-          }
-          setAccounts(loaded);
-          setAutoConnectIds(loadedAutoConnect);
-        })
-        .catch(() => {
-          /* 轮询失败不打断当前列表 */
-        });
+      void refreshAccountsForPlatform(config.platform).catch(() => {
+        /* 轮询失败不打断当前列表 */
+      });
     }, 30_000);
 
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [useLiveApi, backend.apiBaseUrl, config.platform]);
+    return () => window.clearInterval(timer);
+  }, [useLiveApi, config.platform]);
 
   const filtered = useMemo(() => {
     return accounts.filter((account) => {
@@ -116,7 +99,11 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
   }, [accounts, keyword]);
 
   function mergeAccount(next: AccountListItem) {
-    setAccounts((current) => {
+    if (useLiveApi) {
+      upsertAccount(next);
+      return;
+    }
+    setMockAccounts((current) => {
       const exists = current.some((item) => item.account_id === next.account_id);
       if (exists) {
         return current.map((item) => (item.account_id === next.account_id ? next : item));
@@ -126,20 +113,12 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
   }
 
   function updateAccount(next: AccountListItem) {
-    setAccounts((current) =>
-      current.map((item) => (item.account_id === next.account_id ? next : item)),
-    );
+    mergeAccount(next);
   }
 
   async function reloadAccounts() {
-    if (!useLiveApi) {
-      return;
-    }
-    const { accounts: loaded, autoConnectIds: loadedAutoConnect } =
-      await listStoredAccounts(backend.apiBaseUrl!, config.platform);
-    setAccounts(loaded);
-    setAutoConnectIds(loadedAutoConnect);
-    setLoadError(null);
+    if (!useLiveApi) return;
+    await refreshAccountsForPlatform(config.platform);
   }
 
   function openQrLogin() {
@@ -155,11 +134,35 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
     setQrOpen(true);
   }
 
-  function openAccountEditor(account: AccountListItem) {
-    setEditingAccount(account);
-    setEditorDisplayName(account.display_name);
-    setEditorCookie(account.cookie ?? "");
-    setEditorOpen(true);
+  function openAccountProfile(account: AccountListItem) {
+    const stub: AccountProfileView = {
+      account_id: account.account_id,
+      platform: account.platform as AccountProfileView["platform"],
+      display_name: account.display_name,
+      avatar_url: account.avatar_url,
+    };
+    setProfile(stub);
+    setProfileOpen(true);
+    if (!useLiveApi) {
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    void (async () => {
+      try {
+        const next = await fetchAccountProfile(account.account_id);
+        setProfile(next);
+        updateAccount({
+          ...account,
+          display_name: next.display_name || account.display_name,
+          avatar_url: next.avatar_url || account.avatar_url,
+        });
+      } catch {
+        // http-client 已提示
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
   }
 
   function handleQrSuccess(result: AccountQrCheckResponse) {
@@ -193,16 +196,10 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
     updateAccount(mockAccountWhileConnecting(account));
     void (async () => {
       try {
-        const connected = await connectStoredAccount(
-          backend.apiBaseUrl!,
-          account.account_id,
-        );
+        const connected = await connectStoredAccount(account.account_id);
         updateAccount(connected);
-      } catch (error) {
+      } catch {
         updateAccount(account);
-        if (error instanceof Error) {
-          window.alert(error.message);
-        }
       } finally {
         setConnectingId(null);
       }
@@ -217,15 +214,10 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
 
     void (async () => {
       try {
-        const disconnected = await disconnectStoredAccount(
-          backend.apiBaseUrl!,
-          account.account_id,
-        );
+        const disconnected = await disconnectStoredAccount(account.account_id);
         updateAccount(disconnected);
-      } catch (error) {
-        if (error instanceof Error) {
-          window.alert(error.message);
-        }
+      } catch {
+        // http-client 已弹错
       }
     })();
   }
@@ -235,65 +227,35 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
       return;
     }
     const target = deleteTarget;
-    setAccounts((current) => current.filter((item) => item.account_id !== target.account_id));
-    setAutoConnectIds((current) => current.filter((id) => id !== target.account_id));
     setDeleteTarget(null);
 
     if (useLiveApi) {
-      void deleteStoredAccount(backend.apiBaseUrl!, target.account_id);
-    }
-  }
-
-  function handleSaveEditor() {
-    if (!editingAccount) {
-      return;
-    }
-    const previousDisplayName = editingAccount.display_name;
-    const next = {
-      ...editingAccount,
-      display_name: editorDisplayName.trim() || editingAccount.display_name,
-      cookie: editorCookie.trim() || editingAccount.cookie,
-      has_cookie: Boolean((editorCookie.trim() || editingAccount.cookie)?.trim()),
-    };
-    setEditorOpen(false);
-    setEditingAccount(null);
-
-    if (!useLiveApi) {
-      mergeAccount(next);
+      removeAccount(target.account_id);
+      void deleteStoredAccount(target.account_id);
       return;
     }
 
-    void (async () => {
-      try {
-        let account = next;
-        if (account.display_name !== previousDisplayName) {
-          account = await patchStoredAccount(backend.apiBaseUrl!, account.account_id, {
-            display_name: account.display_name,
-          });
-        }
-        mergeAccount(account);
-      } catch (error) {
-        if (error instanceof Error) {
-          window.alert(error.message);
-        }
-        mergeAccount(next);
-      }
-    })();
+    setMockAccounts((current) =>
+      current.filter((item) => item.account_id !== target.account_id),
+    );
+    setMockAutoConnectIds((current) =>
+      current.filter((id) => id !== target.account_id),
+    );
   }
 
   function toggleAutoConnectAccount(accountId: string) {
     const enabling = !autoConnectIds.includes(accountId);
-    setAutoConnectIds((current) =>
-      enabling ? [...current, accountId] : current.filter((id) => id !== accountId),
-    );
+    const nextIds = enabling
+      ? [...autoConnectIds, accountId]
+      : autoConnectIds.filter((id) => id !== accountId);
 
-    if (!useLiveApi) {
+    if (useLiveApi) {
+      setAutoConnectIds(nextIds);
+      void patchStoredAccount(accountId, { auto_connect: enabling });
       return;
     }
 
-    void patchStoredAccount(backend.apiBaseUrl!, accountId, {
-      auto_connect: enabling,
-    });
+    setMockAutoConnectIds(nextIds);
   }
 
   return (
@@ -348,7 +310,7 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
               <Card
                 key={account.account_id}
                 className="cursor-pointer transition hover:border-primary/40 hover:shadow-sm"
-                onClick={() => openAccountEditor(account)}
+                onClick={() => openAccountProfile(account)}
               >
                 <CardContent className="flex h-full flex-col p-4">
                   <div className="flex items-start gap-3">
@@ -480,43 +442,75 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
         onSuccess={handleQrSuccess}
       />
 
-      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingAccount ? `编辑账号 · ${editingAccount.account_id}` : "编辑账号"}
-            </DialogTitle>
+            <DialogTitle>个人主页</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <label className="block space-y-1">
-              <span className="text-sm text-muted-foreground">显示名称</span>
-              <Input
-                value={editorDisplayName}
-                onChange={(event) => setEditorDisplayName(event.target.value)}
-                placeholder="账号展示名"
-              />
-            </label>
-            <label className="block space-y-1">
-              <span className="text-sm text-muted-foreground">
-                登录信息（风控验证或重新登录后更新）
-              </span>
-              <Textarea
-                value={editorCookie}
-                onChange={(event) => setEditorCookie(event.target.value)}
-                placeholder={`在浏览器登录 ${config.platformName} 后，将登录信息粘贴到这里`}
-                rows={5}
-                className="font-mono text-xs"
-              />
-              <span className="block text-xs text-muted-foreground/80">
-                一般通过扫码登录自动获取；仅在平台要求重新验证时手动更新。
-              </span>
-            </label>
-          </div>
+          {profile ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="size-14 shrink-0">
+                  {profile.avatar_url ? (
+                    <AvatarImage src={profile.avatar_url} alt={profile.display_name} />
+                  ) : null}
+                  <AvatarFallback className="text-lg font-medium">
+                    {(profile.display_name || profile.account_id).slice(0, 1)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="truncate text-lg font-medium">
+                    {profile.display_name || profile.account_id}
+                  </div>
+                  <div className="truncate font-mono text-xs text-muted-foreground">
+                    {profile.account_id}
+                  </div>
+                  {profileLoading ? (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Loader2 className="size-3 animate-spin" />
+                      正在同步平台资料…
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                {profile.followers != null ? (
+                  <div className="rounded-md border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">粉丝</div>
+                    <div className="font-medium">{profile.followers}</div>
+                  </div>
+                ) : null}
+                {profile.following != null ? (
+                  <div className="rounded-md border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">关注</div>
+                    <div className="font-medium">{profile.following}</div>
+                  </div>
+                ) : null}
+                {profile.sold_count != null ? (
+                  <div className="rounded-md border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">卖出</div>
+                    <div className="font-medium">{profile.sold_count}</div>
+                  </div>
+                ) : null}
+                {profile.purchase_count != null ? (
+                  <div className="rounded-md border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">买过</div>
+                    <div className="font-medium">{profile.purchase_count}</div>
+                  </div>
+                ) : null}
+                {profile.collection_count != null ? (
+                  <div className="rounded-md border px-3 py-2">
+                    <div className="text-xs text-muted-foreground">收藏</div>
+                    <div className="font-medium">{profile.collection_count}</div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditorOpen(false)}>
-              取消
+            <Button variant="outline" onClick={() => setProfileOpen(false)}>
+              关闭
             </Button>
-            <Button onClick={handleSaveEditor}>保存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

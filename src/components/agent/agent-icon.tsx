@@ -36,15 +36,22 @@ export function AgentIcon({ id, size = 36, className }: AgentIconProps) {
   const cls = ["agent-icon shrink-0 text-foreground", className].filter(Boolean).join(" ");
   const assetId = ICON_ASSET_ID[id] ?? id;
   const ext = ICON_EXT[assetId];
+  // 内联宽高盖过 Tailwind preflight 的 `img { height:auto; max-width:100% }`，避免裁切/挤压
+  const boxStyle: CSSProperties = { width: size, height: size };
 
   if (ext) {
     if (ext === "svg" && MONO_ICONS.has(assetId)) {
       const src = `/agent-icons/${assetId}.svg`;
       const style: CSSProperties = {
-        width: size,
-        height: size,
+        ...boxStyle,
         WebkitMaskImage: `url("${src}")`,
         maskImage: `url("${src}")`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
       };
       return <span className={`${cls} inline-block bg-current`} style={style} aria-hidden="true" />;
     }
@@ -55,7 +62,8 @@ export function AgentIcon({ id, size = 36, className }: AgentIconProps) {
         alt=""
         width={size}
         height={size}
-        className={cls}
+        className={`${cls} max-w-none object-contain`}
+        style={boxStyle}
         aria-hidden="true"
         draggable={false}
       />
@@ -67,8 +75,7 @@ export function AgentIcon({ id, size = 36, className }: AgentIconProps) {
     <span
       className={`${cls} inline-flex items-center justify-center rounded-md bg-muted font-mono font-semibold text-muted-foreground`}
       style={{
-        width: size,
-        height: size,
+        ...boxStyle,
         fontSize: Math.round(size * 0.42),
         lineHeight: 1,
       }}

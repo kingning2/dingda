@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMatches } from "react-router-dom";
 
 import { EntryShell } from "@/components/layout/entry-shell";
-import { ensureAgentRuntimesScanned } from "@/lib/agent-runtime-scan";
+import { ensureDiscoveryScanned } from "@/lib/discovery-scan";
 import { resolveRouteTitle, type EntryRouteHandle } from "@/routes/route-handle";
 
 export function EntryLayout() {
@@ -14,7 +14,7 @@ export function EntryLayout() {
   const pageTitle = resolveRouteTitle(matches);
 
   useEffect(() => {
-    void ensureAgentRuntimesScanned();
+    void ensureDiscoveryScanned();
   }, []);
 
   return (

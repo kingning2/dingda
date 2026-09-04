@@ -61,6 +61,24 @@ export interface AccountAuthProbeResponse {
   error?: string | null;
 }
 
+/** GET /v1/accounts/{id}/profile — 扫码时已存的名称头像。 */
+export interface AccountProfileView {
+  account_id: string;
+  platform: AccountPlatform;
+  display_name: string;
+  avatar_url?: string | null;
+  followers?: number | null;
+  following?: number | null;
+  sold_count?: number | null;
+  purchase_count?: number | null;
+  collection_count?: number | null;
+}
+
+export interface AccountProfileResponse {
+  ok: boolean;
+  profile: AccountProfileView;
+}
+
 /** 扫码启动响应（contracts/schema/v1/channel/sidecar/qr_start.response）。 */
 export interface AccountQrStartResponse {
   ok: boolean;

@@ -30,6 +30,10 @@ export interface AgentWorkMessageView {
   created_at: string;
   /** 模型推理过程，由服务端流式增量推送。 */
   thinking?: string | null;
+  /** 开始思考/执行的时间（ISO），用于界面计时。 */
+  thinking_started_at?: string | null;
+  /** 思考/执行总秒数（完成后落库，刷新可回看）。 */
+  thinking_duration_sec?: number | null;
   steps?: AgentWorkStepView[];
   attachments?: ComposerAttachmentView[];
 }
@@ -106,6 +110,13 @@ export interface AgentWorkDetailView {
   composer_model_id?: string | null;
   /** 本机已接入、可切换的 Agent 列表。 */
   composer_agents: ComposerAgentOption[];
+  /**
+   * 外部 CLI 续聊 session / thread id。
+   * 与 cli_session_runtime_id 成对；换 Agent 时清空。
+   */
+  cli_session_id?: string | null;
+  /** 产生 cli_session_id 的 runtime id（如 opencode / codex）。 */
+  cli_session_runtime_id?: string | null;
 }
 
 export interface AgentWorkSendRequest {

@@ -2,12 +2,14 @@ import type {
   AccountActionsView,
   AccountListItem,
   AccountPlatform,
+  AccountProfileResponse,
+  AccountProfileView,
   AccountSessionView,
 } from "@/contracts/account";
 import { accountFromStorage } from "@/components/accounts/mock-data";
-import { handleApiResponseError } from "@/lib/api-error";
+import { api } from "@/lib/http-client";
 
-export interface StoredAccountRecord {
+interface StoredAccountRecord {
   account_id: string;
   platform: AccountPlatform;
   display_name: string;
@@ -33,90 +35,61 @@ interface AccountPatchResponse {
 }
 
 export async function listStoredAccounts(
-  apiBaseUrl: string,
   platform: AccountPlatform,
 ): Promise<{ accounts: AccountListItem[]; autoConnectIds: string[] }> {
-  const url = new URL(`${apiBaseUrl}/v1/accounts`);
-  url.searchParams.set("platform", platform);
-
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    await handleApiResponseError(response, "加载账号失败");
-  }
-
-  const payload = (await response.json()) as AccountListResponse;
-  const autoConnectIds = payload.items
+  const { data } = await api.get<AccountListResponse>("/v1/accounts", {
+    query: { platform },
+    fallbackError: "加载账号失败",
+  });
+  const autoConnectIds = data.items
     .filter((item) => item.auto_connect)
     .map((item) => item.account_id);
   return {
-    accounts: payload.items.map((item) => accountFromStorage(item.platform, item)),
+    accounts: data.items.map((item) => accountFromStorage(item.platform, item)),
     autoConnectIds,
   };
 }
 
 export async function patchStoredAccount(
-  apiBaseUrl: string,
   accountId: string,
   patch: { display_name?: string; auto_connect?: boolean },
 ): Promise<AccountListItem> {
-  const response = await fetch(
-    `${apiBaseUrl}/v1/accounts/${encodeURIComponent(accountId)}`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    },
+  const { data } = await api.patch<AccountPatchResponse>(
+    `/v1/accounts/${encodeURIComponent(accountId)}`,
+    patch,
+    { fallbackError: "更新账号失败" },
   );
-
-  if (!response.ok) {
-    await handleApiResponseError(response, "更新账号失败");
-  }
-  const payload = (await response.json()) as AccountPatchResponse;
-  return accountFromStorage(payload.item.platform, payload.item);
+  return accountFromStorage(data.item.platform, data.item);
 }
 
-export async function connectStoredAccount(
-  apiBaseUrl: string,
-  accountId: string,
-): Promise<AccountListItem> {
-  const response = await fetch(
-    `${apiBaseUrl}/v1/accounts/${encodeURIComponent(accountId)}/connect`,
-    { method: "POST" },
+export async function connectStoredAccount(accountId: string): Promise<AccountListItem> {
+  const { data } = await api.post<AccountPatchResponse>(
+    `/v1/accounts/${encodeURIComponent(accountId)}/connect`,
+    undefined,
+    { fallbackError: "连接账号失败" },
   );
-
-  if (!response.ok) {
-    await handleApiResponseError(response, "连接账号失败");
-  }
-  const payload = (await response.json()) as AccountPatchResponse;
-  return accountFromStorage(payload.item.platform, payload.item);
+  return accountFromStorage(data.item.platform, data.item);
 }
 
-export async function disconnectStoredAccount(
-  apiBaseUrl: string,
-  accountId: string,
-): Promise<AccountListItem> {
-  const response = await fetch(
-    `${apiBaseUrl}/v1/accounts/${encodeURIComponent(accountId)}/disconnect`,
-    { method: "POST" },
+export async function disconnectStoredAccount(accountId: string): Promise<AccountListItem> {
+  const { data } = await api.post<AccountPatchResponse>(
+    `/v1/accounts/${encodeURIComponent(accountId)}/disconnect`,
+    undefined,
+    { fallbackError: "断开账号失败" },
   );
-
-  if (!response.ok) {
-    await handleApiResponseError(response, "断开账号失败");
-  }
-  const payload = (await response.json()) as AccountPatchResponse;
-  return accountFromStorage(payload.item.platform, payload.item);
+  return accountFromStorage(data.item.platform, data.item);
 }
 
-export async function deleteStoredAccount(
-  apiBaseUrl: string,
-  accountId: string,
-): Promise<void> {
-  const response = await fetch(
-    `${apiBaseUrl}/v1/accounts/${encodeURIComponent(accountId)}`,
-    { method: "DELETE" },
+export async function fetchAccountProfile(accountId: string): Promise<AccountProfileView> {
+  const { data } = await api.get<AccountProfileResponse>(
+    `/v1/accounts/${encodeURIComponent(accountId)}/profile`,
+    { fallbackError: "加载个人主页失败" },
   );
+  return data.profile;
+}
 
-  if (!response.ok) {
-    await handleApiResponseError(response, "删除账号失败");
-  }
+export async function deleteStoredAccount(accountId: string): Promise<void> {
+  await api.delete(`/v1/accounts/${encodeURIComponent(accountId)}`, {
+    fallbackError: "删除账号失败",
+  });
 }
