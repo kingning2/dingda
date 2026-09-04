@@ -3,6 +3,7 @@ use std::path::Path;
 use std::pin::Pin;
 
 use super::build_args::cursor_build_args;
+use super::validate::validate_cursor_executable;
 use crate::runtime::model_discover::{parse_cursor_models, run_command};
 use crate::runtime::types::{RuntimeCapabilities, RuntimeDefinition, RuntimeModel, StreamFormat};
 
@@ -41,10 +42,10 @@ pub const CURSOR: RuntimeDefinition = RuntimeDefinition {
     },
     install_url: "https://cursor.com/docs/cli/overview",
     docs_url: "https://docs.cursor.com/en/cli/overview",
-    external_mcp_injection: None,
+    external_mcp_injection: Some("cursor-mcp-json"),
     is_default: false,
     build_args: cursor_build_args,
-    validate_executable: None,
+    validate_executable: Some(validate_cursor_executable),
     auth_probe_args: None,
     discover_models,
 };

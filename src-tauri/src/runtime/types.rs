@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::pin::Pin;
 
 use serde::Serialize;
+use serde_json::Value;
 
 /// CLI 探测到的可用模型。
 #[derive(Debug, Clone, Serialize)]
@@ -64,6 +65,8 @@ pub struct RuntimeInvocation {
     pub env: HashMap<String, String>,
     pub prompt_via_stdin: bool,
     pub prompt: Option<String>,
+    /// ACP `session/new` 的 `mcpServers`；`Some` 时 spawn 走 JSON-RPC 握手。
+    pub acp_mcp_servers: Option<Vec<Value>>,
 }
 
 /// 可执行文件解析来源。

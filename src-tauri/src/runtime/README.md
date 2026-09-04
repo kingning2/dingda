@@ -21,7 +21,7 @@ RuntimeDefinition (defs/)
 
 ### `types.rs`
 
-插座与快照：`RuntimeDefinition`（id、binary、`build_args` 函数指针、`discover_models`、`stream_format`、`external_mcp_injection`）、`RuntimeInvocation`、`RuntimeDetection`、`ResolvedExecutable`、`StreamFormat`、`RuntimeModel`。新 CLI 先看字段再填 defs。
+插座与快照：`RuntimeDefinition`（id、binary、`build_args` 函数指针、`discover_models`、`stream_format`、`external_mcp_injection`）、`RuntimeInvocation`（含可选 `acp_mcp_servers`）、`RuntimeDetection`、`ResolvedExecutable`、`StreamFormat`、`RuntimeModel`。新 CLI 先看字段再填 defs。
 
 ### `registry.rs`
 
@@ -45,7 +45,7 @@ RuntimeDefinition (defs/)
 
 ### `process.rs`
 
-`spawn_process`（stdin 可送 prompt）、`read_stdout_lines` 按行回调。stderr 尚未当 AgentEvent 解析。
+`spawn_process` → `SpawnedProcess { child, stdout }`。普通 CLI：stdin 可送 prompt；带 `acp_mcp_servers` 时走 ACP 握手（initialize / session/new / session/prompt）。stderr 尚未当 AgentEvent 解析。
 
 ### `runs.rs`
 

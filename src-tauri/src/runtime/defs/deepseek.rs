@@ -55,7 +55,7 @@ pub const DEEPSEEK: RuntimeDefinition = RuntimeDefinition {
     },
     install_url: "https://github.com/Hmbown/CodeWhale",
     docs_url: "https://github.com/Hmbown/CodeWhale/blob/main/README.md",
-    external_mcp_injection: None,
+    external_mcp_injection: Some("deepseek-mcp-config"),
     is_default: false,
     build_args: plain_exec_args,
     validate_executable: None,

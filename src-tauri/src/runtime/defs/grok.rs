@@ -44,7 +44,7 @@ pub const GROK: RuntimeDefinition = RuntimeDefinition {
     },
     install_url: "https://x.ai/cli",
     docs_url: "https://x.ai/cli",
-    external_mcp_injection: None,
+    external_mcp_injection: Some("claude-mcp-json"),
     is_default: false,
     build_args: empty_args,
     validate_executable: None,

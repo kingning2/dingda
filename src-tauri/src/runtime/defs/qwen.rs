@@ -28,7 +28,7 @@ pub const QWEN: RuntimeDefinition = RuntimeDefinition {
     },
     install_url: "https://github.com/QwenLM/qwen-code",
     docs_url: "https://qwenlm.github.io/qwen-code-docs/en/index",
-    external_mcp_injection: None,
+    external_mcp_injection: Some("qwen-settings-json"),
     is_default: false,
     build_args: empty_args,
     validate_executable: None,

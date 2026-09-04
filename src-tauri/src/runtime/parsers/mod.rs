@@ -17,10 +17,10 @@ pub fn create_parser(format: StreamFormat, runtime_id: &str, run_id: &str) -> Bo
     match format {
         StreamFormat::ClaudeStreamJson => Box::new(ClaudeStreamParser::new(runtime_id, run_id)),
         StreamFormat::JsonEventStream => match runtime_id {
-            "codex" | "cursor-agent" | "mimo" => {
+            "codex" | "cursor-agent" => {
                 Box::new(CodexStreamParser::new(runtime_id, run_id))
             }
-            "opencode" | "byok-opencode" | "atomcode" => {
+            "opencode" | "byok-opencode" | "atomcode" | "mimo" => {
                 Box::new(OpenCodeStreamParser::new(runtime_id, run_id))
             }
             _ => Box::new(JsonEventStreamParser::new(runtime_id, run_id)),

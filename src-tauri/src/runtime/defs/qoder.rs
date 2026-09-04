@@ -36,7 +36,7 @@ pub const QODER: RuntimeDefinition = RuntimeDefinition {
     },
     install_url: "https://qoder.com/download",
     docs_url: "https://docs.qoder.com",
-    external_mcp_injection: None,
+    external_mcp_injection: Some("claude-mcp-json"),
     is_default: false,
     build_args: empty_args,
     validate_executable: None,

@@ -84,7 +84,9 @@ impl RuntimeManager {
             log_agent("发送提示词", Some("（参数内嵌 / 无 stdin）"));
         }
 
-        let mut child = spawn_process(&invocation).await?;
+        let spawned = spawn_process(&invocation).await?;
+        let mut child = spawned.child;
+        let stdout = spawned.stdout;
         log_agent(
             "进程已启动",
             Some("等待 CLI 首包（冷启动/模型推理可能要几秒到几十秒）…"),
@@ -112,14 +114,6 @@ impl RuntimeManager {
 
         let shared = register(&run_id, child);
 
-        let stdout = {
-            let mut guard = shared.lock().await;
-            guard
-                .as_mut()
-                .and_then(|child| child.stdout.take())
-                .ok_or_else(|| "无法获取 stdout".to_string())?
-        };
-
         {
             let mut stream_log = StreamLogBuffer::new();
             let mut emit = |event: AgentEvent| {
@@ -145,13 +139,12 @@ impl RuntimeManager {
             });
 
             let mut parser = create_parser(definition.stream_format, definition.id, &run_id);
-            let stdout_result =
-                read_stdout_lines(tokio::io::BufReader::new(stdout), |line| {
-                    for event in parser.feed(line) {
-                        emit(event);
-                    }
-                })
-                .await;
+            let stdout_result = read_stdout_lines(stdout, |line| {
+                for event in parser.feed(line) {
+                    emit(event);
+                }
+            })
+            .await;
 
             if let Err(error) = stdout_result {
                 emit(AgentEvent::Error {

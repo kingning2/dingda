@@ -5,7 +5,7 @@
 
 新增：本目录加 `<id>.rs` → `mod.rs` `pub use` → [../registry.rs](../registry.rs) 登记。不要在业务里 match id。
 
-`external_mcp_injection` 有的 CLI 已声明（如 `claude-mcp-json`），见 [../mcp/README.md](../mcp/README.md)。已实现：Codex / OpenCode / Claude（CodeBuddy 同模式）；未实现的模式会打日志后跳过。
+`external_mcp_injection` 有的 CLI 已声明（如 `claude-mcp-json`），见 [../mcp/README.md](../mcp/README.md)。已实现：Codex / OpenCode / MiMo / Claude / CodeBuddy / Cursor / Qwen / Qoder / Grok / DeepSeek / Pi / Trae；`deepseek-harness` 故意不注入；未知 mode 打日志后跳过。
 
 ## 本目录文件
 
@@ -28,6 +28,8 @@ defs 只填函数指针。
 
 `validate_dsh_executable`：DeepSeek Harness `--probe` 必须回 dsh JSON。挂在 `DEEPSEEK_HARNESS.validate_executable`，避免 PATH 上撞名。
 
+`validate_cursor_executable` / `looks_like_cursor_agent`：Cursor 的备用名 `agent` 会与 Grok 的 `agent.exe` 撞名；拒绝 `.grok` 路径与 `grok` 版本串，仅接受 `cursor-agent` 或带 cursor / `.local/bin` 信号的 `agent`。
+
 ### `codex.rs`
 
 `CODEX`，id `codex`。`external_mcp_injection: Some("codex-mcp")`。模型：`login status` 成功则 `debug models`，否则静态列表。
@@ -42,39 +44,39 @@ defs 只填函数指针。
 
 ### `cursor.rs`
 
-`CURSOR`，id `cursor-agent`。二进制 `cursor-agent`。解析走 Codex 同类 JSON。
+`CURSOR`，id `cursor-agent`。注入 `cursor-mcp-json`（`.cursor/mcp.json`）。带 `validate_cursor_executable`，避免把 Grok 的 `agent` 当成 Cursor。
 
 ### `mimo.rs`
 
-`MIMO`，id `mimo`。注入标记 `mimo-env-content`（尚未实现）。
+`MIMO`，id `mimo`。注入 `mimo-env-content`；`build_args` 复用 OpenCode（`run --format json`）。
 
 ### `deepseek.rs`
 
-`DEEPSEEK`，id `deepseek`（CodeWhale 一类）。
+`DEEPSEEK`，id `deepseek`（CodeWhale）。注入 `deepseek-mcp-config`（`.dingda/mcp.json` + env）。
 
 ### `deepseek_harness.rs`
 
-`DEEPSEEK_HARNESS`，id `deepseek-harness`，二进制 `dsh`。带 validate + DSH 模型发现。
+`DEEPSEEK_HARNESS`，id `deepseek-harness`，二进制 `dsh`。**不**注入 MCP（YAML 插件体系）。
 
 ### `qwen.rs`
 
-`QWEN`，id `qwen`。
+`QWEN`，id `qwen`。注入 `qwen-settings-json`（`.qwen/settings.json`）。
 
 ### `qoder.rs`
 
-`QODER`，id `qoder`。stdout 近 Claude stream-json。
+`QODER`，id `qoder`。注入 `claude-mcp-json`（项目 `.mcp.json`）。
 
 ### `grok.rs`
 
-`GROK`，id `grok-build`。ACP 发现模型。
+`GROK`，id `grok-build`。注入 `claude-mcp-json`（Grok 兼容读 `.mcp.json`）。
 
 ### `pi.rs`
 
-`PI`，id `pi`。
+`PI`，id `pi`。注入 `pi-mcp-json`（`.pi/mcp.json`）。
 
 ### `trae.rs`
 
-`TRAE`，id `trae-cli`。注入标记 `acp-merge`（尚未实现）。
+`TRAE`，id `trae-cli`。注入 `acp-merge`（spawn 时 ACP 握手 + mcpServers）。
 
 ### `codebuddy.rs`
 

@@ -1,20 +1,25 @@
-//! OpenCode 运行时 MCP 注入：`OPENCODE_CONFIG_CONTENT` 内联 JSON，不改用户配置。
+//! MiMo 运行时 MCP 注入：`MIMOCODE_CONFIG_CONTENT` 内联 JSON（与 OpenCode 同形）。
 
 use crate::runtime::types::RuntimeInvocation;
 
 use super::goofish;
 
-/// 为一次 `opencode run` 注入 goofish MCP。
+/// 为一次 `mimo run` 注入 goofish MCP。
 ///
-/// server 目录不存在时不设 `OPENCODE_CONFIG_CONTENT`，避免空对象盖掉用户全局配置。
+/// server 目录不存在时不设 `MIMOCODE_CONFIG_CONTENT`，避免空对象盖掉用户全局配置。
 pub fn apply(invocation: &mut RuntimeInvocation) -> Result<(), String> {
     let Some(content) = goofish::opencode_style_config_content() else {
         return Ok(());
     };
 
+    // 与 open-design 一致：进程级覆盖，不读项目 mimocode.json 里的冲突项
     invocation
         .env
-        .insert("OPENCODE_CONFIG_CONTENT".into(), content);
+        .entry("MIMOCODE_DISABLE_PROJECT_CONFIG".into())
+        .or_insert_with(|| "true".into());
+    invocation
+        .env
+        .insert("MIMOCODE_CONFIG_CONTENT".into(), content);
     Ok(())
 }
 
@@ -25,10 +30,10 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn injects_opencode_config_content_env() {
+    fn injects_mimocode_config_content_env() {
         let mut invocation = RuntimeInvocation {
-            runtime_id: "opencode".into(),
-            executable: PathBuf::from("opencode"),
+            runtime_id: "mimo".into(),
+            executable: PathBuf::from("mimo"),
             args: vec!["run".into(), "--format".into(), "json".into()],
             cwd: PathBuf::from("."),
             env: HashMap::new(),
@@ -41,10 +46,13 @@ mod tests {
 
         let raw = invocation
             .env
-            .get("OPENCODE_CONFIG_CONTENT")
-            .expect("OPENCODE_CONFIG_CONTENT");
+            .get("MIMOCODE_CONFIG_CONTENT")
+            .expect("MIMOCODE_CONFIG_CONTENT");
         assert!(raw.contains("\"goofish\""));
         assert!(raw.contains("dingda-mcp"));
-        assert!(raw.contains("\"type\":\"local\""));
+        assert_eq!(
+            invocation.env.get("MIMOCODE_DISABLE_PROJECT_CONFIG"),
+            Some(&"true".into())
+        );
     }
 }

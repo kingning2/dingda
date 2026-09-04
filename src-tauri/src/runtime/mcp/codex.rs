@@ -40,6 +40,7 @@ mod tests {
             env: HashMap::new(),
             prompt_via_stdin: true,
             prompt: Some("hi".into()),
+            acp_mcp_servers: None,
         };
 
         apply(&mut invocation).expect("apply");

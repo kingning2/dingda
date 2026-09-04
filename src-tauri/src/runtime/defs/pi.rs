@@ -38,7 +38,7 @@ pub const PI: RuntimeDefinition = RuntimeDefinition {
     },
     install_url: "https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md",
     docs_url: "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md",
-    external_mcp_injection: None,
+    external_mcp_injection: Some("pi-mcp-json"),
     is_default: false,
     build_args: empty_args,
     validate_executable: None,

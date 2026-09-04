@@ -31,6 +31,7 @@ pub fn build_invocation(
         env,
         prompt_via_stdin: definition.capabilities.prompt_via_stdin,
         prompt,
+        acp_mcp_servers: None,
     };
 
     apply_external_mcp_injection(definition, &mut invocation)?;
