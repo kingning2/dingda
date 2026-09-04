@@ -25,7 +25,7 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(error) = runtime_for_bg.start_background(app_handle).await {
-                    eprintln!("[shell] python backend background start failed: {error}");
+                    eprintln!("[shell] python server background start failed: {error}");
                 }
             });
             app.manage(runtime);
@@ -34,8 +34,9 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::api::get_api_base_url,
-            commands::api::get_backend_status,
+            commands::api::get_server_status,
             commands::agent_runtime::list_agent_runtimes_command,
+            commands::agent_runtime::list_agent_registry_command,
             commands::agent_runtime::probe_agent_runtime,
             commands::agent_runtime::login_agent_runtime,
             commands::agent_runtime::launch_agent_runtime,
@@ -48,7 +49,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             if matches!(event, WindowEvent::CloseRequested { .. }) {
                 let app = window.app_handle().clone();
-                stop_python_backend(&app);
+                stop_python_server(&app);
                 app.exit(0);
             }
         })
@@ -56,7 +57,7 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app, event| {
             if matches!(event, RunEvent::Exit) {
-                stop_python_backend(app);
+                stop_python_server(app);
             }
         });
 }
@@ -73,7 +74,7 @@ fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "tray-show" => show_main_window(app),
             "tray-quit" => {
-                stop_python_backend(app);
+                stop_python_server(app);
                 app.exit(0);
             }
             _ => {}
@@ -101,14 +102,14 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
-fn stop_python_backend(app: &AppHandle) {
+fn stop_python_server(app: &AppHandle) {
     let Some(runtime) = app.try_state::<Arc<PythonLifecycle>>() else {
         return;
     };
     tauri::async_runtime::block_on(async {
         if let Err(error) = runtime.stop().await {
-            eprintln!("[shell] failed to stop python backend: {error}");
+            eprintln!("[shell] failed to stop python server: {error}");
         }
     });
-    let _ = app.emit("backend-stopped", ());
+    let _ = app.emit("server-stopped", ());
 }

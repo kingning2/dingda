@@ -3,11 +3,13 @@ use serde_json::Value;
 use crate::runtime::event::{AgentEvent, StreamParser};
 use crate::runtime::parsers::parse_json_line;
 
-pub struct ClaudeStreamParser;
+pub struct ClaudeStreamParser {
+    session_id: Option<String>,
+}
 
 impl ClaudeStreamParser {
     pub fn new(_runtime_id: &str, _run_id: &str) -> Self {
-        Self
+        Self { session_id: None }
     }
 }
 
@@ -18,7 +20,17 @@ impl StreamParser for ClaudeStreamParser {
             let Some(value) = parse_json_line(line) else {
                 continue;
             };
-            events.extend(map_claude_json(&value));
+            for event in map_claude_json(&value) {
+                match event {
+                    AgentEvent::Session { session_id } => {
+                        if self.session_id.as_ref() != Some(&session_id) {
+                            self.session_id = Some(session_id.clone());
+                            events.push(AgentEvent::Session { session_id });
+                        }
+                    }
+                    other => events.push(other),
+                }
+            }
         }
         events
     }
@@ -29,6 +41,38 @@ pub fn map_claude_json(value: &Value) -> Vec<AgentEvent> {
     let event_type = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
 
     match event_type {
+        "system" => {
+            let subtype = value.get("subtype").and_then(|v| v.as_str()).unwrap_or("");
+            if subtype == "init" {
+                if let Some(session_id) = value
+                    .get("session_id")
+                    .or_else(|| value.get("sessionId"))
+                    .and_then(|v| v.as_str())
+                    .filter(|id| !id.is_empty())
+                {
+                    out.push(AgentEvent::Session {
+                        session_id: session_id.to_string(),
+                    });
+                }
+            }
+        }
+        "result" => {
+            if let Some(session_id) = value
+                .get("session_id")
+                .or_else(|| value.get("sessionId"))
+                .and_then(|v| v.as_str())
+                .filter(|id| !id.is_empty())
+            {
+                out.push(AgentEvent::Session {
+                    session_id: session_id.to_string(),
+                });
+            }
+            if let Some(err) = value.get("error").and_then(|v| v.as_str()) {
+                out.push(AgentEvent::Error {
+                    message: err.to_string(),
+                });
+            }
+        }
         "assistant" => {
             if let Some(message) = value.get("message") {
                 extract_content_blocks(message, &mut out);
@@ -72,13 +116,6 @@ pub fn map_claude_json(value: &Value) -> Vec<AgentEvent> {
                     .to_string();
                 let input = block.get("input").cloned().unwrap_or(Value::Null);
                 out.push(AgentEvent::ToolCall { id, name, input });
-            }
-        }
-        "result" => {
-            if let Some(err) = value.get("error").and_then(|v| v.as_str()) {
-                out.push(AgentEvent::Error {
-                    message: err.to_string(),
-                });
             }
         }
         _ => {}
@@ -131,6 +168,20 @@ fn extract_content_blocks(message: &Value, out: &mut Vec<AgentEvent>) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn parse_system_init_session() {
+        let raw = json!({
+            "type": "system",
+            "subtype": "init",
+            "session_id": "claude-ses-1"
+        });
+        let events = map_claude_json(&raw);
+        match &events[0] {
+            AgentEvent::Session { session_id } => assert_eq!(session_id, "claude-ses-1"),
+            _ => panic!("expected session"),
+        }
+    }
 
     #[test]
     fn parse_content_block_delta_text() {

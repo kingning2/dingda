@@ -1,5 +1,8 @@
 //! 外部 Agent MCP 注入（按 `RuntimeDefinition.external_mcp_injection` 分发）。
+//!
+//! 仅注入内置 dingda-mcp（爬虫 search/product）；不写用户全局 CLI 配置。
 
+mod claude;
 mod codex;
 mod goofish;
 mod opencode;
@@ -18,6 +21,7 @@ pub fn apply_external_mcp_injection(
     match mode {
         "codex-mcp" => codex::apply(invocation),
         "opencode-env-content" => opencode::apply(invocation),
+        "claude-mcp-json" => claude::apply(invocation),
         other => {
             eprintln!("[runtime/mcp] 未实现的 MCP 注入模式: {other}");
             Ok(())

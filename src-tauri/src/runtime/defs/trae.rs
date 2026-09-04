@@ -32,7 +32,6 @@ pub const TRAE: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: false,
-        supports_images: false,
         prompt_via_stdin: true,
     },
     install_url: "https://www.volcengine.com/docs/86677/2227861?lang=zh",

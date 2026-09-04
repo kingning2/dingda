@@ -7,10 +7,6 @@ pub fn discover_agent(definition: &RuntimeDefinition) -> Option<PathBuf> {
     resolve_executable(definition).map(|resolved| resolved.path)
 }
 
-pub fn is_agent_available(definition: &RuntimeDefinition) -> bool {
-    crate::runtime::detection::is_runtime_available(definition)
-}
-
 pub fn discover_agent_with_source(
     definition: &RuntimeDefinition,
 ) -> Option<(PathBuf, crate::runtime::ExecutableSource)> {

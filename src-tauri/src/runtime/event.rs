@@ -27,6 +27,10 @@ pub enum AgentEvent {
     FileChanged {
         path: String,
     },
+    /// CLI 会话 id，供下次 `--session` / resume 续聊。
+    Session {
+        session_id: String,
+    },
     Error {
         message: String,
     },

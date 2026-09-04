@@ -1,7 +1,10 @@
+//! 组装一次 CLI 启动：解析二进制、参数、prompt，并注入 MCP。
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use super::mcp::apply_external_mcp_injection;
+use super::prompts::compose_agent_prompt;
 use super::resolution::resolve_executable;
 use super::types::{RuntimeDefinition, RuntimeInvocation, RuntimeInvocationContext};
 
@@ -35,17 +38,23 @@ pub fn build_invocation(
     Ok(invocation)
 }
 
+/// 组装 invocation 上下文；`prompt` 在此统一拼上叮答系统前言（Markdown）。
 pub fn invocation_context(
     definition: &RuntimeDefinition,
     prompt: String,
     cwd: PathBuf,
     model: Option<String>,
+    session_id: Option<String>,
+    reasoning: Option<String>,
+    extra_allowed_dirs: Vec<PathBuf>,
 ) -> RuntimeInvocationContext {
     RuntimeInvocationContext {
         runtime_id: definition.id.to_string(),
-        prompt,
+        prompt: compose_agent_prompt(&prompt),
         cwd,
         model,
-        extra_allowed_dirs: Vec::new(),
+        session_id,
+        reasoning,
+        extra_allowed_dirs,
     }
 }

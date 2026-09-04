@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use tauri::{AppHandle, Emitter};
 
-use crate::agent::catalog::list_agent_runtimes;
+use crate::agent::catalog::{list_agent_registry, list_agent_runtimes};
 use crate::agent::probe::{login_agent_by_id, probe_agent_by_id, AgentRuntimeLoginResult, AgentRuntimeProbeResult};
 use crate::agent::registry::AgentListResponse;
 use crate::runtime::event::{AgentEvent, AgentEventEnvelope};
@@ -19,6 +19,12 @@ pub struct LaunchAgentResponse {
 #[tauri::command]
 pub async fn list_agent_runtimes_command(_app: AppHandle) -> Result<AgentListResponse, String> {
     Ok(list_agent_runtimes())
+}
+
+/// 仅返回注册表占位（不扫 PATH），供首次未扫描时展示「未安装」。
+#[tauri::command]
+pub async fn list_agent_registry_command(_app: AppHandle) -> Result<AgentListResponse, String> {
+    Ok(list_agent_registry())
 }
 
 #[tauri::command]
@@ -38,6 +44,9 @@ pub async fn launch_agent_runtime(
     prompt: String,
     cwd: Option<String>,
     model_id: Option<String>,
+    session_id: Option<String>,
+    reasoning: Option<String>,
+    extra_allowed_dirs: Option<Vec<String>>,
     run_id: Option<String>,
 ) -> Result<LaunchAgentResponse, String> {
     let runtime_id = runtime_id.trim().to_string();
@@ -54,12 +63,29 @@ pub async fn launch_agent_runtime(
         .filter(|id| !id.trim().is_empty())
         .unwrap_or_else(next_run_id);
 
+    let session_id = session_id
+        .map(|id| id.trim().to_string())
+        .filter(|id| !id.is_empty());
+    let reasoning = reasoning
+        .map(|id| id.trim().to_string())
+        .filter(|id| !id.is_empty());
+    let extra_allowed_dirs = extra_allowed_dirs
+        .unwrap_or_default()
+        .into_iter()
+        .map(|path| path.trim().to_string())
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
+
     let invocation = RuntimeManager::build_invocation(
         &runtime_id,
         prompt,
         cwd,
         HashMap::new(),
         model_id,
+        session_id,
+        reasoning,
+        extra_allowed_dirs,
     )?;
 
     let app_handle = app.clone();

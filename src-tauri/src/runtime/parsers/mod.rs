@@ -25,9 +25,7 @@ pub fn create_parser(format: StreamFormat, runtime_id: &str, run_id: &str) -> Bo
             }
             _ => Box::new(JsonEventStreamParser::new(runtime_id, run_id)),
         },
-        StreamFormat::CopilotStreamJson | StreamFormat::QoderStreamJson => {
-            Box::new(ClaudeStreamParser::new(runtime_id, run_id))
-        }
+        StreamFormat::QoderStreamJson => Box::new(ClaudeStreamParser::new(runtime_id, run_id)),
         StreamFormat::AcpJsonRpc | StreamFormat::PiRpc | StreamFormat::DshProfileJsonl => {
             Box::new(JsonEventStreamParser::new(runtime_id, run_id))
         }

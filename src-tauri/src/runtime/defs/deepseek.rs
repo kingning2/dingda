@@ -51,7 +51,6 @@ pub const DEEPSEEK: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: false,
-        supports_images: false,
         prompt_via_stdin: false,
     },
     install_url: "https://github.com/Hmbown/CodeWhale",

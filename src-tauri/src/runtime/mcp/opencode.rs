@@ -7,6 +7,8 @@ use crate::runtime::types::RuntimeInvocation;
 use super::goofish::{self, SERVER_NAME};
 
 /// 为一次 `opencode run` 注入 goofish MCP。
+///
+/// server 目录不存在时不设 `OPENCODE_CONFIG_CONTENT`，避免空对象盖掉用户全局配置。
 pub fn apply(invocation: &mut RuntimeInvocation) -> Result<(), String> {
     let Some(command) = goofish::dingda_mcp_uv_command() else {
         return Ok(());

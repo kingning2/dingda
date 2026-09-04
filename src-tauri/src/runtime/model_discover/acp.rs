@@ -37,11 +37,6 @@ impl AcpDiscoveryConfig {
             ..Self::default()
         }
     }
-
-    pub fn with_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.extra_env.push((key.into(), value.into()));
-        self
-    }
 }
 
 pub async fn discover_acp_models(binary: &Path, config: AcpDiscoveryConfig) -> Vec<RuntimeModel> {

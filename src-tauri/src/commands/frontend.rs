@@ -1,3 +1,5 @@
+//! 前端错误转发到壳终端。
+
 use chrono::{FixedOffset, TimeZone, Utc};
 use serde::Deserialize;
 
@@ -12,14 +14,19 @@ pub struct FrontendErrorPayload {
     pub stack: Option<String>,
 }
 
-#[tauri::command]
-pub fn log_frontend_error(payload: FrontendErrorPayload) {
-    let prefix = "\x1b[1;35m[frontend]\x1b[0m";
-    let timestamp = FixedOffset::east_opt(8 * 3600)
+fn beijing_now() -> String {
+    FixedOffset::east_opt(8 * 3600)
         .expect("beijing offset")
         .from_utc_datetime(&Utc::now().naive_utc())
         .format("%Y-%m-%d %H:%M:%S")
-        .to_string();
+        .to_string()
+}
+
+/// 把前端错误打到壳 stderr（带北京时间、堆栈）。
+#[tauri::command]
+pub fn log_frontend_error(payload: FrontendErrorPayload) {
+    let prefix = "\x1b[1;35m[frontend]\x1b[0m";
+    let timestamp = beijing_now();
 
     eprintln!(
         "{prefix} {timestamp} {} {}",

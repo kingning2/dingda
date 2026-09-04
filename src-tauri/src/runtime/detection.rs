@@ -37,10 +37,6 @@ pub async fn detect_runtime(definition: &RuntimeDefinition) -> RuntimeDetection 
     }
 }
 
-pub fn is_runtime_available(definition: &RuntimeDefinition) -> bool {
-    resolve_executable(definition).is_some()
-}
-
 pub async fn probe_auth(binary: &Path, definition: &RuntimeDefinition) -> Option<bool> {
     if definition.id == "codex" {
         return Some(run_command(binary, &["login", "status"]).await.is_ok());

@@ -33,7 +33,6 @@ pub const CLAUDE: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: true,
-        supports_images: true,
         prompt_via_stdin: true,
     },
     install_url: "https://docs.anthropic.com/en/docs/claude-code/setup",

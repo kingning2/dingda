@@ -24,7 +24,6 @@ pub const MIMO: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: false,
-        supports_images: false,
         prompt_via_stdin: true,
     },
     install_url: "https://mimo.ai",

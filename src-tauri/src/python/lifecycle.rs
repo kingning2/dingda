@@ -1,4 +1,4 @@
-//! Spawn and stop the v2 FastAPI backend (`uv run python -m src`).
+//! Spawn and stop the v2 FastAPI server (`uv run python -m src`).
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 
 use chrono::{FixedOffset, Utc};
 
-use crate::paths::resolve_backend_dir;
+use crate::paths::resolve_server_dir;
 use reqwest::Client;
 use thiserror::Error;
 use tauri::{AppHandle, Emitter};
@@ -21,8 +21,8 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Error)]
 pub enum PythonLifecycleError {
-    #[error("backend 目录不存在: {0}")]
-    BackendDirNotFound(String),
+    #[error("server 目录不存在: {0}")]
+    ServerDirNotFound(String),
     #[error("启动 Python 失败: {0}")]
     SpawnFailed(String),
     #[error("Python 启动超时（{0:?}）")]
@@ -35,7 +35,7 @@ pub enum PythonLifecycleError {
 pub struct PythonConfig {
     pub host: String,
     pub port: u16,
-    pub backend_dir: PathBuf,
+    pub server_dir: PathBuf,
     pub use_uv: bool,
     pub startup_timeout: Duration,
 }
@@ -51,7 +51,7 @@ impl PythonConfig {
         Self {
             host,
             port,
-            backend_dir: resolve_backend_dir(),
+            server_dir: resolve_server_dir(),
             use_uv: std::env::var("DINGDA_USE_UV")
                 .map(|value| value != "0")
                 .unwrap_or(true),
@@ -93,7 +93,7 @@ impl PythonLifecycle {
 
         if self.health_check().await.unwrap_or(false) {
             log_shell(
-                "stopping existing backend on",
+                "stopping existing server on",
                 Some(self.api_base_url().as_str()),
             );
             self.stop().await?;
@@ -101,16 +101,16 @@ impl PythonLifecycle {
 
         self.spawn().await?;
         let api_base_url = self.api_base_url();
-        let _ = app.emit("backend-starting", api_base_url.clone());
+        let _ = app.emit("server-starting", api_base_url.clone());
 
         match self.wait_until_healthy().await {
             Ok(()) => {
                 self.ready.store(true, Ordering::Relaxed);
-                let _ = app.emit("backend-ready", api_base_url);
+                let _ = app.emit("server-ready", api_base_url);
                 Ok(())
             }
             Err(error) => {
-                let _ = app.emit("backend-error", error.to_string());
+                let _ = app.emit("server-error", error.to_string());
                 Err(error)
             }
         }
@@ -120,7 +120,7 @@ impl PythonLifecycle {
     // pub async fn start(&self) -> Result<(), PythonLifecycleError> {
     //     if self.health_check().await.unwrap_or(false) {
     //         log_shell(
-    //             "stopping existing backend on",
+    //             "stopping existing server on",
     //             Some(self.api_base_url().as_str()),
     //         );
     //         self.stop().await?;
@@ -137,14 +137,14 @@ impl PythonLifecycle {
         let mut guard = self.child.lock().await;
         if let Some(mut child) = guard.take() {
             kill_child_tree(&mut child).await?;
-            log_shell("python backend stopped", None);
+            log_shell("python server stopped", None);
             return Ok(());
         }
         drop(guard);
 
         if kill_listeners_on_port(self.config.port) {
             log_shell(
-                "python backend stopped",
+                "python server stopped",
                 Some(format!("port {}", self.config.port).as_str()),
             );
         }
@@ -152,9 +152,9 @@ impl PythonLifecycle {
     }
 
     async fn spawn(&self) -> Result<(), PythonLifecycleError> {
-        if !self.config.backend_dir.is_dir() {
-            return Err(PythonLifecycleError::BackendDirNotFound(
-                self.config.backend_dir.display().to_string(),
+        if !self.config.server_dir.is_dir() {
+            return Err(PythonLifecycleError::ServerDirNotFound(
+                self.config.server_dir.display().to_string(),
             ));
         }
 
@@ -180,7 +180,7 @@ impl PythonLifecycle {
         };
 
         command
-            .current_dir(&self.config.backend_dir)
+            .current_dir(&self.config.server_dir)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .kill_on_drop(true)
@@ -198,9 +198,9 @@ impl PythonLifecycle {
             .spawn()
             .map_err(|error| PythonLifecycleError::SpawnFailed(error.to_string()))?;
 
-        log_shell("python backend spawned at", Some(self.api_base_url().as_str()));
-        let backend_dir = self.config.backend_dir.display().to_string();
-        log_shell("python backend dir", Some(backend_dir.as_str()));
+        log_shell("python server spawned at", Some(self.api_base_url().as_str()));
+        let server_dir = self.config.server_dir.display().to_string();
+        log_shell("python server dir", Some(server_dir.as_str()));
         *self.child.lock().await = Some(child);
         Ok(())
     }
@@ -209,7 +209,7 @@ impl PythonLifecycle {
         let deadline = Instant::now() + self.config.startup_timeout;
         while Instant::now() < deadline {
             if self.health_check().await.unwrap_or(false) {
-                log_shell("python backend ready", None);
+                log_shell("python server ready", None);
                 return Ok(());
             }
             tokio::time::sleep(Duration::from_millis(200)).await;
@@ -332,12 +332,12 @@ fn listeners_on_port(port: u16) -> HashSet<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::paths::resolve_backend_dir;
+    use crate::paths::resolve_server_dir;
 
     #[test]
-    fn resolves_backend_dir_relative_to_manifest() {
+    fn resolves_server_dir_relative_to_manifest() {
         let config = PythonConfig::from_env();
-        assert!(config.backend_dir.ends_with("backend"));
-        assert_eq!(config.backend_dir, resolve_backend_dir());
+        assert!(config.server_dir.ends_with("server"));
+        assert_eq!(config.server_dir, resolve_server_dir());
     }
 }

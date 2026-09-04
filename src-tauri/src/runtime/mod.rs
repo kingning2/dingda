@@ -7,16 +7,12 @@ pub mod mcp;
 pub mod model_discover;
 pub mod parsers;
 pub mod process;
+pub mod prompts;
 pub mod registry;
 pub mod resolution;
 pub mod runs;
 pub mod types;
 
-pub use event::AgentEvent;
-pub use manager::RuntimeManager;
 pub use registry::{find_runtime, RUNTIME_REGISTRY};
 pub use resolution::resolve_executable;
-pub use types::{
-    ExecutableSource, ResolvedExecutable, RuntimeDefinition, RuntimeDetection, RuntimeInvocation,
-    RuntimeModel, StreamFormat,
-};
+pub use types::{ExecutableSource, RuntimeDefinition};

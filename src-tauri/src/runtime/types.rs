@@ -23,7 +23,6 @@ pub type DiscoverModelsFn = for<'a> fn(
 pub enum StreamFormat {
     ClaudeStreamJson,
     JsonEventStream,
-    CopilotStreamJson,
     QoderStreamJson,
     AcpJsonRpc,
     PiRpc,
@@ -35,8 +34,8 @@ pub enum StreamFormat {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RuntimeCapabilities {
     pub login_capable: bool,
+    /// 是否支持 `--session` / resume 续聊。
     pub supports_resume: bool,
-    pub supports_images: bool,
     pub prompt_via_stdin: bool,
 }
 
@@ -47,6 +46,11 @@ pub struct RuntimeInvocationContext {
     pub prompt: String,
     pub cwd: PathBuf,
     pub model: Option<String>,
+    /// 续聊 session / thread id（有则各 CLI 的 build_args 拼 resume 参数）。
+    pub session_id: Option<String>,
+    /// 推理强度 / OpenCode variant（可选）。
+    pub reasoning: Option<String>,
+    /// 额外可写目录（Codex `--add-dir` / Claude `--add-dir`）。
     pub extra_allowed_dirs: Vec<PathBuf>,
 }
 

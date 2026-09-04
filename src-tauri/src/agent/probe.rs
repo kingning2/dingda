@@ -1,8 +1,11 @@
+//! Agent 深度探测：版本、登录态、可用模型。
+
 use std::path::Path;
 
 use tokio::process::Command;
 
 use super::discover::discover_agent;
+use super::log::log_agent;
 use super::registry::find_agent;
 use crate::runtime::detection::detect_runtime;
 use crate::runtime::{RuntimeDefinition, types::RuntimeModel};
@@ -26,10 +29,17 @@ pub struct AgentRuntimeLoginResult {
     pub message: String,
 }
 
+/// 探测单个 Agent：可执行文件、版本、登录、模型列表。
 pub async fn probe_agent(definition: &RuntimeDefinition) -> AgentRuntimeProbeResult {
+    log_agent("开始探测 Agent", Some(definition.id));
     let detection = detect_runtime(definition).await;
 
     if !detection.available {
+        let err = detection.error.clone().unwrap_or_else(|| "未安装".to_string());
+        log_agent(
+            "探测完成：未安装",
+            Some(&format!("{} {}", definition.id, err)),
+        );
         return AgentRuntimeProbeResult {
             available: false,
             version: detection.version,
@@ -55,6 +65,22 @@ pub async fn probe_agent(definition: &RuntimeDefinition) -> AgentRuntimeProbeRes
         None
     };
 
+    let auth_label = match detection.authenticated {
+        Some(true) => "已登录",
+        Some(false) => "未登录",
+        None => "无需登录",
+    };
+    let model_count = models.as_ref().map(|items| items.len()).unwrap_or(0);
+    let version = detection.version.as_deref().unwrap_or("-");
+    let path = command.as_deref().unwrap_or("-");
+    log_agent(
+        "探测完成：已安装",
+        Some(&format!(
+            "{} path={} version={} {} 模型{}个",
+            definition.id, path, version, auth_label, model_count
+        )),
+    );
+
     AgentRuntimeProbeResult {
         available: true,
         version: detection.version,
@@ -76,6 +102,7 @@ pub async fn login_agent_by_id(agent_id: &str) -> Result<AgentRuntimeLoginResult
     if !definition.capabilities.login_capable {
         return Err(format!("暂不支持登录 Agent：{agent_id}"));
     }
+    log_agent("开始登录 Agent", Some(agent_id));
     login_codex().await
 }
 
@@ -91,6 +118,7 @@ pub async fn login_codex() -> Result<AgentRuntimeLoginResult, String> {
         .spawn()
         .map_err(|error| format!("无法启动 codex login：{error}"))?;
 
+    log_agent("已启动 Codex 登录", Some(&binary.display().to_string()));
     Ok(AgentRuntimeLoginResult {
         started: true,
         message: "已在浏览器中打开 Codex 登录页，完成后请点击「扫描 Agent」刷新状态。".to_string(),

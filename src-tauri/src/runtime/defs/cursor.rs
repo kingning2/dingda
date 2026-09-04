@@ -37,7 +37,6 @@ pub const CURSOR: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: false,
-        supports_images: false,
         prompt_via_stdin: true,
     },
     install_url: "https://cursor.com/docs/cli/overview",

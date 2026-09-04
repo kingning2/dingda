@@ -3,11 +3,14 @@ use serde_json::Value;
 use crate::runtime::event::{AgentEvent, StreamParser};
 use crate::runtime::parsers::parse_json_line;
 
-pub struct OpenCodeStreamParser;
+pub struct OpenCodeStreamParser {
+    /// 本轮已上报的 session，避免每条 JSON 都刷 Session 事件。
+    session_id: Option<String>,
+}
 
 impl OpenCodeStreamParser {
     pub fn new(_runtime_id: &str, _run_id: &str) -> Self {
-        Self
+        Self { session_id: None }
     }
 }
 
@@ -18,7 +21,17 @@ impl StreamParser for OpenCodeStreamParser {
             let Some(value) = parse_json_line(line) else {
                 continue;
             };
-            events.extend(map_opencode_json(&value));
+            for event in map_opencode_json(&value) {
+                match event {
+                    AgentEvent::Session { session_id } => {
+                        if self.session_id.as_ref() != Some(&session_id) {
+                            self.session_id = Some(session_id.clone());
+                            events.push(AgentEvent::Session { session_id });
+                        }
+                    }
+                    other => events.push(other),
+                }
+            }
         }
         events
     }
@@ -26,6 +39,18 @@ impl StreamParser for OpenCodeStreamParser {
 
 pub fn map_opencode_json(value: &Value) -> Vec<AgentEvent> {
     let mut out = Vec::new();
+    if let Some(session_id) = value
+        .get("sessionID")
+        .or_else(|| value.get("session_id"))
+        .or_else(|| value.get("sessionId"))
+        .and_then(|v| v.as_str())
+        .filter(|id| !id.is_empty())
+    {
+        out.push(AgentEvent::Session {
+            session_id: session_id.to_string(),
+        });
+    }
+
     let event_type = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
 
     match event_type {
@@ -128,8 +153,12 @@ mod tests {
             "part": { "type": "text", "text": "hello" }
         });
         let events = map_opencode_json(&raw);
-        assert_eq!(events.len(), 1);
+        assert_eq!(events.len(), 2);
         match &events[0] {
+            AgentEvent::Session { session_id } => assert_eq!(session_id, "ses_test"),
+            _ => panic!("expected session"),
+        }
+        match &events[1] {
             AgentEvent::TextDelta { text } => assert_eq!(text, "hello"),
             _ => panic!("expected text delta"),
         }

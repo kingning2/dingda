@@ -3,11 +3,13 @@ use serde_json::Value;
 use crate::runtime::event::{AgentEvent, StreamParser};
 use crate::runtime::parsers::parse_json_line;
 
-pub struct CodexStreamParser;
+pub struct CodexStreamParser {
+    session_id: Option<String>,
+}
 
 impl CodexStreamParser {
     pub fn new(_runtime_id: &str, _run_id: &str) -> Self {
-        Self
+        Self { session_id: None }
     }
 }
 
@@ -18,7 +20,17 @@ impl StreamParser for CodexStreamParser {
             let Some(value) = parse_json_line(line) else {
                 continue;
             };
-            events.extend(map_codex_json(&value));
+            for event in map_codex_json(&value) {
+                match event {
+                    AgentEvent::Session { session_id } => {
+                        if self.session_id.as_ref() != Some(&session_id) {
+                            self.session_id = Some(session_id.clone());
+                            events.push(AgentEvent::Session { session_id });
+                        }
+                    }
+                    other => events.push(other),
+                }
+            }
         }
         events
     }
@@ -29,7 +41,18 @@ pub fn map_codex_json(value: &Value) -> Vec<AgentEvent> {
     let event_type = value.get("type").and_then(|v| v.as_str()).unwrap_or("");
 
     match event_type {
-        "thread.started" => {}
+        "thread.started" => {
+            if let Some(thread_id) = value
+                .get("thread_id")
+                .or_else(|| value.get("threadId"))
+                .and_then(|v| v.as_str())
+                .filter(|id| !id.is_empty())
+            {
+                out.push(AgentEvent::Session {
+                    session_id: thread_id.to_string(),
+                });
+            }
+        }
         "item.completed" | "message" => {
             if let Some(text) = value.pointer("/item/text").and_then(|v| v.as_str()) {
                 out.push(AgentEvent::TextDelta {
@@ -116,6 +139,19 @@ pub fn map_codex_json(value: &Value) -> Vec<AgentEvent> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn parse_thread_started_session() {
+        let raw = json!({
+            "type": "thread.started",
+            "thread_id": "thread-abc"
+        });
+        let events = map_codex_json(&raw);
+        match &events[0] {
+            AgentEvent::Session { session_id } => assert_eq!(session_id, "thread-abc"),
+            _ => panic!("expected session"),
+        }
+    }
 
     #[test]
     fn parse_output_text_delta() {

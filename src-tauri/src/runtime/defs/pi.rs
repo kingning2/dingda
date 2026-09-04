@@ -34,7 +34,6 @@ pub const PI: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: true,
-        supports_images: true,
         prompt_via_stdin: true,
     },
     install_url: "https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md",

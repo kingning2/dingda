@@ -43,13 +43,31 @@ pub async fn read_stdout_lines<F>(
 where
     F: FnMut(&str),
 {
+    read_lines(&mut reader, &mut on_line).await
+}
+
+pub async fn read_stderr_lines<F>(
+    mut reader: BufReader<tokio::process::ChildStderr>,
+    mut on_line: F,
+) -> Result<(), String>
+where
+    F: FnMut(&str),
+{
+    read_lines(&mut reader, &mut on_line).await
+}
+
+async fn read_lines<R, F>(reader: &mut BufReader<R>, on_line: &mut F) -> Result<(), String>
+where
+    R: tokio::io::AsyncRead + Unpin,
+    F: FnMut(&str),
+{
     let mut line = String::new();
     loop {
         line.clear();
         let read = reader
             .read_line(&mut line)
             .await
-            .map_err(|error| format!("读取 stdout 失败：{error}"))?;
+            .map_err(|error| format!("读取进程输出失败：{error}"))?;
         if read == 0 {
             break;
         }

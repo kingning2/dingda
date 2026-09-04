@@ -25,7 +25,6 @@ pub const DEEPSEEK_HARNESS: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: true,
-        supports_images: false,
         prompt_via_stdin: true,
     },
     install_url: "https://www.deepseek.com/harness/en/",

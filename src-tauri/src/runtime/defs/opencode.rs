@@ -37,7 +37,6 @@ pub const OPENCODE: RuntimeDefinition = RuntimeDefinition {
     capabilities: RuntimeCapabilities {
         login_capable: false,
         supports_resume: true,
-        supports_images: false,
         prompt_via_stdin: true,
     },
     install_url: "https://opencode.ai/docs",
