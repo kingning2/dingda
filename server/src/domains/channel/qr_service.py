@@ -10,7 +10,12 @@ from typing import Any
 from src.channels.base import QrLoginChannel
 from src.channels.registry import create_qr_login_channel
 from src.channels.types import LoginStatus
-from src.contracts.channel import QrCheckResponse, QrStartRequest, QrStartResponse
+from src.contracts.channel import (
+    QrCancelResponse,
+    QrCheckResponse,
+    QrStartRequest,
+    QrStartResponse,
+)
 from src.core.logging import info
 from src.domains.account.persist import save_login_credentials
 from src.shared.errors import AppError
@@ -19,6 +24,7 @@ SESSION_TTL_SECONDS = 300
 _PLATFORM_TIMEOUT: dict[str, int] = {
     "xianyu": 120,
     "xiaohongshu": 240,
+    "ali1688": 180,
 }
 
 
@@ -46,13 +52,6 @@ class ChannelQrService:
     def start(self, request: QrStartRequest) -> QrStartResponse:
         self._purge_expired()
         info("channel.qr.start", {"platform": request.platform})
-        if request.platform == "ali1688":
-            raise AppError(
-                "channel.qr_unsupported",
-                "1688 扫码登录尚未接入，请手动粘贴登录信息",
-                status_code=501,
-            )
-
         channel = create_qr_login_channel(request.platform)
         timeout = _PLATFORM_TIMEOUT.get(request.platform, 120)
         # 关掉弹窗再开会再 start：必须先取消旧任务，否则会堵在同步浏览器线程上
@@ -169,6 +168,30 @@ class ChannelQrService:
             display_name=snapshot.get("display_name"),
             avatar_url=snapshot.get("avatar_url"),
             cookie=snapshot.get("cookie"),
+        )
+
+    def cancel(self, session_id: str) -> QrCancelResponse:
+        """前端关弹窗：置 cancel 并丢掉会话，后台扫码立刻让出浏览器。"""
+        with self._lock:
+            session = self._sessions.pop(session_id, None)
+        if session is None:
+            info("channel.qr.cancel_miss", {"session_id": session_id})
+            return QrCancelResponse(
+                ok=True,
+                session_id=session_id,
+                detail="会话不存在或已结束",
+            )
+        cancel = getattr(session.runtime, "cancel", None)
+        if cancel is not None:
+            cancel.set()
+        info(
+            "channel.qr.cancelled",
+            {"session_id": session_id, "platform": session.platform},
+        )
+        return QrCancelResponse(
+            ok=True,
+            session_id=session_id,
+            detail="已取消扫码",
         )
 
     def _snapshot(self, session: QrSession) -> dict[str, str | None]:

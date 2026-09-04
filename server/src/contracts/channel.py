@@ -40,3 +40,13 @@ class QrCheckResponse(BaseModel):
 class QrCheckQuery(BaseModel):
     session_id: str = Field(min_length=1)
 
+
+class QrCancelRequest(BaseModel):
+    session_id: str = Field(min_length=1)
+
+
+class QrCancelResponse(BaseModel):
+    ok: bool
+    session_id: str
+    detail: str | None = None
+

@@ -39,3 +39,4 @@
 
 - [xianyu/](xianyu/README.md) — 闲鱼：扫码、mtop、IM、发品、限流熔断（文件最多，逐个说明）
 - [xiaohongshu/](xiaohongshu/README.md) — 小红书扫码页与 Channel
+- [ali1688/](ali1688/README.md) — 1688：clawhub 扫码取 AK + 官方找货签名客户端

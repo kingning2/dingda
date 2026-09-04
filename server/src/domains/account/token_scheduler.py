@@ -1,10 +1,12 @@
 """账号登录态探活与闲鱼 token 定时刷新（bootstrap 预热后启动）。
 
 职责：
-    启动时探活闲鱼（HTTP）与小红书（异步 BrowserPool 开探索页）；闲鱼每 10 分钟再续 token。
+    启动时探活闲鱼（HTTP）、小红书（异步 BrowserPool）、1688（本地 AK 是否仍在）；
+    闲鱼每 10 分钟再续 token。
 
 设计说明：
     - 小红书探活对齐 xiaohongshu-mcp ``CheckLoginStatus``，不走同步扫码线程
+    - 1688 只看账户对应 AK 是否还在本地/环境变量，不开浏览器
     - 由 warmup ``ensure_warmed`` 挂上，不挡 /health
 """
 
@@ -13,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from src.channels.ali1688.ak import probe as probe_ali1688_ak
 from src.channels.xianyu.refresh import probe, token
 from src.channels.xiaohongshu.status import probe as probe_xiaohongshu
 from src.infrastructure.db import accounts as account_repo
@@ -55,6 +58,19 @@ async def probe_all_xiaohongshu() -> None:
         logger.info("小红书探活结果: %s valid=%s", row.account_id, valid)
 
 
+def probe_all_ali1688() -> None:
+    """1688 探活：账户 cookie 里的 AK 是否仍在本地/环境变量。"""
+    rows = account_repo.list_accounts(platform="ali1688")
+    if not rows:
+        return
+
+    logger.info("1688 AK 探活（%s 个账号）", len(rows))
+    for row in rows:
+        valid = probe_ali1688_ak(row.cookie)
+        account_repo.set_auth_valid(row.account_id, valid)
+        logger.info("1688 探活结果: %s valid=%s", row.account_id, valid)
+
+
 def refresh_all_xianyu_tokens() -> None:
     rows = account_repo.list_accounts(platform="xianyu")
     if not rows:
@@ -91,6 +107,10 @@ async def run_token_refresh_loop() -> None:
             await asyncio.to_thread(refresh_all_xianyu_tokens)
         except Exception as exc:
             logger.warning("闲鱼 token 定时刷新异常: %s", exc)
+        try:
+            await asyncio.to_thread(probe_all_ali1688)
+        except Exception as exc:
+            logger.warning("1688 AK 定时探活异常: %s", exc)
 
 
 def schedule_xianyu_token_scheduler() -> None:
@@ -114,6 +134,10 @@ def schedule_xianyu_token_scheduler() -> None:
             await probe_all_xiaohongshu()
         except Exception as exc:
             logger.warning("小红书登录态探活异常: %s", exc)
+        try:
+            await asyncio.to_thread(probe_all_ali1688)
+        except Exception as exc:
+            logger.warning("1688 AK 探活异常: %s", exc)
         await run_token_refresh_loop()
 
     _scheduler_task = loop.create_task(

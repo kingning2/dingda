@@ -5,7 +5,7 @@
 调用关系（简化）：
 
 ```text
-扫码: channel.py → api.py + renew.py + browser.sync/slider
+扫码: channel.py → login.py + renew.py + browser.sync/slider
 mtop: session.py + sign.py → mtop.py
 IM:   token.py → ws.py → message.py
 发品: media.py + category.py + location.py → item.py
@@ -19,7 +19,7 @@ IM:   token.py → ws.py → message.py
 
 `XianyuQrChannel`：后台线程跑扫码状态机。出码、检测已扫、成功后调一次 `user.page.nav` 写昵称头像、超时或 punish 页则 `renew()`。给 `domains.channel` / `api.channel` 轮询。
 
-### `api.py`
+### `login.py`
 
 扫码页原语（同步 Playwright page，由 `open_login_page()` 打开 goofish 登录）：
 

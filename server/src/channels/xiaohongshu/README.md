@@ -10,9 +10,9 @@
 
 `XiaohongshuQrChannel`：后台线程 `_run`。出码、轮询 Edith 扫码状态、成功后导出 cookie/昵称/头像。超时默认 240s（闲鱼 120s，在 `qr_service`）。
 
-### `api.py`
+### `login.py`
 
-页面与 HTTP 原语：打开 `xiaohongshu.com/login`，拦截 `qrcode/create`、轮询 `qrcode/status`。扫码成功后打开探索页，从 `__INITIAL_STATE__.user.userInfo` 读昵称/头像（对齐 xiaohongshu-mcp），再落库。
+页面与扫码原语：打开 `xiaohongshu.com/login`，拦截 `qrcode/create`、轮询 `qrcode/status`。扫码成功后打开探索页，从 `__INITIAL_STATE__.user.userInfo` 读昵称/头像（对齐 xiaohongshu-mcp），再落库。
 
 ### `status.py`
 

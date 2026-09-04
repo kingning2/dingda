@@ -10,8 +10,9 @@
 
 - `start`：`create_qr_login_channel(platform)`，生成 session_id，后台 Channel 出码
 - `check`：把 `LoginSnapshot` 变成 `QrCheckResponse`；成功则 `save_login_credentials`
+- `cancel`：前端关弹窗置 `runtime.cancel`，立刻让出同步浏览器线程
 
-`api/channel.py` 只调这里。平台超时：闲鱼 120s，小红书 240s。
+`api/channel.py` 只调这里。平台超时：闲鱼 120s，小红书 240s，1688 180s。
 
 ### `service.py`
 

@@ -21,7 +21,7 @@ import time
 from src.browser.manager import get_browser_manager
 from src.browser.port import LaunchOptions
 from src.channels.cookie_header import parse_cookie_header
-from src.channels.xiaohongshu.api import HOME_URL
+from src.channels.xiaohongshu.login import HOME_URL
 from src.channels.xiaohongshu.cookies import COOKIE_DOMAIN, to_browser_cookies
 
 logger = logging.getLogger("dingda.channel.xiaohongshu.status")

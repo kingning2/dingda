@@ -1,4 +1,4 @@
-"""小红书扫码 API 原语。"""
+"""小红书扫码登录原语。"""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from src.browser.context import cookies_to_playwright
 from src.channels.profile_fields import extract_profile_from_tree
 from src.channels.xiaohongshu.cookies import to_browser_cookies
 
-logger = logging.getLogger("dingda.channel.xiaohongshu.api")
+logger = logging.getLogger("dingda.channel.xiaohongshu.login")
 
 LOGIN_URL = "https://www.xiaohongshu.com/login"
 HOME_URL = "https://www.xiaohongshu.com"

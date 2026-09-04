@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.channels.xianyu import api
+from src.channels.xianyu import login as api
 
 
 def _cookies(**pairs: str) -> list[dict[str, str]]:

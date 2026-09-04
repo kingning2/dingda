@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.channels.xiaohongshu import api
+from src.channels.xiaohongshu import login as api
 
 
 class TestXiaohongshuApi:

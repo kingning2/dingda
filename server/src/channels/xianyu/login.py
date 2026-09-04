@@ -1,4 +1,4 @@
-"""闲鱼 Passport 扫码登录 API 原语。
+"""闲鱼 Passport 扫码登录原语。
 
 职责：
     提供二维码拉取、登录态 cookie 检测等底层能力；经 browser.sync 开无头页，
@@ -21,7 +21,7 @@ from urllib.request import urlopen
 from src.browser.sync import sync_headless_page
 from src.channels.xianyu.cookies import cookie_map
 
-logger = logging.getLogger("dingda.channel.xianyu.api")
+logger = logging.getLogger("dingda.channel.xianyu.login")
 
 HOME_URL = "https://www.goofish.com/login"
 REQUIRED_LOGIN_COOKIES = ("_m_h5_tk", "unb", "cookie2")

@@ -7,7 +7,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from src.app import create_app
-from src.contracts.channel import QrCheckResponse, QrStartResponse
+from src.contracts.channel import QrCancelResponse, QrCheckResponse, QrStartResponse
 
 
 def test_qr_start_and_check_success() -> None:
@@ -44,3 +44,18 @@ def test_qr_start_and_check_success() -> None:
         assert check.status_code == 200
         assert check.json()["status"] == "success"
         assert check.json()["account_id"] == "xy:123"
+
+
+def test_qr_cancel_endpoint() -> None:
+    app = create_app()
+    client = TestClient(app)
+    payload = QrCancelResponse(ok=True, session_id="qr-test", detail="已取消扫码")
+
+    with patch("src.api.channel.get_channel_qr_service") as mock_get:
+        service = mock_get.return_value
+        service.cancel.return_value = payload
+        resp = client.post("/v1/channel/qr/cancel", json={"session_id": "qr-test"})
+
+    assert resp.status_code == 200
+    assert resp.json()["ok"] is True
+    service.cancel.assert_called_once_with("qr-test")

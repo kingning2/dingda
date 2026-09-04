@@ -166,3 +166,46 @@ def test_xiaohongshu_profile_page_uses_stored_fields(account_client: TestClient)
 def test_account_delete_missing(account_client: TestClient) -> None:
     response = account_client.delete("/v1/accounts/missing")
     assert response.status_code == 404
+
+
+def test_ali1688_list_probe_and_delete_clears_ak(
+    account_client: TestClient,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    import base64
+
+    from src.channels.ali1688.ak import get_ak, save_ak
+    from src.infrastructure.db import accounts as account_repo
+
+    monkeypatch.setattr("src.channels.ali1688.ak.data_dir", lambda: tmp_path)
+    monkeypatch.delenv("ALI_1688_AK", raising=False)
+    secret = "e" * 32
+    ak_id = "list-id"
+    raw = base64.urlsafe_b64encode(f"{secret}{ak_id}".encode()).decode().rstrip("=")
+    save_ak(raw)
+    account_repo.upsert_account(
+        account_id=f"ali1688:{ak_id}",
+        platform="ali1688",
+        display_name="1688 AK",
+        cookie=raw,
+        auth_valid=True,
+    )
+
+    listed = account_client.get("/v1/accounts", params={"platform": "ali1688"})
+    item = listed.json()["items"][0]
+    assert item["auth_valid"] is True
+    assert item["session"]["label"] == "已登录"
+
+    # 清掉本地 AK 后再列表 → 过期
+    (tmp_path / "ali1688" / "ak.json").unlink()
+    listed2 = account_client.get("/v1/accounts", params={"platform": "ali1688"})
+    assert listed2.json()["items"][0]["auth_valid"] is False
+    assert listed2.json()["items"][0]["session"]["state"] == "auth_expired"
+
+    # 重新写入后删除账号应清 AK
+    save_ak(raw)
+    account_repo.set_auth_valid(f"ali1688:{ak_id}", True)
+    deleted = account_client.delete(f"/v1/accounts/ali1688:{ak_id}")
+    assert deleted.status_code == 200
+    assert get_ak() == (None, None)

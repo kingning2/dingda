@@ -22,7 +22,7 @@ from src.browser.sync import submit_on_sync_browser
 from src.channels.base import QrLoginChannel
 from src.channels.qr_terminal import decode_qr_text_from_png_base64
 from src.channels.types import LoginSnapshot, LoginStatus, QrCancelled
-from src.channels.xianyu import api
+from src.channels.xianyu import login as api
 from src.channels.xianyu.refresh import profile as fetch_login_profile
 from src.channels.xianyu.renew import renew
 from src.channels.xianyu.risk import RiskControlError, page_is_punish

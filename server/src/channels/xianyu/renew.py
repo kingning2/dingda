@@ -28,7 +28,7 @@ from src.browser.slider import (
     has_x5sec,
     try_solve_slider,
 )
-from src.channels.xianyu.api import HOME_URL
+from src.channels.xianyu.login import HOME_URL
 from src.channels.xianyu.cookies import to_browser_cookies
 from src.channels.xianyu.risk import page_is_punish
 

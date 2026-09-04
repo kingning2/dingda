@@ -98,3 +98,30 @@ def test_second_start_cancels_inflight_session() -> None:
     assert exc.value.code == "channel.qr_not_found"
     assert second.session_id != first.session_id
 
+
+def test_cancel_sets_runtime_cancel_and_drops_session() -> None:
+    waiting = LoginSnapshot(status=LoginStatus.WAITING, qr_base64="ZmFrZQ==")
+    channel, runtime = _mock_channel(waiting)
+
+    with patch(
+        "src.domains.channel.qr_service.create_qr_login_channel",
+        return_value=channel,
+    ):
+        service = ChannelQrService()
+        started = service.start(QrStartRequest(platform="ali1688"))
+        assert started.session_id
+        result = service.cancel(started.session_id)
+
+    runtime.cancel.set.assert_called_once()
+    assert result.ok is True
+    with pytest.raises(AppError) as exc:
+        service.check(started.session_id)
+    assert exc.value.code == "channel.qr_not_found"
+
+
+def test_cancel_missing_session_is_ok() -> None:
+    service = ChannelQrService()
+    result = service.cancel("qr-does-not-exist")
+    assert result.ok is True
+    assert result.session_id == "qr-does-not-exist"
+

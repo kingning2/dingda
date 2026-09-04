@@ -43,6 +43,8 @@ def _to_record(row: account_repo.AccountRow) -> AccountRecord:
 
 class AccountService:
     def list(self, *, platform: str | None = None) -> AccountListResponse:
+        if platform in (None, "ali1688"):
+            self._sync_ali1688_auth()
         rows = account_repo.list_accounts(platform=platform)
         return AccountListResponse(items=[_to_record(row) for row in rows])
 
@@ -97,9 +99,17 @@ class AccountService:
     def delete(self, account_id: str) -> AccountDeleteResponse:
         if not account_id.strip():
             raise AppError("account.invalid_id", "账号 ID 不能为空", status_code=400)
-        deleted = account_repo.delete_account(account_id.strip())
+        existing = account_repo.get_account(account_id.strip())
+        if not existing:
+            raise AppError("account.not_found", "账号不存在", status_code=404)
+        deleted = account_repo.delete_account(existing.account_id)
         if not deleted:
             raise AppError("account.not_found", "账号不存在", status_code=404)
+        if existing.platform == "ali1688":
+            from src.channels.ali1688.ak import clear_account_ak
+
+            clear_account_ak(existing.cookie)
+            logger.info("1688 账号已删除并清除 AK: %s", existing.account_id)
         return AccountDeleteResponse(deleted=True)
 
     def profile_page(self, account_id: str) -> AccountProfileResponse:
@@ -116,6 +126,15 @@ class AccountService:
                 avatar_url=existing.avatar_url,
             )
         )
+
+    def _sync_ali1688_auth(self) -> None:
+        """列表前轻量探活：AK 文件/环境变量是否还对得上账户。"""
+        from src.channels.ali1688.ak import probe as probe_ali1688_ak
+
+        for row in account_repo.list_accounts(platform="ali1688"):
+            valid = probe_ali1688_ak(row.cookie)
+            if valid != row.auth_valid:
+                account_repo.set_auth_valid(row.account_id, valid)
 
 
 _service = AccountService()

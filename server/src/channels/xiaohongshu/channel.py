@@ -11,7 +11,7 @@ from typing import Any
 from src.browser.sync import submit_on_sync_browser, sync_headless_page
 from src.channels.base import QrLoginChannel
 from src.channels.types import LoginSnapshot, LoginStatus, QrCancelled
-from src.channels.xiaohongshu import api
+from src.channels.xiaohongshu import login as api
 
 logger = logging.getLogger("dingda.channel.xiaohongshu")
 
