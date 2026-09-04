@@ -1,7 +1,7 @@
 """把内部 Tool Registry 挂到 FastMCP（不接第三方 CLI 命令）。
 
 职责：
-    为 ``dingda-mcp`` stdio 入口注册全部已登记 Tool（当前仅 search / product）。
+    为 ``dingda-mcp`` stdio 入口注册全部已登记 Tool（search / product / compare）。
 """
 
 from __future__ import annotations

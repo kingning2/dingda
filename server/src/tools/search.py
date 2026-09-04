@@ -1,40 +1,43 @@
-"""选品 Tool：search（关键词搜品）。
+"""选品 Tool：search（关键词 / 图 / 链接搜品）。
 
 职责：
-    契约（Input/Output）与执行（Crawler → BrowserPort）放同一文件。
-    供 registry / MCP 注册与调用。
+    契约（Input/Output）与执行放同一文件。
+    浏览器平台：Crawler → BrowserPort；ali1688：ApiCrawler → Channel。
 
 设计说明：
-    - platform：xianyu / xiaohongshu
+    - platform：xianyu / xiaohongshu / ali1688
+    - ali1688 支持 query / image / url 三种入口
     - 不 import Playwright / Camoufox
 
 使用示例：
     out = await run_search(SearchInput(platform="xianyu", query="露营椅", limit=20))
+    out = await run_search(SearchInput(platform="ali1688", query="黑色卫衣"))
 """
 
 from __future__ import annotations
 
 import logging
 import uuid
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from src.browser.manager import get_browser_manager
 from src.browser.port import LaunchOptions
 from src.crawler.core.base import BrowserSessionOptions
 from src.crawler.core.types import CrawlContext
-from src.crawler.registry import cookies_for, create_crawler
+from src.crawler.registry import cookies_for, create_api_crawler, create_crawler, is_api_platform
 from src.shared.errors import AppError
 
 logger = logging.getLogger("dingda.tools.search")
 
 TOOL_NAME = "search"
 TOOL_DESCRIPTION = (
-    "按关键词在指定平台搜索商品/笔记列表，用于选品建样本池。"
-    "闲鱼（xianyu）：验证某关键词是否近期有量、看挂牌价分布。"
-    "小红书（xiaohongshu）：收趋势与可搜关键词，再回闲鱼验证。"
-    "返回 item_id / title / url / price；不要用来查 1688。"
-    "平台仅支持 xianyu、xiaohongshu。"
+    "在指定平台搜索商品/笔记列表，用于选品建样本池。"
+    "闲鱼（xianyu）：验证关键词近期挂牌量与价位。"
+    "小红书（xiaohongshu）：收趋势与可搜关键词。"
+    "1688（ali1688）：官方找货；可用 query 文本搜，或 image 以图搜，或 url 链接找同款。"
+    "返回 item_id / title / url / price。"
 )
 DEFAULT_TIMEOUT_S = 60.0
 
@@ -43,26 +46,66 @@ class SearchInput(BaseModel):
     """搜品入参。"""
 
     platform: str = Field(
-        description="爬取平台：xianyu=闲鱼（销售侧验证）；xiaohongshu=小红书（趋势/关键词）。不要填 1688/淘宝等。"
+        description=(
+            "爬取平台：xianyu=闲鱼；xiaohongshu=小红书；ali1688=1688 官方找货。"
+        )
     )
     query: str = Field(
-        description="搜索关键词。选品时用当下可搜的具体词，避免过大而空的老类目词。"
+        default="",
+        description=(
+            "搜索关键词。xianyu/xiaohongshu 必填；"
+            "ali1688 文本搜必填，以图/链接搜时可空或作附加词。"
+        ),
+    )
+    image: str | None = Field(
+        default=None,
+        description="ali1688 以图搜：本地路径或图片 URL。与 url 二选一优先于纯文本。",
+    )
+    url: str | None = Field(
+        default=None,
+        description="ali1688 链接找同款：1688/淘宝/天猫商品链接或商品 ID。",
     )
     limit: int = Field(
         default=20,
         ge=1,
         le=50,
-        description="返回条数，建议 10～20；先小样本看有没有量再决定是否加深。",
+        description="返回条数，建议 10～20。",
     )
+    sort: str | None = Field(
+        default=None,
+        description="ali1688 排序：price_asc / price_desc / sold_desc / yx_desc。",
+    )
+    score_level: str = Field(
+        default="high",
+        description="ali1688 相关性：high / medium / low。",
+    )
+    purchase_amount: int = Field(default=1, ge=1, description="ali1688 采购件数。")
+    tags: str | None = Field(
+        default="4306497",
+        description="ali1688 TC 品池标签，逗号分隔；默认 4306497。",
+    )
+    ic_tags: str | None = Field(default=None, description="ali1688 IC 品池标签。")
     cookie: str | None = Field(
         default=None,
-        description="可选登录 cookie；一般搜索可不传，有账号时再传以提高成功率。",
+        description="可选登录 cookie；浏览器平台可用。ali1688 忽略。",
     )
-    proxy_url: str | None = Field(default=None, description="可选代理 URL；用户未要求则不要传。")
+    proxy_url: str | None = Field(default=None, description="可选代理 URL；浏览器平台可用。")
     cookie_domain: str | None = Field(
         default=None,
-        description="cookie 注入域名；省略则用平台默认，通常不要传。",
+        description="cookie 注入域名；省略则用平台默认。",
     )
+
+    @model_validator(mode="after")
+    def _require_query_or_media(self) -> SearchInput:
+        """浏览器平台必须有 query；ali1688 至少有 query/image/url 之一。"""
+        platform = self.platform.strip().lower()
+        if platform == "ali1688":
+            if not (self.query or "").strip() and not self.image and not self.url:
+                raise ValueError("ali1688 搜索需要 query、image 或 url 之一")
+            return self
+        if not (self.query or "").strip():
+            raise ValueError("搜索需要 query")
+        return self
 
 
 class SearchItem(BaseModel):
@@ -86,29 +129,22 @@ class SearchOutput(BaseModel):
 
 
 async def run_search(inp: SearchInput) -> SearchOutput:
-    """执行搜品：复用 Browser，只关闭本任务 Page。"""
+    """执行搜品：API 平台不启动浏览器。"""
     task_id = f"mcp-{uuid.uuid4().hex[:12]}"
+    query = (inp.query or "").strip()
     logger.info(
         "tool start name=search platform=%s query=%s limit=%s task=%s",
         inp.platform,
-        inp.query,
+        query,
         inp.limit,
         task_id,
     )
-    manager = get_browser_manager()
-    port = None
     try:
-        port = await manager.acquire(LaunchOptions(headless=True))
-        options = BrowserSessionOptions(
-            proxy_url=inp.proxy_url,
-            cookies=cookies_for(inp.platform, inp.cookie),
-            cookie_domain=inp.cookie_domain or "",
-        )
-        crawler = create_crawler(inp.platform, port, options)
-        result = await crawler.search(
-            CrawlContext(task_id=task_id, meta={"limit": inp.limit}),
-            inp.query,
-        )
+        if is_api_platform(inp.platform):
+            result_items = await _search_api(inp, task_id, query)
+        else:
+            result_items = await _search_browser(inp, task_id, query)
+
         rows = [
             SearchItem(
                 item_id=item.item_id,
@@ -116,21 +152,16 @@ async def run_search(inp: SearchInput) -> SearchOutput:
                 url=item.url,
                 price=item.price,
             )
-            for item in result.items
+            for item in result_items
         ]
         logger.info("tool done name=search count=%s", len(rows))
-        return SearchOutput(
-            ok=True,
-            platform=inp.platform,
-            query=inp.query,
-            items=rows,
-        )
+        return SearchOutput(ok=True, platform=inp.platform, query=query, items=rows)
     except AppError as exc:
         logger.warning("tool failed name=search code=%s", exc.code)
         return SearchOutput(
             ok=False,
             platform=inp.platform,
-            query=inp.query,
+            query=query,
             error_code=exc.code,
             message=exc.message,
         )
@@ -139,10 +170,63 @@ async def run_search(inp: SearchInput) -> SearchOutput:
         return SearchOutput(
             ok=False,
             platform=inp.platform,
-            query=inp.query,
+            query=query,
             error_code="tool.failed",
             message=str(exc),
         )
+
+
+async def _search_api(inp: SearchInput, task_id: str, query: str) -> list[Any]:
+    """API Source 搜品。"""
+    meta = _ali1688_meta(inp)
+    crawler = create_api_crawler(inp.platform)
+    result = await crawler.search(CrawlContext(task_id=task_id, meta=meta), query)
+    return result.items
+
+
+async def _search_browser(inp: SearchInput, task_id: str, query: str) -> list[Any]:
+    """浏览器 Source 搜品。"""
+    manager = get_browser_manager()
+    port = await manager.acquire(LaunchOptions(headless=True))
+    try:
+        options = BrowserSessionOptions(
+            proxy_url=inp.proxy_url,
+            cookies=cookies_for(inp.platform, inp.cookie),
+            cookie_domain=inp.cookie_domain or "",
+        )
+        crawler = create_crawler(inp.platform, port, options)
+        result = await crawler.search(
+            CrawlContext(task_id=task_id, meta={"limit": inp.limit}),
+            query,
+        )
+        return result.items
     finally:
-        if port is not None:
-            await manager.release(port)
+        await manager.release(port)
+
+
+def _ali1688_meta(inp: SearchInput) -> dict[str, Any]:
+    """组装 ali1688 CrawlContext.meta。"""
+    if inp.image:
+        mode = "image"
+    elif inp.url:
+        mode = "link"
+    else:
+        mode = "text"
+
+    meta: dict[str, Any] = {
+        "mode": mode,
+        "limit": inp.limit,
+        "score_level": inp.score_level,
+        "purchase_amount": inp.purchase_amount,
+    }
+    if inp.image:
+        meta["image"] = inp.image
+    if inp.url:
+        meta["url"] = inp.url
+    if inp.sort:
+        meta["sort_type"] = inp.sort
+    if inp.tags is not None:
+        meta["tags"] = inp.tags
+    if inp.ic_tags:
+        meta["ic_tags"] = inp.ic_tags
+    return meta

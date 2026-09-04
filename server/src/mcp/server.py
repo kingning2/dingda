@@ -14,7 +14,7 @@ from src.mcp.register import register_internal_tools
 
 
 def create_mcp_server() -> FastMCP:
-    """创建仅含 search / product 的 MCP server（Rust 拉起）。"""
+    """创建含 search / product / compare 的 MCP server（Rust 拉起）。"""
     mcp = FastMCP("dingda")
     register_internal_tools(mcp)
     return mcp

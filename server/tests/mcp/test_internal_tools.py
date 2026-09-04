@@ -15,13 +15,13 @@ from src.tools.registry import call_tool, list_tools
 
 def test_list_tools_only_crawler() -> None:
     names = {spec.name for spec in list_tools()}
-    assert names == {"search", "product"}
+    assert names == {"search", "product", "compare"}
 
 
 def test_register_internal_tools_matches_registry() -> None:
     mcp = FastMCP("dingda")
     registered = set(register_internal_tools(mcp))
-    assert registered == {"search", "product"}
+    assert registered == {"search", "product", "compare"}
 
 
 def test_catalog_hint_lists_crawler_tools() -> None:
@@ -30,6 +30,8 @@ def test_catalog_hint_lists_crawler_tools() -> None:
     hint = str(servers[0]["status"]["hint"])  # type: ignore[index]
     assert "search" in hint
     assert "product" in hint
+    assert "compare" in hint
+    assert "ali1688" in hint
 
 
 def test_create_mcp_server_registers_internal() -> None:

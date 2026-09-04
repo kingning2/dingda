@@ -34,7 +34,7 @@ TOOL_DESCRIPTION = (
     "item_id 必须来自 search 返回，不要手编。"
     "闲鱼详情通常需要已登录账号的 cookie；没有 cookie 时不要硬调，改用 search 列表做判断。"
     "小红书详情可传 xsec_token（若搜索结果里有）。"
-    "不支持 1688；货源利润请标待核，勿假装已查。"
+    "不支持 ali1688（无独立详情 API）；1688 请用 search 或 compare。"
 )
 DEFAULT_TIMEOUT_S = 45.0
 
@@ -43,7 +43,7 @@ class ProductInput(BaseModel):
     """商品详情入参。"""
 
     platform: str = Field(
-        description="与 search 相同：xianyu 或 xiaohongshu。不要填 1688。"
+        description="与 search 相同：xianyu 或 xiaohongshu。不要填 ali1688。"
     )
     item_id: str = Field(description="来自 search 结果的商品/笔记 id")
     cookie: str | None = Field(

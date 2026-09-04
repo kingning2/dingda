@@ -1,6 +1,6 @@
 # mcp
 
-把 [../tools/README.md](../tools/README.md) 暴露成 **stdio MCP**（命令 `dingda-mcp`）。当前工具与 registry 一致：仅 `search` / `product`。
+把 [../tools/README.md](../tools/README.md) 暴露成 **stdio MCP**（命令 `dingda-mcp`）。当前工具与 registry 一致：`search` / `product` / `compare`。
 
 桌面壳：`uv run --directory server dingda-mcp`。
 

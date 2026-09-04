@@ -4,8 +4,9 @@
     聚合各 Tool 模块（契约 + run_*）；供 MCP 与产品 Agent 统一 invoke。
 
 设计说明：
-    - 当前仅选品：search / product（每工具一个 ``tools/<name>.py``）
-    - 执行经 Crawler → BrowserPort，不在此 import Playwright
+    - 选品：search / product / compare（每工具一个 ``tools/<name>.py``）
+    - 浏览器平台经 Crawler → BrowserPort；ali1688 经 ApiCrawler → Channel
+    - 不在此 import Playwright
 
 使用示例：
     out = await call_tool("search", {"platform": "xianyu", "query": "露营椅"})
@@ -21,6 +22,14 @@ from typing import Any
 from pydantic import BaseModel
 
 from src.shared.errors import AppError
+from src.tools.compare import (
+    DEFAULT_TIMEOUT_S as COMPARE_TIMEOUT_S,
+    TOOL_DESCRIPTION as COMPARE_DESCRIPTION,
+    TOOL_NAME as COMPARE_NAME,
+    CompareInput,
+    CompareOutput,
+    run_compare,
+)
 from src.tools.product import (
     DEFAULT_TIMEOUT_S as PRODUCT_TIMEOUT_S,
     TOOL_DESCRIPTION as PRODUCT_DESCRIPTION,
@@ -87,6 +96,14 @@ _TOOLS: dict[str, ToolSpec] = {
         ProductOutput,
         run_product,  # type: ignore[arg-type]
         PRODUCT_TIMEOUT_S,
+    ),
+    COMPARE_NAME: _spec(
+        COMPARE_NAME,
+        COMPARE_DESCRIPTION,
+        CompareInput,
+        CompareOutput,
+        run_compare,  # type: ignore[arg-type]
+        COMPARE_TIMEOUT_S,
     ),
 }
 

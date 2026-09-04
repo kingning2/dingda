@@ -32,8 +32,8 @@ def list_builtin_mcp_servers() -> list[dict[str, object]]:
                 "state": "ready",
                 "label": "就绪",
                 "hint": (
-                    f"选品爬虫：{', '.join(tool_names)}。"
-                    "闲鱼验证热度与价位；小红书收关键词；1688 未接入。"
+                    f"选品工具：{', '.join(tool_names)}。"
+                    "闲鱼/小红书走浏览器爬虫；ali1688 走官方找货 API（需 ALI_1688_AK）。"
                 ),
                 "badge_class": "bg-emerald-100 text-emerald-800",
             },
