@@ -1,0 +1,22 @@
+---
+description: 叮答 Python（server/）编码规范。编辑 server/**/*.py 时必须先读 Skill 示例并照抄结构。
+globs: server/**/*.py
+alwaysApply: false
+---
+
+# Python 编码规范
+
+**先读并照抄示例**：`.agents/skills/python-coding/SKILL.md`
+
+硬约束摘要：
+
+1. 文件头模块 docstring：**一行总述 + `职责：`**，必要时加 `设计说明：` / `使用示例：`（照抄 `infrastructure/events/bus.py` 与 Skill 示例 A）
+2. 每个函数 docstring（解决什么问题）
+3. 多平台：基类插座 + 平台插头 + registry（Channel 见 Skill 示例 B；**爬虫见示例 C：`BrowserCrawler` 统一代理/指纹/context**）
+4. 少写边界防御
+5. `channels/xianyu/channel.py`、`crawler/sources/xianyu/crawler.py` ✅，禁止 `xianyu_lib.py`
+6. 业务方法：start / 轮询或关键步骤 / done|failed 日志
+7. 禁止每个平台 crawler 自己 `launch` 浏览器并复制代理/指纹逻辑
+8. 每个代码目录有 `README.md`（树形：上层只链下层）。本层每个 `.py` 写清职责、关键符号、谁调用；根地图：`server/src/README.md`
+
+未按 Skill 示例形状写的补丁视为不合格。

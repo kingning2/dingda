@@ -1,2 +1,0 @@
-#!/usr/bin/env sh
-python tooling/dingda/scripts/sync_branch_rules.py -q 2>/dev/null || true

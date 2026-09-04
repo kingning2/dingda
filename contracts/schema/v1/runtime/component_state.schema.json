@@ -1,8 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "dingda://runtime/component_state/v1",
-  "title": "runtime/component_state",
-  "description": "组件生命周期状态（Rust Component trait / Python Component ABC 共用）",
-  "type": "string",
-  "enum": ["created", "starting", "running", "degraded", "stopping", "stopped", "failed"]
-}

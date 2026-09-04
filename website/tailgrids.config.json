@@ -1,6 +1,0 @@
-{
-  "theme": "default",
-  "alias": "@",
-  "framework": "Next.js",
-  "mainCssFile": "src/app/globals.css"
-}

@@ -1,0 +1,76 @@
+---
+description: 在用户要求创建 git 提交、写中文 commit message、按项目 Conventional Commits 规范提交，或 @git-commit-cn 时应用；规定 type/scope/中文简述、按模块拆分多个 commit、Husky 校验与提交流程。
+alwaysApply: false
+---
+# Git 提交规范（中文）
+
+**在用户要求提交代码、按本规范写 message，或 @ 提及 `git-commit-cn` 时执行。**
+
+## 提交信息格式
+
+```
+<type>(<scope>): <中文简述>
+```
+
+- **type**（必填）：`feat` | `fix` | `docs` | `chore` | `refactor` | `perf` | `test` | `build` | `style`
+- **scope**（推荐）：`tauri` | `frontend` | `ui` | `animation` | `build` | `deps` | `env` | `data` | `skills` 等，与改动模块一致
+- **简述**：简体中文，一句话说清「为什么 / 做了什么」，不用英文句子
+
+### 示例（与本仓库历史一致）
+
+```
+feat(ui): 重构下载进度、工具卡片与标题栏
+feat(tauri): 支持 downloadKey 解析与 Windows zip 分步安装
+chore(deps): 增加动画相关依赖
+docs: 补充工具清单字段说明
+```
+
+## 自动化校验（Husky）
+
+- **pre-commit**：先执行 `pnpm run format`（Prettier + `cargo fmt`），将格式化后的已跟踪文件 `git add -u` 回暂存区，再执行 `pnpm run lint`（全量 ESLint）；任一步失败则无法提交
+- **commit-msg**：由 `@commitlint/config-conventional` 校验，message 必须以 `feat` / `fix` / `chore` 等 type 开头，格式为 `<type>(<scope>): <简述>`
+
+跳过校验需显式使用 `git commit --no-verify`（默认禁止）。
+
+## 分模块提交（默认，必遵）
+
+**不要把所有改动塞进一个 commit。** 除非用户明确要求「单次提交 / squash / 一个 commit」，否则按**模块边界**拆成多个 commit，每个 commit 只包含同一模块、同一目的的变更。
+
+### 模块划分（与本仓库目录对应）
+
+| 模块 | 典型路径 / 范围 | 推荐 scope |
+|------|-----------------|------------|
+| 构建与依赖 | `package.json`、`Cargo.toml`、`build.rs`、`scripts/`、`.github/` | `build` / `deps` |
+| 环境与示例配置 | `.env.example`、`.gitignore` | `env` / `chore` |
+| Rust 后端 | `src-tauri/src/` | `tauri` |
+| Python Sidecar | `channel_agent/`（仓库根目录） | `tauri` 或 `sidecar` |
+| 前端 IPC / 枚举 / 契约 | `packages/shared/src/tauri-bridge/`、`packages/shared/src/contracts/` | `frontend` |
+| 控制台 UI | `packages/ui/src/agent-console/`、`packages/ui/src/` 基础组件 | `ui` |
+| 应用壳 / 路由 | `apps/wework/` | `frontend` |
+| i18n | `src-tauri/resources/languages/` | `tauri` 或 `i18n` |
+| 文档 | `docs/`、`AGENTS.md` | `docs` |
+| 契约生成 | `scripts/generate-contracts.mjs` 及生成物 | `chore` / `build` |
+
+跨模块功能（如「频道 Sidecar」）应拆成例如：`feat(tauri)` 后端与 sidecar → `feat(frontend)` IPC → `feat(ui)` 控制台页面 → `docs` 说明 → `chore(env)` 示例环境变量，**而不是**一条 `feat(tauri): 全部搞定`。
+
+### 拆分原则
+
+- 一个 commit = 一个可独立 review 的主题；改了多少文件不重要，**边界**才重要。
+- 先提交底层（依赖、Rust、sidecar），再提交消费方（前端、文档），减少中间态无法编译的提交（若无法避免，在 commit message 简述中注明依赖顺序）。
+- 仅当改动极小且天然同属一处（如只改一个组件里的 typo）才可单 commit。
+- 拆完后向用户简要列出：commit 数量、每条 message、各自包含的路径范围。
+
+## 执行提交时的流程
+
+1. 并行查看：`git status`、`git diff`、`git log -10 --oneline`（对齐既有风格）
+2. 按上文**模块划分**将变更分组；为每组拟一条 `<type>(<scope>): <中文简述>`
+3. **不要**提交 `.env`、密钥、token 等敏感文件；若用户坚持，先警告
+4. **按组循环**：`git add <该组路径>` → `git commit -m "..."` → 确认成功；全部组完成后再 `git status`
+5. 未要求时 **不要** `git push`
+
+## 禁止
+
+- 英文为主的 commit message（如 `Add modal window`）
+- 无 type 的随意描述（如 `update`、`fix bug`）
+- 跳过 hooks（`--no-verify`）除非用户明确要求
+- **默认禁止**把多模块、多主题改动合并为单个 commit（用户明确要求除外）

@@ -1,0 +1,68 @@
+---
+description: 叮答全局编码约束。写任何前端 / Server / Tauri 代码前必须遵守：目录、IPC、能力注入、分层依赖。
+alwaysApply: true
+---
+
+# 叮答编码约束
+
+写代码前先对齐本规则。细节在 `.agents/skills/`；改 Agent/Crawler/Browser/Tool/前端能力注入时**必须先读**对应 SKILL。
+
+## 仓库地图（禁止另起炉灶）
+
+| 目录 | 职责 |
+|------|------|
+| `src/` | Web 产品 UI（主开发） |
+| `server/` | Python Server（产品 API / Agent / Crawler / Browser） |
+| `src-tauri/` | Tauri 壳（起停 Server、OS 能力、外部 CLI Agent） |
+
+`server/src/` 目录树以 [`server/src/README.md`](../../server/src/README.md) 为准；Tauri 壳以 [`src-tauri/src/README.md`](../../src-tauri/src/README.md) 为准（上层 README 只链接下层，本层每个源文件写清职责）。
+
+禁止新建 `apps/`、`packages/`、第二套 Skill、产品用 Rust IPC crate。
+
+## 核心规则（Browser / Crawler，原文必遵）
+
+1. Browser = 浏览器能力层，只负责启动、Context、Page、导航、点击、输入、Cookie、Session、截图、网络监听等通用能力。
+2. Crawler = 平台采集层，只负责闲鱼/1688等平台的搜索、详情、解析、标准化、Snapshot、Dedup。
+3. Crawler 禁止直接依赖 Playwright / Camoufox，必须依赖 Browser Interface。
+4. Browser 禁止出现 Xianyu、1688、商品、价格等平台业务逻辑。
+5. 平台新增只修改 `server/src/crawler/sources/<platform>/`，浏览器新增只修改 `server/src/browser/adapters/<browser>/`。
+6. 登录/账号语义属于 `server/src/channels/<platform>/`，Browser 只负责通用 Session/Cookie 能力。
+7. Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+8. 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
+
+## 怎么写功能
+
+1. **产品能力**（账号、爬虫、产品 Agent、调研）：`server/src/` + HTTP/SSE；前端 `fetch(apiBaseUrl + '/v1/...')`。
+2. **壳能力**（对话框、窗口、起停 Server、Codex/Claude 等外部 Agent）：现有 `src-tauri/src/commands/`，前端经 `src/lib/` 适配器。
+3. **Web 联调**：默认 `http://127.0.0.1:8787`（或 `VITE_API_BASE_URL`）；不要用 `isTauri()` 挡住产品 HTTP。
+4. **外部 CLI Agent**：仅桌面；用 `supportsExternalAgents()`（`src/lib/capabilities.ts`）。浏览器禁止 mock Codex/Claude。
+
+## 分层（跨层 import = 错）
+
+```text
+Agent → Tool → Crawler → BrowserPort → Adapter
+         ↘ Snapshot / Dedup
+```
+
+- Agent 禁止：Playwright、Camoufox、sqlite、平台包（闲鱼/1688…）
+- 新平台：只加 `server/src/crawler/sources/<id>/`
+- 新浏览器：只加 `server/src/browser/adapters/`
+- 新代码目录：`server/src/{agent,crawler,browser,tools}/`，勿堆进 `domains/*/service.py` 上帝类
+- 禁止垃圾桶：`utils/`、`helpers/`、`services/`、`runtime/all_*.py`
+
+## 契约与改动顺序
+
+- 产品 API：`server/src/contracts/` ↔ `src/contracts/` → Python → React（不必改 Rust）
+- CLI Agent 事件：Rust ↔ `src/contracts/agent-event.ts`
+- 跨模块必须有明确 Input/Output Schema
+
+## 语言规范（写代码时自动带上）
+
+- Python（`server/**/*.py`）→ 读 `.agents/skills/python-coding/SKILL.md` **照抄示例**
+- Rust（`src-tauri/**/*.rs`）→ 读 `.agents/skills/rust-coding/SKILL.md` **照抄示例**
+
+规则入口：`.cursor/rules/python-coding.mdc`、`.cursor/rules/rust-coding.mdc`。
+
+## 动手前
+
+涉及架构边界时打开：`.agents/skills/layers.md` + 对应 `*-architecture/SKILL.md`。

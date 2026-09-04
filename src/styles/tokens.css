@@ -1,0 +1,60 @@
+/* OpenDesign-inspired design tokens */
+:root {
+  --bg: #fff;
+  --bg-app: #fff;
+  --bg-panel: #fafafa;
+  --bg-subtle: #ededed;
+  --bg-muted: #dbdbdb;
+  --border: #dbdbdb;
+  --border-strong: #bdbdbd;
+  --border-soft: #ededed;
+  --text: #494949;
+  --text-strong: #202020;
+  --text-muted: #5c5c5c;
+  --text-soft: #848484;
+  --text-faint: #bdbdbd;
+  --accent: #353535;
+  --accent-contrast: #fafafa;
+  --accent-strong: #202020;
+  --accent-soft: #ededed;
+  --accent-tint: #f7f7f7;
+  --accent-hover: #202020;
+  --brand: #87ea5c;
+  --brand-soft: #ebffde;
+  --brand-text: #0d5400;
+  --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
+  --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
+  --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
+  --shadow-lg: 0 24px 60px rgba(28, 27, 26, 0.16), 0 8px 16px rgba(28, 27, 26, 0.07);
+  --bg-elevated: #fafafa;
+  --blue: #1a74ff;
+  --green: #00aa54;
+  --green-bg: #f5ffee;
+  --green-border: #adf788;
+  --selected: #353535;
+  --selected-soft: color-mix(in srgb, #353535 12%, transparent);
+  --stroke-thin: 1px;
+  --radius-medium: 4px;
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --entry-rail-width: 236px;
+  --wash-base: #ffffff;
+  --wash-blue: rgba(168, 196, 236, 0.55);
+  --wash-pink: rgba(240, 197, 216, 0.45);
+  --wash-peach: rgba(247, 224, 196, 0.5);
+  --wash-mist: rgba(213, 229, 248, 0.38);
+  --app-wash:
+    radial-gradient(52% 44% at 12% -4%, var(--wash-blue) 0%, transparent 68%),
+    radial-gradient(44% 38% at 90% 6%, var(--wash-pink) 0%, transparent 66%),
+    radial-gradient(48% 42% at 82% 94%, var(--wash-peach) 0%, transparent 64%),
+    radial-gradient(56% 48% at 14% 102%, var(--wash-mist) 0%, transparent 70%),
+    linear-gradient(var(--wash-base), var(--wash-base));
+
+  /* 全局细滚动条 */
+  --scrollbar-size: 6px;
+  --scrollbar-thumb: color-mix(in srgb, var(--text) 22%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--text) 36%, transparent);
+}
