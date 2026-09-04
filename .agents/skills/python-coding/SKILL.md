@@ -339,7 +339,7 @@ class BrowserCrawler:
 
 | 位置 | 正确 | 错误 |
 |------|------|------|
-| `channels/xianyu/` | `channel.py` `api.py` | `xianyu_channel.py` `xianyu_lib.py` |
+| `channels/xianyu/` | `channel.py` `login.py` | `xianyu_channel.py` `xianyu_lib.py` |
 | `crawler/core/` | `base.py` | `browser_crawler_base_impl.py` |
 | `crawler/sources/ali1688/` | `crawler.py` `extractor.py` | `ali1688_crawler.py` `helpers.py` |
 | `browser/adapters/` | `camoufox.py` | `camoufox_adapter_impl.py` |
