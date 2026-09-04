@@ -51,6 +51,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     description: "Cursor command line",
     install_url: "https://cursor.com/docs/cli/overview",
     docs_url: "https://docs.cursor.com/en/cli/overview",
+    external_mcp_injection: "cursor-mcp-json",
   },
   {
     id: "deepseek-harness",
@@ -65,6 +66,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     description: "Qwen coding CLI",
     install_url: "https://github.com/QwenLM/qwen-code",
     docs_url: "https://qwenlm.github.io/qwen-code-docs/en/index",
+    external_mcp_injection: "qwen-settings-json",
   },
   {
     id: "qoder",
@@ -72,6 +74,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     description: "Alibaba coding CLI",
     install_url: "https://qoder.com/download",
     docs_url: "https://docs.qoder.com",
+    external_mcp_injection: "claude-mcp-json",
   },
   {
     id: "deepseek",
@@ -79,6 +82,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     description: "DeepSeek terminal UI",
     install_url: "https://github.com/Hmbown/CodeWhale",
     docs_url: "https://github.com/Hmbown/CodeWhale/blob/main/README.md",
+    external_mcp_injection: "deepseek-mcp-config",
   },
   {
     id: "grok-build",
@@ -86,6 +90,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     description: "xAI coding CLI",
     install_url: "https://x.ai/cli",
     docs_url: "https://x.ai/cli",
+    external_mcp_injection: "claude-mcp-json",
   },
   {
     id: "pi",
@@ -93,6 +98,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     description: "Inflection chat CLI",
     install_url: "https://github.com/nexu-io/open-design/blob/main/docs/agent-adapters.md",
     docs_url: "https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/README.md",
+    external_mcp_injection: "pi-mcp-json",
   },
   {
     id: "trae-cli",
