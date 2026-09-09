@@ -16,10 +16,16 @@ struct ShellCache {
 }
 
 /// 统一可执行文件解析入口。
-/// 顺序：用户配置 → 动态 PATH → 已知安装目录。
+/// 顺序：用户配置 → 叮答托管目录 → 动态 PATH → 已知安装目录。
 pub fn resolve_executable(definition: &RuntimeDefinition) -> Option<ResolvedExecutable> {
     if let Some(resolved) = resolve_configured(definition) {
         return Some(resolved);
+    }
+
+    if let Some(resolved) = definition.resolve_managed() {
+        if validate_executable(definition, &resolved.path) {
+            return Some(resolved);
+        }
     }
 
     for name in definition.all_binary_names() {
@@ -249,6 +255,7 @@ pub fn known_locations() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
     if let Some(home) = home_dir() {
+        dirs.push(home.join(".opencode").join("bin"));
         dirs.push(home.join(".local").join("bin"));
         dirs.push(home.join(".cargo").join("bin"));
         dirs.push(home.join(".npm-global").join("bin"));

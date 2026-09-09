@@ -160,6 +160,34 @@ impl PythonLifecycle {
 
         let host = self.config.host.clone();
         let port = self.config.port.to_string();
+        if self.config.use_uv {
+            // 安装/首次启动时把 Python 依赖拉齐
+            let mut sync = Command::new("uv");
+            sync.args(["sync", "--frozen"])
+                .current_dir(&self.config.server_dir)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .env_remove("VIRTUAL_ENV");
+            #[cfg(windows)]
+            {
+                const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+                sync.creation_flags(CREATE_NO_WINDOW);
+            }
+            match sync.status().await {
+                Ok(status) if status.success() => {
+                    log_shell("python deps synced (uv sync --frozen)", None);
+                }
+                Ok(status) => {
+                    log_shell(
+                        "python deps sync non-zero",
+                        Some(&format!("code={}", status.code().unwrap_or(-1))),
+                    );
+                }
+                Err(error) => {
+                    log_shell("python deps sync skipped", Some(&error.to_string()));
+                }
+            }
+        }
         let mut command = if self.config.use_uv {
             let mut cmd = Command::new("uv");
             cmd.args([

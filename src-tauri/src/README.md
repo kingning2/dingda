@@ -7,7 +7,7 @@ lib.rs
   ├─ python/          拉起 uvicorn
   ├─ commands/        invoke 给 React
   ├─ agent/           列表/探测 IPC 形状（薄）
-  └─ runtime/         发现二进制、spawn CLI、解析 stdout → AgentEvent
+  └─ runtime/         找二进制、探测、托管下载（启动在 Python）
 ```
 
 `agent/` 不是 Python 产品 Agent。产品 Agent 在 `server/src/agent/`。

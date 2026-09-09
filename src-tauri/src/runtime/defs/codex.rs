@@ -1,10 +1,13 @@
+//! Codex CLI 插头：二进制、模型发现与托管下载规格。
+
 use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 
-use super::build_args::codex_build_args;
 use crate::runtime::model_discover::{parse_codex_debug_models, run_command, static_models};
-use crate::runtime::types::{RuntimeCapabilities, RuntimeDefinition, RuntimeModel, StreamFormat};
+use crate::runtime::types::{
+    ManagedDownloadSpec, RuntimeCapabilities, RuntimeDefinition, RuntimeModel,
+};
 
 pub fn discover_models(
     binary: &Path,
@@ -34,6 +37,19 @@ async fn discover(binary: &Path) -> Vec<RuntimeModel> {
     ])
 }
 
+/// Windows 为裸 `.exe`；macOS / Linux 为 `.tar.gz`（包内二进制带平台后缀）。
+fn download_asset_name() -> Result<&'static str, String> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("windows", "x86_64") => Ok("codex-x86_64-pc-windows-msvc.exe"),
+        ("windows", "aarch64") => Ok("codex-aarch64-pc-windows-msvc.exe"),
+        ("macos", "x86_64") => Ok("codex-x86_64-apple-darwin.tar.gz"),
+        ("macos", "aarch64") => Ok("codex-aarch64-apple-darwin.tar.gz"),
+        ("linux", "x86_64") => Ok("codex-x86_64-unknown-linux-musl.tar.gz"),
+        ("linux", "aarch64") => Ok("codex-aarch64-unknown-linux-musl.tar.gz"),
+        (os, arch) => Err(format!("当前平台暂不支持自动下载：{os}/{arch}")),
+    }
+}
+
 pub const CODEX: RuntimeDefinition = RuntimeDefinition {
     id: "codex",
     name: "Codex",
@@ -42,18 +58,19 @@ pub const CODEX: RuntimeDefinition = RuntimeDefinition {
     fallback_binaries: &[],
     path_env_var: "DINGDA_CODEX_PATH",
     version_args: &["--version"],
-    stream_format: StreamFormat::JsonEventStream,
     capabilities: RuntimeCapabilities {
         login_capable: true,
-        supports_resume: true,
-        prompt_via_stdin: true,
     },
     install_url: "https://github.com/openai/codex",
     docs_url: "https://developers.openai.com/codex",
     external_mcp_injection: Some("codex-mcp"),
     is_default: true,
-    build_args: codex_build_args,
     validate_executable: None,
     auth_probe_args: Some(&["login", "status"]),
     discover_models,
+    managed_download: Some(ManagedDownloadSpec {
+        release_base_url: "https://github.com/openai/codex/releases/latest/download",
+        asset_name: download_asset_name,
+        version_file: None,
+    }),
 };

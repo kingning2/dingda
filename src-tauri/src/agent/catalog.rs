@@ -47,11 +47,16 @@ fn build_registry_stub(definition: &RuntimeDefinition) -> AgentRuntimeCatalogIte
         status: AgentRuntimeStatusView {
             state: "missing".to_string(),
             label: "未安装".to_string(),
-            hint: Some("点击「扫描 Agent」检测本机是否已安装".to_string()),
+            hint: Some(if definition.supports_managed_download() {
+                "可点击「下载」安装到叮答托管目录".to_string()
+            } else {
+                "点击「扫描 Agent」检测本机是否已安装".to_string()
+            }),
             badge_class: "bg-muted text-muted-foreground".to_string(),
         },
         can_login: definition.capabilities.login_capable,
         can_probe: true,
+        can_download: definition.supports_managed_download(),
     }
 }
 
@@ -112,5 +117,6 @@ fn build_catalog_item(definition: &RuntimeDefinition) -> AgentRuntimeCatalogItem
         status,
         can_login: definition.capabilities.login_capable,
         can_probe: true,
+        can_download: definition.supports_managed_download(),
     }
 }

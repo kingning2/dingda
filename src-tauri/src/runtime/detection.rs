@@ -18,6 +18,18 @@ pub async fn detect_runtime(definition: &RuntimeDefinition) -> RuntimeDetection 
     let executable = resolved.path.display().to_string();
     let version = run_version_probe(&resolved.path, definition.version_args).await;
 
+    // 有 version_args 却跑不通 → 当作未安装（避免 Windows 残留 .cmd 空壳被标成 available）
+    if !definition.version_args.is_empty() && version.is_none() {
+        return RuntimeDetection {
+            available: false,
+            executable: Some(executable),
+            version: None,
+            source: Some(resolved.source),
+            authenticated: None,
+            error: Some(format!("无法执行 {} --version", definition.binary)),
+        };
+    }
+
     let authenticated = if definition.capabilities.login_capable {
         probe_auth(&resolved.path, definition).await
     } else if let Some(args) = definition.auth_probe_args {

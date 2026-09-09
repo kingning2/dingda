@@ -13,7 +13,7 @@
 ### `lifecycle.rs`
 
 - `PythonConfig::from_env` — `DINGDA_HOST` / `DINGDA_PORT`，`server_dir` 来自 `paths::resolve_server_dir`
-- `start_background` — spawn 子进程 → 轮询 `GET {api}/health`（最多约 30s）→ emit `server-ready` 或 `server-error`
+- `start_background` — 先 `uv sync --frozen` → spawn 子进程 → 轮询 `GET {api}/health`（最多约 30s）→ emit `server-ready` 或 `server-error`
 - `is_ready` / `api_base_url` — 给 `commands/api.rs`
 - `stop` — 杀进程树（Windows 额外收子进程）
 

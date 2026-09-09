@@ -21,7 +21,8 @@ Rust 源码地图：[src/README.md](src/README.md)（每个模块一层 README�
 
 ### `tauri.conf.json`
 
-产品名、窗口（无边框 1280×800）、devUrl `1420`、CSP（允许连本机 Python `127.0.0.1`）、图标路径。改窗口尺寸/CSP 看这里。
+产品名、窗口（无边框 1280×800）、devUrl `1420`、CSP（允许连本机 Python `127.0.0.1`）、图标路径。
+`beforeBuildCommand` 会跑 `pnpm prepare:server`（`uv sync`）再 `pnpm build`。OCR 不在启动/构建时预热，首次识图再懒加载。
 
 ### `.gitignore`
 

@@ -30,6 +30,8 @@ pub struct AgentRuntimeCatalogItem {
     pub status: AgentRuntimeStatusView,
     pub can_login: bool,
     pub can_probe: bool,
+    /// 是否支持叮答托管一键下载。
+    pub can_download: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

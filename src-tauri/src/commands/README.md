@@ -1,7 +1,7 @@
 # commands
 
-前端 `invoke` 的 Tauri command。只做壳能力：Python 地址、本机对话框、CLI Agent 起停。  
-账号/搜品/闲鱼不要加 command，走 `get_api_base_url` 之后 HTTP。
+前端 `invoke` 的 Tauri command。只做壳能力：Python 地址、本机对话框、CLI 探测/下载。  
+CLI **启动/取消**在 Python `/v1/agent/runtimes/...`；账号/搜品走 HTTP。
 
 新增 command：本目录加函数，并在 [../lib.rs](../lib.rs) 的 `generate_handler!` 登记。
 
@@ -22,14 +22,14 @@
 
 ### `agent_runtime.rs`
 
-外部 CLI Agent IPC：
+外部 CLI Agent IPC（探测 / 登录 / 下载，不 spawn）：
 
 - `list_agent_runtimes_command` → `agent::catalog::list_agent_runtimes`
+- `list_agent_registry_command` — 未扫描时的注册表占位
 - `probe_agent_runtime` / `login_agent_runtime` → `agent::probe`
-- `launch_agent_runtime` — 拼 invocation，后台 `RuntimeManager::launch_with_app`，事件 `agent-event`
-- `cancel_agent_runtime` — 按 `run_id` 杀进程
+- `download_agent_runtime` — 调 `RuntimeDefinition::download_managed`（有 `managed_download` 的插头才支持：OpenCode / Codex / Claude）
 
-真正 spawn 在 [../runtime/README.md](../runtime/README.md)，这里只做参数校验和 spawn 任务。
+启动与取消：Python `POST /v1/agent/runtimes/{id}/run` / `.../runs/{run_id}/cancel`。
 
 ### `dialog.rs`
 

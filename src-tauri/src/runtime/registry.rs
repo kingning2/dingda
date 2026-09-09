@@ -1,24 +1,8 @@
-use super::defs::{
-    CLAUDE, CODEBUDDY, CODEX, CURSOR, DEEPSEEK, DEEPSEEK_HARNESS, GROK, MIMO, OPENCODE, PI,
-    QODER, QWEN, TRAE,
-};
+use super::defs::{CLAUDE, CODEX, OPENCODE};
 use super::types::RuntimeDefinition;
 
-pub const RUNTIME_REGISTRY: &[RuntimeDefinition] = &[
-    CLAUDE,
-    OPENCODE,
-    MIMO,
-    CODEX,
-    CURSOR,
-    DEEPSEEK_HARNESS,
-    QWEN,
-    QODER,
-    DEEPSEEK,
-    GROK,
-    PI,
-    TRAE,
-    CODEBUDDY,
-];
+/// 产品对外暴露的本地 Agent CLI。
+pub const RUNTIME_REGISTRY: &[RuntimeDefinition] = &[OPENCODE, CLAUDE, CODEX];
 
 pub fn find_runtime(runtime_id: &str) -> Option<&'static RuntimeDefinition> {
     RUNTIME_REGISTRY.iter().find(|item| item.id == runtime_id)
@@ -44,6 +28,12 @@ mod tests {
         for def in RUNTIME_REGISTRY {
             assert!(seen.insert(def.id), "duplicate id: {}", def.id);
         }
+    }
+
+    #[test]
+    fn registry_keeps_three_product_agents() {
+        let ids: Vec<_> = RUNTIME_REGISTRY.iter().map(|d| d.id).collect();
+        assert_eq!(ids, vec!["opencode", "claude", "codex"]);
     }
 
     #[test]
