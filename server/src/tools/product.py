@@ -2,10 +2,11 @@
 
 职责：
     契约（Input/Output）与执行（Crawler → BrowserPort）放同一文件。
-    供 registry / MCP 注册与调用。
+    供 registry / MCP 注册与调用；可选推送直播截图帧。
 
 设计说明：
     - 闲鱼详情通常需要 cookie
+    - 小红书详情需搜索下发的 xsec_token
     - 不 import Playwright / Camoufox
 
 使用示例：
@@ -16,12 +17,15 @@ from __future__ import annotations
 
 import logging
 import uuid
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from src.browser.manager import get_browser_manager
 from src.browser.port import LaunchOptions
+from src.crawler.account_cookie import resolve_crawl_cookie
 from src.crawler.core.base import BrowserSessionOptions
+from src.crawler.core.live import META_LIVE_CALLBACK, META_LIVE_ENABLED
 from src.crawler.core.types import CrawlContext
 from src.crawler.registry import cookies_for, create_crawler
 from src.shared.errors import AppError
@@ -33,8 +37,9 @@ TOOL_DESCRIPTION = (
     "按平台与 item_id 拉取单条详情，用于选品时抽样核对（卖家、状态、价格是否与列表一致）。"
     "item_id 必须来自 search 返回，不要手编。"
     "闲鱼详情通常需要已登录账号的 cookie；没有 cookie 时不要硬调，改用 search 列表做判断。"
-    "小红书详情可传 xsec_token（若搜索结果里有）。"
-    "不支持 ali1688（无独立详情 API）；1688 请用 search 或 compare。"
+            "小红书详情可传 xsec_token（若搜索结果里有）；会返回正文 desc、图片 OCR（ocr_text）"
+            "以及合并文本 content_text，用于读懂笔记在说什么品；小红书是内容浏览，不是货盘。"
+            "不支持 ali1688（无独立详情 API）；1688 请用 search 或 compare。"
 )
 DEFAULT_TIMEOUT_S = 45.0
 
@@ -66,6 +71,18 @@ class ProductItem(BaseModel):
     price: str | None = Field(default=None, description="价格，可能为空")
     seller_nick: str | None = Field(default=None, description="卖家昵称，可能为空")
     status: str | None = Field(default=None, description="状态文案，可能为空")
+    want_count: str | None = Field(default=None, description="想要人数（闲鱼），可能为空")
+    browse_count: str | None = Field(default=None, description="浏览量，可能为空")
+    image_url: str | None = Field(default=None, description="封面图，可能为空")
+    desc: str | None = Field(default=None, description="正文描述（小红书笔记等），可能为空")
+    ocr_text: str | None = Field(
+        default=None,
+        description="图片 OCR 识别出的文字（小红书图文笔记），可能为空",
+    )
+    content_text: str | None = Field(
+        default=None,
+        description="正文 + 图片 OCR 合并文本（小红书），优先读这个了解笔记在说什么",
+    )
 
 
 class ProductOutput(BaseModel):
@@ -79,14 +96,27 @@ class ProductOutput(BaseModel):
     message: str | None = None
 
 
-async def run_product(inp: ProductInput) -> ProductOutput:
-    """执行商品详情。"""
+async def run_product(
+    inp: ProductInput,
+    *,
+    on_live_frame: Any | None = None,
+    live_frame_enabled: bool | None = None,
+) -> ProductOutput:
+    """执行商品详情；可选推送直播截图帧。"""
     task_id = f"mcp-{uuid.uuid4().hex[:12]}"
+    cookie = resolve_crawl_cookie(inp.platform, inp.cookie)
+    push_live = (
+        bool(on_live_frame)
+        if live_frame_enabled is None
+        else bool(live_frame_enabled and on_live_frame)
+    )
     logger.info(
-        "tool start name=product platform=%s item_id=%s task=%s",
+        "tool start name=product platform=%s item_id=%s task=%s has_cookie=%s live=%s",
         inp.platform,
         inp.item_id,
         task_id,
+        bool(cookie),
+        push_live,
     )
     manager = get_browser_manager()
     port = None
@@ -94,17 +124,18 @@ async def run_product(inp: ProductInput) -> ProductOutput:
         port = await manager.acquire(LaunchOptions(headless=True))
         options = BrowserSessionOptions(
             proxy_url=inp.proxy_url,
-            cookies=cookies_for(inp.platform, inp.cookie),
+            cookies=cookies_for(inp.platform, cookie),
         )
         crawler = create_crawler(inp.platform, port, options)
+        meta: dict[str, Any] = {
+            "cookie": cookie or "",
+            "xsec_token": inp.xsec_token or "",
+            META_LIVE_ENABLED: bool(push_live),
+        }
+        if on_live_frame is not None:
+            meta[META_LIVE_CALLBACK] = on_live_frame
         result = await crawler.detail(
-            CrawlContext(
-                task_id=task_id,
-                meta={
-                    "cookie": inp.cookie or "",
-                    "xsec_token": inp.xsec_token or "",
-                },
-            ),
+            CrawlContext(task_id=task_id, meta=meta),
             inp.item_id,
         )
         if not result.items:
@@ -124,6 +155,12 @@ async def run_product(inp: ProductInput) -> ProductOutput:
             price=row.price,
             seller_nick=str(raw.get("seller_nick") or "") or None,
             status=str(raw.get("status") or "") or None,
+            want_count=str(raw.get("want_count") or "") or None,
+            browse_count=str(raw.get("browse_count") or "") or None,
+            image_url=str(raw.get("image_url") or "") or None,
+            desc=str(raw.get("desc") or "") or None,
+            ocr_text=str(raw.get("ocr_text") or "") or None,
+            content_text=str(raw.get("content_text") or "") or None,
         )
         logger.info("tool done name=product item_id=%s", item.item_id)
         return ProductOutput(

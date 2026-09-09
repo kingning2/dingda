@@ -30,10 +30,16 @@ class AppError(Exception):
 
 
 def session_expired_error(platform: str) -> AppError:
-    label = {"xianyu": "闲鱼", "xiaohongshu": "小红书"}.get(platform, "账号")
+    label = {"xianyu": "闲鱼", "xiaohongshu": "小红书", "ali1688": "1688"}.get(
+        platform, "账号"
+    )
+    key = platform.strip().lower() or "xianyu"
     return AppError(
         "account.session_expired",
-        f"{label}登录已过期，请重新扫码登录",
+        (
+            f"{label}登录已过期或未登录。"
+            f"请调用 login(platform={key})，等待用户手机扫码成功后再重试 search/product。"
+        ),
         status_code=401,
     )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import json
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from src.infrastructure.db.schema import (
     ACCOUNTS_AUTH_VALID_COLUMN_SQL,
     ACCOUNTS_AVATAR_COLUMN_SQL,
     ACCOUNTS_CONNECTED_COLUMN_SQL,
+    ACCOUNTS_LOCAL_STORAGE_COLUMN_SQL,
     ACCOUNTS_TABLE_SQL,
 )
 from src.infrastructure.db.session import db_path
@@ -24,6 +26,7 @@ class AccountRow:
     display_name: str
     avatar_url: str | None
     cookie: str
+    local_storage: str
     status: str
     auto_connect: bool
     auth_valid: bool
@@ -47,6 +50,10 @@ def ensure_schema() -> None:
             pass
         try:
             conn.execute(ACCOUNTS_CONNECTED_COLUMN_SQL)
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute(ACCOUNTS_LOCAL_STORAGE_COLUMN_SQL)
         except sqlite3.OperationalError:
             pass
 
@@ -73,6 +80,9 @@ def _row_to_account(row: sqlite3.Row) -> AccountRow:
         display_name=str(row["display_name"]),
         avatar_url=str(row["avatar_url"]) if row["avatar_url"] else None,
         cookie=str(row["cookie"]),
+        local_storage=str(row["local_storage"])
+        if "local_storage" in row.keys() and row["local_storage"] is not None
+        else "{}",
         status=str(row["status"]),
         auto_connect=bool(row["auto_connect"]),
         auth_valid=bool(row["auth_valid"]) if "auth_valid" in row.keys() else True,
@@ -116,6 +126,7 @@ def upsert_account(
     auto_connect: bool = False,
     auth_valid: bool | None = None,
     connected: bool | None = None,
+    local_storage: str | dict[str, str] | None = None,
 ) -> AccountRow:
     now = time.time()
     existing = get_account(account_id)
@@ -132,12 +143,19 @@ def upsert_account(
         if connected is not None
         else (existing.connected if existing else False)
     )
+    if isinstance(local_storage, dict):
+        resolved_local_storage = json.dumps(local_storage, ensure_ascii=False)
+    elif local_storage is not None:
+        resolved_local_storage = str(local_storage)
+    else:
+        resolved_local_storage = existing.local_storage if existing else "{}"
     with _connection() as conn:
         if existing:
             conn.execute(
                 """
                 UPDATE accounts
-                SET platform = ?, display_name = ?, avatar_url = ?, cookie = ?, status = ?,
+                SET platform = ?, display_name = ?, avatar_url = ?, cookie = ?,
+                    local_storage = ?, status = ?,
                     auto_connect = ?, auth_valid = ?, connected = ?, updated_at = ?
                 WHERE account_id = ?
                 """,
@@ -146,6 +164,7 @@ def upsert_account(
                     display_name,
                     resolved_avatar,
                     cookie,
+                    resolved_local_storage,
                     status,
                     int(auto_connect),
                     int(resolved_auth_valid),
@@ -158,9 +177,9 @@ def upsert_account(
             conn.execute(
                 """
                 INSERT INTO accounts (
-                    account_id, platform, display_name, avatar_url, cookie, status,
-                    auto_connect, auth_valid, connected, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    account_id, platform, display_name, avatar_url, cookie, local_storage,
+                    status, auto_connect, auth_valid, connected, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     account_id,
@@ -168,6 +187,7 @@ def upsert_account(
                     display_name,
                     resolved_avatar,
                     cookie,
+                    resolved_local_storage,
                     status,
                     int(auto_connect),
                     int(resolved_auth_valid),

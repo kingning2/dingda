@@ -43,10 +43,6 @@
 
 `sync_headless_page(...)`：必须在专用线程 `dingda-sync-browser` 里调用。探活用 `run_on_sync_browser`，扫码长任务用 `submit_on_sync_browser`。复用同一 Camoufox，每次独立 Context；任务结束关页不关进程。
 
-### `slider.py`
-
-通用滑块：找轨、拖、判断 `x5sec`。`try_solve_slider`。文案/站点判断由 Channel `risk.py` 决定要不要调；本文件不写「闲鱼处罚页」。
-
 ### `__init__.py`
 
 包标记。
@@ -54,3 +50,5 @@
 ## 子目录
 
 - [adapters/](adapters/README.md) — 浏览器实现（Camoufox）
+
+闲鱼自动过滑块不在本目录，见 [../channels/xianyu/slider.py](../channels/xianyu/README.md)。

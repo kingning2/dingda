@@ -74,3 +74,27 @@ class AccountProfileView(BaseModel):
 class AccountProfileResponse(BaseModel):
     ok: bool = True
     profile: AccountProfileView
+
+
+class BrowserCookieItem(BaseModel):
+    """可注入 WebView 的单条 Cookie（含平台域名映射）。"""
+
+    name: str
+    value: str
+    domain: str
+    path: str = "/"
+    secure: bool = True
+    http_only: bool = False
+    same_site: str = "Lax"
+    expires: float | None = None
+
+
+class BrowserSessionResponse(BaseModel):
+    """桌面商品预览用：cookie + localStorage。"""
+
+    ok: bool = True
+    platform: AccountPlatform
+    account_id: str | None = None
+    cookies: list[BrowserCookieItem] = Field(default_factory=list)
+    local_storage: dict[str, str] = Field(default_factory=dict)
+    message: str | None = None

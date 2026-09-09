@@ -8,6 +8,11 @@
 
 ## 本目录文件
 
+### `ocr.py`
+
+图片 OCR（RapidOCR）：小红书笔记图文识字，写入详情 `ocr_text`。
+依赖 `rapidocr-onnxruntime`（wheel 自带 ONNX 模型）。不在 Server 启动预热；Agent 开跑时后台 `warm_ocr`（与思考并行）。可选脚本 `scripts/prefetch_ocr.py` 仅本地验证安装。
+
 ### `registry.py`
 
 - `_BROWSER_SOURCES`：`xianyu` / `xiaohongshu` → `create_crawler(platform, browser, options)`

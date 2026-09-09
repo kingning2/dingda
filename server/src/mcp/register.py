@@ -14,6 +14,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel
 from pydantic_core import PydanticUndefined
 
+from src.agent.core.compress import compress_tool_payload
 from src.tools.registry import ToolSpec, call_tool, list_tools
 
 logger = logging.getLogger("dingda.mcp.register")
@@ -33,8 +34,10 @@ def _bind(mcp: FastMCP, spec: ToolSpec) -> None:
     async def handler(**kwargs: Any) -> dict[str, Any]:
         out = await call_tool(spec.name, kwargs)
         if isinstance(out, BaseModel):
-            return out.model_dump()
-        return dict(out)
+            payload = out.model_dump()
+        else:
+            payload = dict(out)
+        return compress_tool_payload(payload, tool_name=spec.name)
 
     handler.__name__ = spec.name
     handler.__doc__ = spec.description

@@ -12,7 +12,7 @@
 
 ### `login.py`
 
-页面与扫码原语：打开 `xiaohongshu.com/login`，拦截 `qrcode/create`、轮询 `qrcode/status`。扫码成功后打开探索页，从 `__INITIAL_STATE__.user.userInfo` 读昵称/头像（对齐 xiaohongshu-mcp），再落库。
+页面与扫码原语：打开 `xiaohongshu.com/login`，拦截 `qrcode/create`、轮询 `qrcode/status` / `qrcode/userinfo`。扫码成功后打开探索页，**截获站点签名 XHR**（`user/me` / `otherinfo`）读昵称头像（现网多数已不再注入 `__INITIAL_STATE__`），再落库。
 
 ### `status.py`
 

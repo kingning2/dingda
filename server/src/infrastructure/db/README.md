@@ -24,7 +24,7 @@
 
 ### `agent_works.py`
 
-`agent_works` 对话快照：`get_work` / `upsert_work`，整份 detail JSON。给 `/v1/agent/works/{work_id}` 用。
+`agent_works` 对话快照：`get_work` / `list_works` / `upsert_work`。列表给 `GET /v1/agent/works`（首页最近项目），详情给 `/v1/agent/works/{work_id}`。
 
 ### `__init__.py`
 

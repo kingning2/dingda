@@ -5,12 +5,13 @@
 调用关系（简化）：
 
 ```text
-扫码: channel.py → login.py + renew.py + browser.sync/slider
+扫码: channel.py → login.py + renew.py + browser.sync；过滑块 → slider.py
 mtop: session.py + sign.py → mtop.py
 IM:   token.py → ws.py → message.py
 发品: media.py + category.py + location.py → item.py
 续期: refresh.py（HTTP ping / 快速进入）; renew.py（滑块/有头）
 写保护: limiter.py + guard.py 包住 delete/publish/send/upload
+风控: risk.py（判定）+ slider.py（自动过滑块）
 ```
 
 ## 本目录文件
@@ -67,6 +68,11 @@ IM 用的 `accessToken`：`mtop.taobao.idlemessage.pc.login.token`。按 unb 缓
 ### `risk.py`
 
 `is_risk_control_text`、`page_is_punish(url)`、`RiskControlError`。只判断，不解题。
+
+### `slider.py`
+
+闲鱼 Baxia / NoCaptcha 自动过滑块：`try_solve_slider`、`clear_risk_cookies`、`auto_slider_enabled`。
+`renew.py` 与 `crawler/sources/xianyu` 在 punish / 验证码时调用。不属于 Browser 层。
 
 ### `ws.py`
 

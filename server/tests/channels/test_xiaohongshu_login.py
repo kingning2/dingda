@@ -101,19 +101,133 @@ class TestXiaohongshuApi:
         assert profile["avatar_url"] == "https://img.test/a.png"
         assert profile["user_id"] == "692e3c0900000000370038ec"
 
-    def test_build_account_profile_prefers_user_me(self) -> None:
+    def test_build_account_profile_top_level_userId(self) -> None:
+        account_id, name, _avatar = api.build_account_profile(
+            {"web_session": "abcdefghijklxxxx"},
+            {
+                "codeStatus": 2,
+                "userId": "692e3c0900000000370038ec",
+                "result": "小满技术工作室",
+            },
+            None,
+        )
+        assert account_id == "xhs:692e3c0900000000370038ec"
+        assert name == "小满技术工作室"
+
+    def test_profile_from_otherinfo_shape(self) -> None:
+        class FakeResp:
+            def json(self):
+                return {
+                    "code": 0,
+                    "data": {
+                        "basic_info": {
+                            "nickname": "小满技术工作室",
+                            "imageb": "https://img.test/a.png",
+                            "user_id": "692e3c0900000000370038ec",
+                        }
+                    },
+                }
+
+        profile = api._profile_from_response(FakeResp())
+        assert profile["nickname"] == "小满技术工作室"
+        assert profile["user_id"] == "692e3c0900000000370038ec"
+
+    def test_build_account_profile_prefers_completion_over_settled(self) -> None:
         account_id, name, avatar = api.build_account_profile(
             {"web_session": "sess"},
-            {"login_info": {"user_id": "old"}},
+            {"userId": "692e3c0900000000370038ec"},
             {
                 "nickname": "小满技术工作室",
                 "avatar_url": "https://sns-avatar-qc.xhscdn.com/avatar/a.webp",
-                "user_id": "692e3c0900000000370038ec",
+                "user_id": "6a9e7be90000000013031c06",  # guest 误读
             },
         )
         assert account_id == "xhs:692e3c0900000000370038ec"
         assert name == "小满技术工作室"
         assert avatar == "https://sns-avatar-qc.xhscdn.com/avatar/a.webp"
+
+    def test_build_account_profile_userId_camel(self) -> None:
+        account_id, name, _avatar = api.build_account_profile(
+            {"web_session": "abcdefghijklxxxx"},
+            {"login_info": {"userId": "uid-camel", "nickname": "驼峰"}},
+            None,
+        )
+        assert account_id == "xhs:uid-camel"
+        assert name == "驼峰"
+
+    def test_build_account_profile_nested_login_info(self) -> None:
+        account_id, name, _avatar = api.build_account_profile(
+            {"web_session": "abcdefghijklxxxx"},
+            {"login_info": {"user_id": "62be65ce000000001b026a67"}},
+            None,
+        )
+        assert account_id == "xhs:62be65ce000000001b026a67"
+        assert name == "新小红书账号"
+
+    def test_completion_richness_prefers_user_id(self) -> None:
+        weak = {"login_info": {"session": "s"}}
+        strong = {"login_info": {"session": "s", "user_id": "u1"}}
+        assert api._completion_richness(strong) > api._completion_richness(weak)
+
+    def test_build_account_profile_result_nickname(self) -> None:
+        account_id, name, _avatar = api.build_account_profile(
+            {"web_session": "abcdefghijklxxxx"},
+            {
+                "userId": "692e3c0900000000370038ec",
+                "result": {"nickname": "小满技术工作室"},
+            },
+            None,
+        )
+        assert account_id == "xhs:692e3c0900000000370038ec"
+        assert name == "小满技术工作室"
+
+    def test_read_page_user_info_soft_fail(self) -> None:
+        class FakePage:
+            def evaluate(self, script):
+                raise RuntimeError("no state")
+
+        assert api.read_page_user_info(FakePage()) == {}
+
+    def test_apply_status_waits_for_session(self) -> None:
+        class Runtime:
+            code_status = 0
+            lock = __import__("threading").Lock()
+
+        runtime = Runtime()
+        holder: dict = {}
+        complete = __import__("threading").Event()
+        expired = {"value": False}
+
+        api.apply_status_payload(
+            {"codeStatus": 2, "userId": "u1", "result": {"success": True}},
+            runtime=runtime,
+            expired_pending=expired,
+            completion_holder=holder,
+            login_complete=complete,
+        )
+        assert runtime.code_status == 2
+        assert complete.is_set() is False
+        assert holder["data"]["userId"] == "u1"
+
+        api.apply_status_payload(
+            {
+                "code_status": 2,
+                "login_info": {"session": "sess-1", "user_id": "u1"},
+            },
+            runtime=runtime,
+            expired_pending=expired,
+            completion_holder=holder,
+            login_complete=complete,
+        )
+        assert complete.is_set() is True
+        assert api._has_login_session(holder["data"]) is True
+
+    def test_profile_from_response_skips_guest(self) -> None:
+        class FakeResp:
+            def json(self):
+                return {"code": 0, "data": {"guest": True, "user_id": "guest-id"}}
+
+        assert api._profile_from_response(FakeResp()) == {}
 
     def test_is_login_success_response(self) -> None:
         class FakeResponse:

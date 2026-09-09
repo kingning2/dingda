@@ -6,7 +6,7 @@
 
 设计说明：
     - 平台：闲鱼（xianyu）；关键字与 URL token 对齐淘系常见风控页
-    - 只做判定，不负责解滑块（滑块在 browser.slider / renew）
+    - 只做判定，不负责解滑块（解题在 slider.py / renew.py）
 """
 
 from __future__ import annotations

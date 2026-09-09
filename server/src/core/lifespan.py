@@ -19,6 +19,7 @@ def create_lifespan(settings: Settings):
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         info("启动应用（轻量模式）", {"host": settings.host, "port": settings.port})
         await init_db()
+        # OCR 不在启动预热：首次小红书详情时再懒加载 RapidOCR
         yield
         await get_browser_manager().stop()
         close_sync_browser()

@@ -22,7 +22,7 @@ from typing import Any, Callable
 from src.browser.context import serialize_cookies
 from src.browser.manager import BrowserManager
 from src.browser.port import LaunchOptions
-from src.browser.slider import (
+from src.channels.xianyu.slider import (
     auto_slider_enabled,
     clear_risk_cookies,
     has_x5sec,

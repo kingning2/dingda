@@ -35,6 +35,21 @@ EXTRACT_JS = r"""
   };
 
   const clean = (v) => (v || '').replace(/\s+/g, ' ').trim();
+  const absUrl = (v) => {
+    const s = clean(v);
+    if (!s || s.startsWith('data:')) return '';
+    if (s.startsWith('//')) return 'https:' + s;
+    return s;
+  };
+  const pickImage = (card) => {
+    for (const img of card.querySelectorAll('img')) {
+      const src = absUrl(
+        img.currentSrc || img.src || img.getAttribute('data-src') || ''
+      );
+      if (src) return src;
+    }
+    return '';
+  };
   const sel = {
     card: 'a[href*="/item?id="]',
     title: '[class*="row1-wrap-title"], [class*="main-title"]',
@@ -87,6 +102,7 @@ EXTRACT_JS = r"""
         extra: attrs.slice(2).join(' | '),
         location,
         badge: clean(badgeNode?.getAttribute('title') || badgeNode?.textContent || ''),
+        image_url: pickImage(card),
       };
     })
     .filter((it) => it.title && it.url);
@@ -110,6 +126,37 @@ def item_id_from_url(url: str) -> str:
     """从商品 URL 抽出 item_id。"""
     match = _ITEM_ID.search(url or "")
     return match.group(1) if match else ""
+
+
+def _abs_image_url(url: Any) -> str:
+    """协议相对地址补 https；空/data URI 丢弃。"""
+    text = str(url or "").strip()
+    if not text or text.startswith("data:"):
+        return ""
+    if text.startswith("//"):
+        return f"https:{text}"
+    return text
+
+
+def _first_image_url(*candidates: Any) -> str | None:
+    """从若干候选里取第一张可用图（字符串或 imageInfos 列表）。"""
+    for candidate in candidates:
+        if isinstance(candidate, str):
+            url = _abs_image_url(candidate)
+            if url:
+                return url
+            continue
+        if isinstance(candidate, list):
+            for entry in candidate:
+                if isinstance(entry, str):
+                    url = _abs_image_url(entry)
+                elif isinstance(entry, dict):
+                    url = _abs_image_url(entry.get("url") or entry.get("picUrl"))
+                else:
+                    url = ""
+                if url:
+                    return url
+    return None
 
 
 def items_from_payload(payload: dict[str, Any]) -> list[CrawlItem]:
@@ -138,6 +185,7 @@ def items_from_payload(payload: dict[str, Any]) -> list[CrawlItem]:
                     "extra": row.get("extra"),
                     "location": row.get("location"),
                     "badge": row.get("badge"),
+                    "image_url": _first_image_url(row.get("image_url")),
                 },
             )
         )
@@ -242,6 +290,7 @@ def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
     resolved_id = str(payload.get("item_id") or item_id)
     title = str(payload.get("title") or "")
     price = payload.get("price") or ""
+    want = str(payload.get("want_count") or "").strip()
     return CrawlItem(
         item_id=resolved_id,
         title=title,
@@ -250,28 +299,46 @@ def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
         raw={
             "seller_nick": payload.get("seller_name", ""),
             "status": payload.get("status", ""),
+            "want_count": want or None,
+            "browse_count": str(payload.get("browse_count") or "").strip() or None,
+            "collect_count": str(payload.get("collect_count") or "").strip() or None,
+            "image_url": _first_image_url(payload.get("image_urls"), payload.get("image_url")),
             "view": payload,
         },
     )
 
 
 def item_from_mtop_detail(raw: dict[str, Any], item_id: str) -> CrawlItem:
-    """mtop.taobao.idle.pc.detail 原始 JSON → CrawlItem。"""
+    """mtop.taobao.idle.pc.detail 原始 JSON → CrawlItem（优先 itemDO）。"""
     data = raw.get("data") if isinstance(raw, dict) else None
     data = data if isinstance(data, dict) else {}
+    item_do = data.get("itemDO") if isinstance(data.get("itemDO"), dict) else {}
+    seller_do = data.get("sellerDO") if isinstance(data.get("sellerDO"), dict) else {}
     track = data.get("trackParams") if isinstance(data.get("trackParams"), dict) else {}
-    resolved_id = str(track.get("id") or item_id)
-    title = str(track.get("title") or "")
-    price = track.get("soldPrice") or track.get("price") or ""
+
+    resolved_id = str(item_do.get("itemId") or track.get("id") or item_id)
+    title = str(item_do.get("title") or track.get("title") or "")
+    sold = item_do.get("soldPrice") or item_do.get("defaultPrice") or track.get("soldPrice") or track.get("price")
+    price = f"¥{sold}" if sold not in (None, "") else ""
+    if price == "¥":
+        price = ""
+    want = item_do.get("wantCnt")
+    want_count = str(want) if want not in (None, "") else None
+    seller = str(seller_do.get("nick") or seller_do.get("uniqueName") or track.get("seller_nick") or "")
+    status = str(item_do.get("itemStatusStr") or track.get("itemStatus") or "")
     url = f"https://www.goofish.com/item?id={resolved_id}"
     return CrawlItem(
         item_id=resolved_id,
         title=title,
         url=url,
-        price=str(price) if price not in (None, "") else None,
+        price=price or None,
         raw={
-            "seller_nick": track.get("seller_nick", ""),
-            "status": track.get("itemStatus", ""),
+            "seller_nick": seller,
+            "status": status,
+            "want_count": want_count,
+            "browse_count": str(item_do["browseCnt"]) if item_do.get("browseCnt") not in (None, "") else None,
+            "collect_count": str(item_do["collectCnt"]) if item_do.get("collectCnt") not in (None, "") else None,
+            "image_url": _first_image_url(item_do.get("imageInfos"), item_do.get("picUrl")),
             "mtop": raw,
         },
     )

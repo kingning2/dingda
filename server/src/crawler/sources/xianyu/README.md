@@ -13,7 +13,9 @@
 - `search` — `goto` `https://www.goofish.com/search`，`evaluate(EXTRACT_JS)`，滚动 `SCROLL_JS`，`items_from_payload`
 - `detail` — `Session.from_cookie_header` + mtop 详情；失败则开商品页 `evaluate(VIEW_JS)`，`item_from_view`
 
-Cookie 域名 `.goofish.com`。风控/过期抛 `AppError`（`channel.risk` / `account.session_expired`）。
+Cookie 域名 `.goofish.com`。命中 punish / 验证码时先 `channels.xianyu.slider.try_solve_slider`，通过后再重开搜索/详情；仍失败才抛 `channel.risk`。登录过期抛 `account.session_expired`。
+
+`DINGDA_SLIDER_AUTO=0` 可关闭自动滑块。
 
 ### `extractor.py`
 
@@ -21,7 +23,7 @@ Cookie 域名 `.goofish.com`。风控/过期抛 `AppError`（`channel.risk` / `a
 
 - `EXTRACT_JS` / `SCROLL_JS` — 搜索卡片
 - `VIEW_JS` — 商品页内嵌 mtop
-- `items_from_payload` / `item_from_view` / `item_from_mtop_detail` → `CrawlItem`
+- `items_from_payload` / `item_from_view` / `item_from_mtop_detail` → `CrawlItem`（`raw.image_url` 封面）
 - `item_id_from_url`
 
 选择器只允许出现在本文件，不要渗进 `browser/`。

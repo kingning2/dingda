@@ -64,7 +64,7 @@ class ServerFormatter(logging.Formatter):
             _TIME_FORMAT
         )
         message = f"{record.getMessage()}{_format_context(record)}"
-        return f"{_PREFIX} {timestamp} {level} {record.name}  {message}"
+        return f"{_PREFIX} {timestamp} {level} {message}"
 
 
 def configure_logging(*, level: str = "INFO") -> None:

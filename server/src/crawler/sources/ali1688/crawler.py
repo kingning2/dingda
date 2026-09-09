@@ -32,7 +32,7 @@ from src.shared.errors import AppError
 logger = logging.getLogger("dingda.crawler.ali1688")
 
 DEFAULT_TAGS = "4306497"
-MAX_LIMIT = 50
+MAX_LIMIT = 100
 
 
 class Ali1688Crawler(ApiCrawler):

@@ -18,9 +18,10 @@ def test_get_tool() -> None:
     assert get_tool("compare").name == "compare"
 
 
-def test_list_tools_only_search_product() -> None:
+def test_list_tools_includes_login() -> None:
     names = [s.name for s in list_tools()]
-    assert names == ["compare", "product", "search"]
+    assert names == ["compare", "login", "preview", "product", "search"]
+    assert get_tool("login").name == "login"
 
 
 def test_call_unsupported_platform() -> None:

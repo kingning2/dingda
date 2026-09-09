@@ -70,8 +70,14 @@ class Page(ABC):
         """填充输入框。"""
 
     @abstractmethod
-    async def screenshot(self, path: Path | None = None) -> bytes:
-        """截图；可选落盘，始终返回 PNG bytes。"""
+    async def screenshot(
+        self,
+        path: Path | None = None,
+        *,
+        image_type: str = "png",
+        quality: int | None = None,
+    ) -> bytes:
+        """截图；可选落盘。image_type=png|jpeg；jpeg 可传 quality(0-100)。"""
 
     @abstractmethod
     async def cookies(self) -> list[Cookie]:

@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from src.browser.manager import get_browser_manager
 from src.browser.port import LaunchOptions
+from src.crawler.account_cookie import resolve_crawl_cookie
 from src.crawler.core.base import BrowserSessionOptions
 from src.crawler.core.types import CrawlContext
 from src.crawler.registry import cookies_for, create_api_crawler, create_crawler, is_api_platform
@@ -38,6 +39,7 @@ TOOL_DESCRIPTION = (
     "小红书（xiaohongshu）：收趋势与可搜关键词。"
     "1688（ali1688）：官方找货；可用 query 文本搜，或 image 以图搜，或 url 链接找同款。"
     "返回 item_id / title / url / price。"
+    "选品调研请多次调用、换词累积；单次 limit 建议 50～100（上限 100），总量争取 ≥100 条去重样本。"
 )
 DEFAULT_TIMEOUT_S = 60.0
 
@@ -66,10 +68,10 @@ class SearchInput(BaseModel):
         description="ali1688 链接找同款：1688/淘宝/天猫商品链接或商品 ID。",
     )
     limit: int = Field(
-        default=20,
+        default=50,
         ge=1,
-        le=50,
-        description="返回条数，建议 10～20。",
+        le=100,
+        description="返回条数，选品调研建议 50～100；单次上限 100。不够则换词再 search。",
     )
     sort: str | None = Field(
         default=None,
@@ -115,6 +117,12 @@ class SearchItem(BaseModel):
     title: str = Field(description="标题")
     url: str = Field(description="页面链接")
     price: str | None = Field(default=None, description="列表价，可能为空")
+    seller_nick: str | None = Field(default=None, description="卖家/作者昵称，可能为空")
+    xsec_token: str | None = Field(
+        default=None,
+        description="小红书搜索下发的 token，拉详情必须带回，否则会 300031",
+    )
+    image_url: str | None = Field(default=None, description="封面图，可能为空")
 
 
 class SearchOutput(BaseModel):
@@ -128,22 +136,47 @@ class SearchOutput(BaseModel):
     message: str | None = None
 
 
-async def run_search(inp: SearchInput) -> SearchOutput:
-    """执行搜品：API 平台不启动浏览器。"""
+async def run_search(
+    inp: SearchInput,
+    *,
+    on_live_frame: Any | None = None,
+    live_frame_enabled: bool | None = None,
+) -> SearchOutput:
+    """执行搜品：API 平台不启动浏览器。
+
+    live_frame_enabled:
+        - None：有 on_live_frame 则开，否则关
+        - True / False：强制开/关（True 时仍需回调）
+    """
     task_id = f"mcp-{uuid.uuid4().hex[:12]}"
     query = (inp.query or "").strip()
+    cookie = resolve_crawl_cookie(inp.platform, inp.cookie)
+    push_live = (
+        bool(on_live_frame)
+        if live_frame_enabled is None
+        else bool(live_frame_enabled and on_live_frame)
+    )
     logger.info(
-        "tool start name=search platform=%s query=%s limit=%s task=%s",
+        "tool start name=search platform=%s query=%s limit=%s task=%s has_cookie=%s live=%s",
         inp.platform,
         query,
         inp.limit,
         task_id,
+        bool(cookie),
+        push_live,
     )
     try:
         if is_api_platform(inp.platform):
             result_items = await _search_api(inp, task_id, query)
         else:
-            result_items = await _search_browser(inp, task_id, query)
+            result_items = await _search_browser(
+                inp,
+                task_id,
+                query,
+                cookie=cookie,
+                on_live_frame=on_live_frame,
+                live_frame_enabled=push_live,
+            )
 
         rows = [
             SearchItem(
@@ -151,6 +184,9 @@ async def run_search(inp: SearchInput) -> SearchOutput:
                 title=item.title,
                 url=item.url,
                 price=item.price,
+                seller_nick=_raw_str(item.raw, "seller_nick"),
+                xsec_token=_raw_str(item.raw, "xsec_token"),
+                image_url=_raw_str(item.raw, "image_url"),
             )
             for item in result_items
         ]
@@ -175,7 +211,6 @@ async def run_search(inp: SearchInput) -> SearchOutput:
             message=str(exc),
         )
 
-
 async def _search_api(inp: SearchInput, task_id: str, query: str) -> list[Any]:
     """API Source 搜品。"""
     meta = _ali1688_meta(inp)
@@ -184,19 +219,35 @@ async def _search_api(inp: SearchInput, task_id: str, query: str) -> list[Any]:
     return result.items
 
 
-async def _search_browser(inp: SearchInput, task_id: str, query: str) -> list[Any]:
+async def _search_browser(
+    inp: SearchInput,
+    task_id: str,
+    query: str,
+    *,
+    cookie: str | None = None,
+    on_live_frame: Any | None = None,
+    live_frame_enabled: bool = False,
+) -> list[Any]:
     """浏览器 Source 搜品。"""
+    from src.crawler.core.live import META_LIVE_CALLBACK, META_LIVE_ENABLED
+
     manager = get_browser_manager()
     port = await manager.acquire(LaunchOptions(headless=True))
     try:
         options = BrowserSessionOptions(
             proxy_url=inp.proxy_url,
-            cookies=cookies_for(inp.platform, inp.cookie),
+            cookies=cookies_for(inp.platform, cookie),
             cookie_domain=inp.cookie_domain or "",
         )
         crawler = create_crawler(inp.platform, port, options)
+        meta: dict[str, Any] = {
+            "limit": inp.limit,
+            META_LIVE_ENABLED: bool(live_frame_enabled),
+        }
+        if on_live_frame is not None:
+            meta[META_LIVE_CALLBACK] = on_live_frame
         result = await crawler.search(
-            CrawlContext(task_id=task_id, meta={"limit": inp.limit}),
+            CrawlContext(task_id=task_id, meta=meta),
             query,
         )
         return result.items
@@ -230,3 +281,11 @@ def _ali1688_meta(inp: SearchInput) -> dict[str, Any]:
     if inp.ic_tags:
         meta["ic_tags"] = inp.ic_tags
     return meta
+
+
+def _raw_str(raw: Any, key: str) -> str | None:
+    """从 CrawlItem.raw 取非空字符串。"""
+    if not isinstance(raw, dict):
+        return None
+    value = str(raw.get(key) or "").strip()
+    return value or None

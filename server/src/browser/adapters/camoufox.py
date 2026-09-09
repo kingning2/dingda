@@ -150,7 +150,40 @@ class CamoufoxAdapter(BrowserPort):
             wrapped = PlaywrightPage(page, context=context, owns_context=True)
 
         if cookies:
+            # Firefox/Camoufox：空白页直接 add_cookies 常不生效，先落到各 cookie 域名再注入。
+            from src.browser.context import normalize_cookies
+
+            normalized = normalize_cookies(cookies, default_domain=default_domain)
+            seed_hosts: set[str] = set()
+            for item in normalized:
+                host = (item.domain or default_domain or "").lstrip(".").strip()
+                if host:
+                    seed_hosts.add(host)
+            for host in sorted(seed_hosts):
+                seed = f"https://www.{host}/"
+                try:
+                    await wrapped.goto(seed, wait_until="domcontentloaded", timeout_ms=25_000)
+                except Exception:  # noqa: BLE001
+                    logger.debug("Camoufox seed goto failed url=%s", seed, exc_info=True)
+            # 清掉 seed 时站点下发的匿名 cookie，再写入账号 cookie，避免冲掉登录态
+            try:
+                await wrapped.context.clear_cookies()
+            except Exception:  # noqa: BLE001
+                logger.debug("Camoufox clear_cookies failed", exc_info=True)
             await wrapped.add_cookies(cookies, default_domain=default_domain)
+            logger.info(
+                "Camoufox 已注入 Cookie count=%s seeds=%s",
+                len(normalized),
+                sorted(seed_hosts),
+            )
+            # 注入后再进一遍各域名，页面带着 cookie 重新加载
+            for host in sorted(seed_hosts):
+                seed = f"https://www.{host}/"
+                try:
+                    await wrapped.goto(seed, wait_until="domcontentloaded", timeout_ms=25_000)
+                except Exception:  # noqa: BLE001
+                    logger.debug("Camoufox cookie refresh goto failed url=%s", seed, exc_info=True)
+            logger.info("Camoufox Cookie 注入后已刷新 seeds=%s", sorted(seed_hosts))
         return wrapped
 
     async def close(self) -> None:

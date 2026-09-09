@@ -35,6 +35,7 @@ class XianyuLoginRuntime:
     qr_base64: str | None = None
     qr_url: str | None = None
     cookies: dict[str, str] | None = None
+    local_storage: dict[str, str] | None = None
     display_name: str | None = None
     avatar_url: str | None = None
     scanned: bool = False

@@ -15,7 +15,16 @@ from src.shared.errors import AppError
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def handle_app_error(_request: Request, exc: AppError) -> JSONResponse:
-        error(exc.message, {"code": exc.code, "status": exc.status_code})
+        # 404 多为「尚不存在」探路（如新建 work 先 GET），不当 ERROR 刷屏
+        if exc.status_code >= 500:
+            error(exc.message, {"code": exc.code, "status": exc.status_code})
+        elif exc.status_code >= 400:
+            logging.getLogger("dingda").warning(
+                "%s code=%s status=%s",
+                exc.message,
+                exc.code,
+                exc.status_code,
+            )
         return JSONResponse(
             status_code=exc.status_code,
             content={"ok": False, "code": exc.code, "message": exc.message},

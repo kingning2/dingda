@@ -4,7 +4,7 @@
     聚合各 Tool 模块（契约 + run_*）；供 MCP 与产品 Agent 统一 invoke。
 
 设计说明：
-    - 选品：search / product / compare（每工具一个 ``tools/<name>.py``）
+    - 选品：search / product / compare / preview / login（每工具一个 ``tools/<name>.py``）
     - 浏览器平台经 Crawler → BrowserPort；ali1688 经 ApiCrawler → Channel
     - 不在此 import Playwright
 
@@ -29,6 +29,23 @@ from src.tools.compare import (
     CompareInput,
     CompareOutput,
     run_compare,
+)
+from src.tools.live_push import make_live_frame_handler
+from src.tools.login import (
+    DEFAULT_TIMEOUT_S as LOGIN_TIMEOUT_S,
+    TOOL_DESCRIPTION as LOGIN_DESCRIPTION,
+    TOOL_NAME as LOGIN_NAME,
+    LoginInput,
+    LoginOutput,
+    run_login,
+)
+from src.tools.preview import (
+    DEFAULT_TIMEOUT_S as PREVIEW_TIMEOUT_S,
+    TOOL_DESCRIPTION as PREVIEW_DESCRIPTION,
+    TOOL_NAME as PREVIEW_NAME,
+    PreviewInput,
+    PreviewOutput,
+    run_preview,
 )
 from src.tools.product import (
     DEFAULT_TIMEOUT_S as PRODUCT_TIMEOUT_S,
@@ -105,6 +122,22 @@ _TOOLS: dict[str, ToolSpec] = {
         run_compare,  # type: ignore[arg-type]
         COMPARE_TIMEOUT_S,
     ),
+    PREVIEW_NAME: _spec(
+        PREVIEW_NAME,
+        PREVIEW_DESCRIPTION,
+        PreviewInput,
+        PreviewOutput,
+        run_preview,  # type: ignore[arg-type]
+        PREVIEW_TIMEOUT_S,
+    ),
+    LOGIN_NAME: _spec(
+        LOGIN_NAME,
+        LOGIN_DESCRIPTION,
+        LoginInput,
+        LoginOutput,
+        run_login,  # type: ignore[arg-type]
+        LOGIN_TIMEOUT_S,
+    ),
 }
 
 
@@ -122,10 +155,21 @@ def get_tool(name: str) -> ToolSpec:
 
 
 async def call_tool(name: str, payload: dict[str, Any]) -> BaseModel:
-    """校验入参并执行 Tool。"""
+    """校验入参并执行 Tool；Agent run 下自动挂直播推帧。"""
     logger.info("registry call name=%s", name)
     spec = get_tool(name)
     inp = spec.input_model.model_validate(payload)
-    out = await spec.handler(inp)
+    live = make_live_frame_handler()
+    if name in {"search", "product", "preview"} and live is None:
+        logger.warning(
+            "tool %s without DINGDA_AGENT_RUN_ID：浏览器直播不会推到 UI",
+            name,
+        )
+    if live is not None and name in {"search", "product"}:
+        out = await spec.handler(inp, on_live_frame=live, live_frame_enabled=True)
+    elif live is not None and name == "login":
+        out = await spec.handler(inp, on_live_frame=live)
+    else:
+        out = await spec.handler(inp)
     logger.info("registry call done name=%s", name)
     return out

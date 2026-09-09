@@ -144,6 +144,9 @@ class ChannelQrService:
                 display_name=snapshot.get("display_name"),
                 avatar_url=snapshot.get("avatar_url"),
                 cookie=snapshot.get("cookie"),
+                local_storage=snapshot.get("local_storage")
+                if isinstance(snapshot.get("local_storage"), dict)
+                else None,
             )
             info(
                 "channel.qr.success",
@@ -194,7 +197,7 @@ class ChannelQrService:
             detail="已取消扫码",
         )
 
-    def _snapshot(self, session: QrSession) -> dict[str, str | None]:
+    def _snapshot(self, session: QrSession) -> dict[str, object]:
         return session.channel.snapshot(session.runtime).as_dict()
 
     def _get(self, session_id: str) -> QrSession:

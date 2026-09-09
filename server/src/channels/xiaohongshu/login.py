@@ -164,7 +164,7 @@ def profile_from_user_me(payload: dict[str, Any]) -> dict[str, Any]:
         return {}
     nickname = str(data.get("nickname") or "").strip() or None
     avatar_url = str(data.get("images") or data.get("imageb") or "").strip() or None
-    user_id = str(data.get("user_id") or data.get("userId") or "").strip() or None
+    user_id = _pick_user_id(data)
     logger.info(
         "user/me 字段 nickname=%s user_id=%s images=%s guest=%s keys=%s",
         nickname,
@@ -181,6 +181,54 @@ def profile_from_user_me(payload: dict[str, Any]) -> dict[str, Any]:
     if user_id:
         profile["user_id"] = user_id
     return profile
+
+
+def _pick_user_id(*sources: Any) -> str | None:
+    """从多处 dict 取稳定 user_id（兼容 userId / 嵌套 login_info）。"""
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        for key in ("user_id", "userId", "userid"):
+            value = src.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        nested = src.get("login_info")
+        if isinstance(nested, dict):
+            found = _pick_user_id(nested)
+            if found:
+                return found
+    return None
+
+
+def _has_login_session(payload: dict[str, Any] | None) -> bool:
+    """status=2 是否已带上可写入浏览器的 session。"""
+    if not isinstance(payload, dict):
+        return False
+    login_info = payload.get("login_info")
+    if isinstance(login_info, dict):
+        session = login_info.get("session") or login_info.get("secure_session")
+        if isinstance(session, str) and session.strip():
+            return True
+    session = payload.get("session") or payload.get("secure_session")
+    return isinstance(session, str) and bool(session.strip())
+
+
+def _completion_richness(payload: dict[str, Any]) -> int:
+    """status=2 载荷完整度：session > user_id > 其它。"""
+    login_info = payload.get("login_info")
+    score = 0
+    if isinstance(login_info, dict):
+        if login_info.get("session") or login_info.get("secure_session"):
+            score += 8
+        if _pick_user_id(login_info):
+            score += 4
+        if login_info.get("nickname"):
+            score += 1
+    if payload.get("session") or payload.get("secure_session"):
+        score += 8
+    if _pick_user_id(payload):
+        score += 4
+    return score
 
 
 def apply_session_cookies(page: Any, cookies: dict[str, str]) -> None:
@@ -203,14 +251,80 @@ _READ_USER_INFO_JS = """
 }
 """
 
+_USER_INFO_READY_JS = """
+() => {
+  const raw = window.__INITIAL_STATE__?.user?.userInfo;
+  const info = raw && raw.value !== undefined ? raw.value : raw;
+  if (!info || info.guest === true) return false;
+  return !!(info.nickname || info.user_id || info.userId);
+}
+"""
+
+_PROFILE_API_NEEDLES = (
+    "api/sns/web/v2/user/me",
+    "api/sns/web/v1/user/otherinfo",
+    "api/sns/web/v1/user/selfinfo",
+)
+
+
+def _is_profile_api_response(response: Any) -> bool:
+    try:
+        url = response.url or ""
+        if response.request.method not in {"GET", "POST"}:
+            return False
+        return any(needle in url for needle in _PROFILE_API_NEEDLES)
+    except Exception:
+        return False
+
+
+def _profile_from_response(response: Any) -> dict[str, Any]:
+    try:
+        payload = response.json()
+    except Exception:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
+    if isinstance(data, dict) and data.get("guest") is True:
+        logger.info("忽略 guest 资料响应 keys=%s", sorted(data.keys()))
+        return {}
+    profile = profile_from_user_me(payload)
+    if profile.get("nickname"):
+        return profile
+    # otherinfo 常见形状：data.basic_info / data.user_info
+    if not isinstance(data, dict):
+        return profile
+    for node in (
+        data,
+        data.get("basic_info"),
+        data.get("basicInfo"),
+        data.get("user_info"),
+        data.get("userInfo"),
+        data.get("user"),
+    ):
+        if not isinstance(node, dict) or node.get("guest") is True:
+            continue
+        name, avatar = extract_profile_from_tree(node)
+        uid = _pick_user_id(node, data)
+        if name or avatar:
+            if name:
+                profile["nickname"] = name
+            if avatar:
+                profile["avatar_url"] = avatar
+            if uid:
+                profile["user_id"] = uid
+            if profile.get("nickname"):
+                return profile
+    return profile
+
 
 def read_page_user_info(page: Any) -> dict[str, Any]:
-    """从探索页 ``__INITIAL_STATE__.user.userInfo`` 读当前登录用户（对齐 xiaohongshu-mcp）。"""
-    page.wait_for_function(
-        "() => window.__INITIAL_STATE__ !== undefined",
-        timeout=15_000,
-    )
-    raw = page.evaluate(_READ_USER_INFO_JS)
+    """兼容旧页：若仍有 ``__INITIAL_STATE__`` 则读取（现网多数已不再注入）。"""
+    try:
+        raw = page.evaluate(_READ_USER_INFO_JS)
+    except Exception as exc:  # noqa: BLE001
+        logger.info("读取 __INITIAL_STATE__ 失败: %s", exc)
+        return {}
     logger.info(
         "userInfo evaluate type=%s keys=%s error=%s",
         type(raw).__name__,
@@ -222,36 +336,137 @@ def read_page_user_info(page: Any) -> dict[str, Any]:
     return profile_from_user_me(raw)
 
 
+def _merge_profile(dst: dict[str, Any], src: dict[str, Any]) -> dict[str, Any]:
+    for key, value in src.items():
+        if value:
+            dst[key] = value
+    return dst
+
+
+def _request_user_me_via_context(page: Any) -> dict[str, Any]:
+    """用 Playwright 请求上下文读 user/me（同页 cookie，不依赖页面签名脚本）。"""
+    try:
+        resp = page.request.get(
+            "https://edith.xiaohongshu.com/api/sns/web/v2/user/me",
+            headers={
+                "Accept": "application/json, text/plain, */*",
+                "Referer": "https://www.xiaohongshu.com/",
+            },
+        )
+        payload = resp.json()
+        logger.info(
+            "context user/me status=%s keys=%s",
+            resp.status,
+            sorted(payload.keys()) if isinstance(payload, dict) else None,
+        )
+        if not isinstance(payload, dict):
+            return {}
+        return profile_from_user_me(payload)
+    except Exception as exc:  # noqa: BLE001
+        logger.info("context user/me 失败: %s", exc)
+        return {}
+
+
+def _goto_and_catch_profile(page: Any, url: str, *, timeout_ms: int = 15_000) -> dict[str, Any]:
+    """导航并截获站点自己发出的资料 XHR（带 x-s 签名）。"""
+    best: dict[str, Any] = {}
+
+    def _on_response(response: Any) -> None:
+        nonlocal best
+        if not _is_profile_api_response(response):
+            return
+        try:
+            got = _profile_from_response(response)
+        except Exception:
+            return
+        if got.get("nickname") or (got.get("user_id") and got.get("avatar_url")):
+            _merge_profile(best, got)
+            logger.info(
+                "截获资料接口 url=%s name=%s user_id=%s",
+                (response.url or "")[:120],
+                got.get("nickname"),
+                got.get("user_id"),
+            )
+
+    page.on("response", _on_response)
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=25_000)
+        deadline = time.monotonic() + timeout_ms / 1000
+        me_tried = False
+        while time.monotonic() < deadline:
+            if best.get("nickname"):
+                break
+            page.wait_for_timeout(500)
+            if not me_tried and not best.get("nickname"):
+                me_tried = True
+                me = _request_user_me_via_context(page)
+                _merge_profile(best, me)
+                if best.get("nickname"):
+                    break
+    except Exception as exc:  # noqa: BLE001
+        logger.info("导航读资料失败 url=%s err=%s", url, exc)
+    finally:
+        try:
+            page.remove_listener("response", _on_response)
+        except Exception:
+            pass
+    return best
+
+
 def read_login_profile(
     page: Any,
     cookies: dict[str, str],
+    *,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
-    """登录成功后打开探索页，从页面状态读昵称头像。"""
+    """登录成功后读昵称头像。
+
+    现网多数页面已不再注入 ``__INITIAL_STATE__``，改为截获站点签名 XHR
+    （user/me / otherinfo），并短轮询直到出现非 guest 昵称。
+    """
     logger.info(
-        "userInfo 开始读取 page=%s cookie_keys=%s has_a1=%s has_web_session=%s",
+        "userInfo 开始读取 page=%s cookie_keys=%s has_a1=%s has_web_session=%s user_id=%s",
         getattr(page, "url", ""),
         sorted(cookies.keys()),
         bool(cookies.get("a1")),
         bool(cookies.get("web_session")),
+        user_id,
     )
     apply_session_cookies(page, cookies)
+    merged: dict[str, Any] = {}
     try:
-        logger.info("打开探索页读取 __INITIAL_STATE__")
-        page.goto(f"{HOME_URL}/explore", wait_until="domcontentloaded", timeout=25_000)
-        page.wait_for_timeout(1_000)
+        logger.info("打开探索页并截获资料接口")
+        caught = _goto_and_catch_profile(page, f"{HOME_URL}/explore")
+        _merge_profile(merged, caught)
         logger.info("探索页已打开 page=%s", getattr(page, "url", ""))
-        profile = read_page_user_info(page)
+
+        if not merged.get("nickname"):
+            _merge_profile(merged, _request_user_me_via_context(page))
+
+        if not merged.get("nickname"):
+            _merge_profile(merged, read_page_user_info(page))
+
+        if not merged.get("nickname") and isinstance(user_id, str) and user_id.strip():
+            uid = user_id.strip()
+            for url in (
+                f"{HOME_URL}/user/profile/me",
+                f"{HOME_URL}/user/profile/{uid}",
+            ):
+                logger.info("改走主页读资料 url=%s", url)
+                _merge_profile(merged, _goto_and_catch_profile(page, url, timeout_ms=12_000))
+                if merged.get("nickname"):
+                    break
+
         logger.info(
             "userInfo 读取完成 name=%s avatar=%s user_id=%s",
-            profile.get("nickname"),
-            bool(profile.get("avatar_url")),
-            profile.get("user_id"),
+            merged.get("nickname"),
+            bool(merged.get("avatar_url")),
+            merged.get("user_id"),
         )
-        return profile
+        return merged
     except Exception as exc:
         logger.info("userInfo 读取失败: %s page=%s", exc, getattr(page, "url", ""))
-        return {}
-
+        return merged
 
 def merge_session_cookies(
     cookies: dict[str, str],
@@ -303,39 +518,34 @@ def publish_login_success(
     page: Any,
     completion_data: dict[str, Any],
 ) -> tuple[str, str, str | None, str]:
-    """写入 runtime 登录结果；先落 cookie 再读探索页资料，避免前端仍显示二维码。"""
+    """写入 runtime 登录结果；先读齐资料再暴露 cookie，避免前端过早落库假 account_id。"""
     logger.info("小红书登录确认，开始收 cookie 并从探索页读 userInfo")
+    login_info = completion_data.get("login_info")
+    logger.info(
+        "completion keys=%s login_info_keys=%s result=%r userId=%s",
+        sorted(completion_data.keys()),
+        sorted(login_info.keys()) if isinstance(login_info, dict) else None,
+        completion_data.get("result"),
+        _pick_user_id(completion_data),
+    )
     cookies = collect_login_cookies(page, completion_data)
     logger.info("小红书 cookie 已收集 keys=%s", sorted(cookies.keys()))
+
+    known_user_id = _pick_user_id(completion_data)
+    # 必须先读资料再写 runtime.cookie：否则轮询会用 web_session 前缀当 account_id 落库
+    settled_profile = read_login_profile(page, cookies, user_id=known_user_id)
     account_id, display_name, avatar_url = build_account_profile(
         cookies,
         completion_data,
-        None,
+        settled_profile or None,
     )
     serialized = cookie_str(cookies)
-    # 先写 cookie，轮询立刻变 success；昵称头像稍后补
     with runtime.lock:
         runtime.cookie = serialized
         runtime.account_id = account_id
         runtime.display_name = display_name
         runtime.avatar_url = avatar_url
         runtime.code_status = 2
-    logger.info(
-        "小红书登录态已写入 cookie account_id=%s，继续读资料",
-        account_id,
-    )
-
-    settled_profile = read_login_profile(page, cookies)
-    if settled_profile:
-        account_id, display_name, avatar_url = build_account_profile(
-            cookies,
-            completion_data,
-            settled_profile,
-        )
-        with runtime.lock:
-            runtime.account_id = account_id
-            runtime.display_name = display_name
-            runtime.avatar_url = avatar_url
     logger.info(
         "小红书资料写入 account_id=%s name=%s avatar=%s",
         account_id,
@@ -363,20 +573,29 @@ def build_account_profile(
         )
         nickname = nickname or tree_name
         avatar_url = avatar_url or tree_avatar
+        # /api/qrcode/userinfo 的 result 里有时带昵称
+        result = completion_data.get("result")
+        if isinstance(result, dict) and (not nickname or not avatar_url):
+            result_name, result_avatar = extract_profile_from_tree(result)
+            nickname = nickname or result_name
+            avatar_url = avatar_url or result_avatar
+        elif isinstance(result, str) and result.strip() and not nickname:
+            # 少数响应 result 直接是昵称字符串
+            nickname = result.strip()
 
-    user_id = (
-        settled.get("user_id")
-        or login_info.get("user_id")
-        or completion_data.get("user_id")
-    )
-    account_id = (
-        f"xhs:{user_id}"
-        if user_id
-        else f"xhs:{cookies.get('web_session', 'unknown')[:12]}"
-    )
+    user_id = _pick_user_id(login_info, completion_data, settled)
+    if user_id:
+        account_id = f"xhs:{user_id}"
+    else:
+        # 兜底：每次扫码 web_session 都变，会导致重复卡片；尽量不要走到这里
+        session = str(cookies.get("web_session") or "unknown")
+        account_id = f"xhs:{session[:12]}"
+        logger.warning(
+            "小红书缺少稳定 user_id，暂用 web_session 前缀 account_id=%s",
+            account_id,
+        )
     display_name = (nickname or "").strip() or "新小红书账号"
     return account_id, display_name, avatar_url
-
 
 def extract_qr_credentials(payload: dict[str, Any]) -> tuple[str, str]:
     qr_id = str(payload.get("qr_id", "")).strip()
@@ -417,7 +636,11 @@ def apply_status_payload(
     completion_holder: dict[str, Any],
     login_complete: Any,
 ) -> int:
-    """处理 status 响应，返回 code_status。"""
+    """处理 status / userinfo 响应，返回 code_status。
+
+    ``/api/qrcode/userinfo`` 可能先报 codeStatus=2 但没有 ``login_info.session``；
+    此时只标记「已确认」，继续等 status 把 session 带下来，否则浏览器仍是 guest。
+    """
     code_status = parse_code_status(payload)
     if is_qr_expired(code_status):
         expired_pending["value"] = True
@@ -428,12 +651,69 @@ def apply_status_payload(
                 logger.info("小红书二维码已扫描，等待手机确认")
             runtime.code_status = 1
     elif code_status == 2:
-        completion_holder["data"] = payload
+        existing = completion_holder.get("data")
+        if not isinstance(existing, dict) or _completion_richness(payload) >= _completion_richness(
+            existing
+        ):
+            completion_holder["data"] = payload
         with runtime.lock:
             runtime.code_status = 2
-        login_complete.set()
-        logger.info("小红书扫码登录已确认")
+        if _has_login_session(completion_holder.get("data")):
+            login_complete.set()
+            logger.info(
+                "小红书扫码登录已确认且拿到 session login_info_keys=%s user_id=%s",
+                sorted(completion_holder["data"].get("login_info").keys())
+                if isinstance(completion_holder["data"].get("login_info"), dict)
+                else None,
+                _pick_user_id(completion_holder["data"]),
+            )
+        else:
+            logger.info(
+                "小红书手机已确认，等待 status 下发 session user_id=%s keys=%s",
+                _pick_user_id(payload),
+                sorted(payload.keys()),
+            )
     return code_status
+
+
+def wait_for_login_session(
+    page: Any,
+    *,
+    qr_id: str,
+    qr_code: str,
+    runtime: Any,
+    completion_holder: dict[str, Any],
+    login_complete: Any,
+    expired_pending: dict[str, bool],
+    attempts: int = 12,
+) -> bool:
+    """手机确认后主动轮询 status，直到拿到 login_info.session。"""
+    if _has_login_session(completion_holder.get("data")):
+        login_complete.set()
+        return True
+    logger.info("开始补拉 status session qr_id=%s attempts=%s", qr_id, attempts)
+    for i in range(1, attempts + 1):
+        try:
+            status_payload = poll_status_in_browser(page, qr_id, qr_code)
+            apply_status_payload(
+                status_payload,
+                runtime=runtime,
+                expired_pending=expired_pending,
+                completion_holder=completion_holder,
+                login_complete=login_complete,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.info("补拉 status 失败 attempt=%s/%s err=%s", i, attempts, exc)
+        if _has_login_session(completion_holder.get("data")):
+            login_complete.set()
+            logger.info("补拉 status 成功拿到 session attempt=%s/%s", i, attempts)
+            return True
+        page.wait_for_timeout(400)
+    logger.warning(
+        "补拉 status 仍无 session keys=%s",
+        sorted((completion_holder.get("data") or {}).keys()),
+    )
+    return False
 
 
 def trigger_qr_refresh(page: Any) -> dict[str, Any]:

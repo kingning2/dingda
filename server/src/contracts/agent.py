@@ -87,6 +87,23 @@ class AgentWorkDetailResponse(BaseModel):
     detail: dict[str, Any]
 
 
+class AgentWorkSummaryView(BaseModel):
+    """工作列表摘要（首页最近项目）。"""
+
+    work_id: str
+    title: str
+    updated_at: float
+    status_label: str | None = None
+    status_state: str | None = None
+
+
+class AgentWorkListResponse(BaseModel):
+    """工作列表。"""
+
+    ok: bool = True
+    items: list[AgentWorkSummaryView] = Field(default_factory=list)
+
+
 class AgentWorkPutRequest(BaseModel):
     """覆盖写入 AI 工作对话快照。"""
 

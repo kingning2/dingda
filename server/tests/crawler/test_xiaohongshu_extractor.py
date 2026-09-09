@@ -54,3 +54,27 @@ def test_item_from_detail_nested_note() -> None:
     assert item.item_id == "abc"
     assert item.title == "详情标题"
     assert item.raw["seller_nick"] == "作者"
+
+
+def test_item_from_detail_feed_note_card() -> None:
+    item = item_from_detail(
+        {
+            "items": [
+                {
+                    "model_type": "note",
+                    "note_card": {
+                        "note_id": "nid1",
+                        "title": "弹层标题",
+                        "user": {"nickname": "阿茶"},
+                        "interact_info": {"liked_count": "12", "collected_count": "3"},
+                    },
+                }
+            ]
+        },
+        "nid1",
+    )
+    assert item.item_id == "nid1"
+    assert item.title == "弹层标题"
+    assert item.raw["seller_nick"] == "阿茶"
+    assert item.raw["browse_count"] == "12"
+    assert item.raw["want_count"] == "3"

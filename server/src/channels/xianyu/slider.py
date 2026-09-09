@@ -1,15 +1,14 @@
-"""阿里系滑块自动求解（闲鱼 / 1688 / 淘宝 Baxia / NoCaptcha）— 拟人拖动轨迹与反检测。
+"""闲鱼 Baxia / NoCaptcha 自动过滑块。
 
-负责：
-- 在主页 / iframe 中定位 `#nc_1_n1z` 滑块与轨道（含启发式兜底）；
-- 生成拟人拖动轨迹（三种方案轮换：容器内 / 超出容器 / 最小急动度）；
-- 用 CDP 真实鼠标事件（带 deltaX/deltaY）拖动，修复 movementX=0 机器人特征；
-- 以 x5sec Cookie 或弹窗消失判定成功，失败时清 risk cookies 重试。
+职责：
+    在闲鱼 punish / 验证页定位滑块与轨道，拟人拖动，以 x5sec 或弹窗消失判定成功。
+    供扫码 renew、爬虫搜索/详情风控恢复调用；不属于 Browser 通用层。
 
-参考 XianYuPilo sliderSolver.ts：三种轨迹方案按尝试轮换，对抗
-Baxia FireyeJS 的 ML 轨迹检测；默认优先最小急动度剖面（Hogan 1984）。
-Camoufox 路径关闭包内 humanize，由本模块控制拖动节奏，避免逐步 mouse.move
-被拉到秒级。"""
+设计说明：
+    - 平台：闲鱼（xianyu）；选择器与 x5sec 语义只留在本 Channel
+    - 轨迹策略对齐 XianYuPilo sliderSolver.ts（容器内 / 超出 / 最小急动度轮换）
+    - Browser 只提供 Page/Context；是否过滑块、何时调用由本模块与 risk/renew 决定
+"""
 
 from __future__ import annotations
 
@@ -21,7 +20,7 @@ import random
 import time
 from typing import Any
 
-logger = logging.getLogger("dingda.browser.slider")
+logger = logging.getLogger("dingda.channel.xianyu.slider")
 
 BUTTON_SELECTORS = (
     "#nc_1_n1z",

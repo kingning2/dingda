@@ -53,8 +53,12 @@
 - `PUT /default-model` — 写入某 Agent 默认模型（body: `{ "agent_id", "model_id" }`）
 - `GET /works/{work_id}` — 读 AI 工作对话快照
 - `PUT /works/{work_id}` — 覆盖写入对话快照（body: `{ "detail": { ... } }`）
+- `POST /works/{work_id}/run` — 产品 Agent SSE（进程内 Tool + Headroom）
+- `POST /runtimes/{runtime_id}/run` — 外部 CLI SSE（Python spawn；codex / claude / opencode）
+- `POST /runtimes/runs/{run_id}/live-frame` — MCP `preview` 投递浏览器直播帧
+- `POST /runtimes/runs/{run_id}/cancel` — 取消 CLI 运行
 
-CLI PATH 探测仍在 Tauri；产品 Agent SSE 起来后也挂这里，实现走 [../agent/README.md](../agent/README.md) + [../tools/README.md](../tools/README.md)。
+CLI PATH 探测 / 下载仍在 Tauri；启动与流式事件在本模块。实现见 [../agent/README.md](../agent/README.md)。
 
 ### `crawler.py`
 

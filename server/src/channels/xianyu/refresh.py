@@ -111,7 +111,7 @@ def _ping_login(session: Session, *, auto_refresh: bool = False) -> dict:
 
 
 def probe(cookie: str) -> bool:
-    """HTTP 探活（不启动浏览器）。"""
+    """轻量 HTTP 探活（不启浏览器）。调度器启动探活请用 ``token``，可静默续期。"""
     if not cookie.strip():
         return False
     try:
@@ -214,7 +214,11 @@ def status(cookie: str) -> dict[str, Any]:
 
 
 def token(cookie: str) -> tuple[str, bool]:
-    """刷新闲鱼 _m_h5_tk：先 HTTP ping，失败再走浏览器续期。"""
+    """探活并尽量续期：先 ``loginuser.get``，失败再浏览器「快速进入」续 cookie。
+
+    返回 ``(cookie, ok)``：``ok=True`` 表示登录仍可用（cookie 可能已更新）；
+    ``ok=False`` 才表示需重新扫码。
+    """
     try:
         session = _prepare_session(cookie)
     except (ValueError, AppError) as exc:
@@ -226,7 +230,7 @@ def token(cookie: str) -> tuple[str, bool]:
         try:
             _ping_login(session, auto_refresh=False)
         except Exception as exc:
-            logger.info("闲鱼 HTTP 刷新失败，尝试浏览器续期: %s", exc)
+            logger.info("闲鱼 HTTP 探活失败，尝试浏览器静默续期: %s", exc)
             fresh = refresh(session.http.cookies.get_dict())
             if not fresh:
                 raise

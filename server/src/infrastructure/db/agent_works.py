@@ -85,6 +85,41 @@ def get_work(work_id: str) -> AgentWorkRow | None:
     )
 
 
+def list_works(*, limit: int = 40) -> list[AgentWorkRow]:
+    """按更新时间倒序列出工作快照（不含完整 detail，只带摘要字段）。"""
+    cap = max(1, min(int(limit), 100))
+    with _connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT work_id, title, detail_json, created_at, updated_at
+            FROM agent_works
+            ORDER BY updated_at DESC
+            LIMIT ?
+            """,
+            (cap,),
+        ).fetchall()
+
+    out: list[AgentWorkRow] = []
+    for row in rows:
+        try:
+            detail = json.loads(str(row["detail_json"]))
+        except json.JSONDecodeError:
+            logger.warning("agent_works detail_json invalid work_id=%s", row["work_id"])
+            continue
+        if not isinstance(detail, dict):
+            continue
+        out.append(
+            AgentWorkRow(
+                work_id=str(row["work_id"]),
+                title=str(row["title"]),
+                detail=detail,
+                created_at=float(row["created_at"]),
+                updated_at=float(row["updated_at"]),
+            )
+        )
+    return out
+
+
 def upsert_work(work_id: str, detail: dict[str, Any]) -> AgentWorkRow:
     """写入或覆盖对话快照。"""
     key = work_id.strip()
@@ -112,7 +147,7 @@ def upsert_work(work_id: str, detail: dict[str, Any]) -> AgentWorkRow:
             (key, title, blob, created_at, now),
         )
 
-    logger.info("agent work saved work_id=%s title=%s", key, title[:40])
+    logger.debug("agent work saved work_id=%s title=%s", key, title[:40])
     return AgentWorkRow(
         work_id=key,
         title=title,

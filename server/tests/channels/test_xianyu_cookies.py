@@ -13,10 +13,12 @@ def test_xianyu_cookie_domain() -> None:
 
 def test_to_browser_cookies_has_domains() -> None:
     cookies = to_browser_cookies({"_m_h5_tk": "a", "unb": "1", "empty": ""})
-    by_name = {c.name: c for c in cookies}
-    assert by_name["_m_h5_tk"].domain == ".taobao.com"
-    assert by_name["unb"].domain == ".goofish.com"
-    assert "empty" not in by_name
+    by_pair = {(c.name, c.domain) for c in cookies}
+    assert ("_m_h5_tk", ".taobao.com") in by_pair
+    assert ("_m_h5_tk", ".goofish.com") in by_pair
+    assert ("unb", ".goofish.com") in by_pair
+    assert ("unb", ".taobao.com") in by_pair
+    assert "empty" not in {c.name for c in cookies}
     payload = cookies_to_playwright(cookies)
     assert all("domain" in item for item in payload)
 

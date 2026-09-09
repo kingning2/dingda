@@ -17,7 +17,8 @@
 `fetch_profile` �?闲鱼 `refresh.profile`。闲�?小红书头像昵称都在扫码成功时写入，登录后不再 enrich。`enrich_account_profile` 仍可手动把昵�?头像写回 accounts 表。失败只打日志�?
 ### `token_scheduler.py`
 
-`schedule_xianyu_token_scheduler`：warmup 时挂上。先 HTTP 探活闲鱼，再异步 BrowserPool 探活小红书，再周期刷新闲�?token�?
+`schedule_xianyu_token_scheduler`：warmup 时挂上。闲鱼启动探活走 `token()`（先 `loginuser.get`，失败再浏览器静默续期，续不上才标过期）；再探活小红书 / 1688；之后每 10 分钟周期续期。
+
 ### `__init__.py`
 
 包标记�?

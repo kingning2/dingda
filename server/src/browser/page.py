@@ -35,7 +35,7 @@ class PlaywrightPage(Page):
 
     @property
     def context(self) -> Any:
-        """底层 BrowserContext（续期/滑块等交互原语用）。"""
+        """底层 BrowserContext（Cookie / Channel 交互原语用）。"""
         return self._context
 
     @property
@@ -75,9 +75,20 @@ class PlaywrightPage(Page):
         logger.info("页面填表 selector=%s", selector)
         await self._page.fill(selector, value, timeout=timeout_ms)
 
-    async def screenshot(self, path: Path | None = None) -> bytes:
-        """截图。"""
-        kwargs: dict[str, Any] = {"type": "png"}
+    async def screenshot(
+        self,
+        path: Path | None = None,
+        *,
+        image_type: str = "png",
+        quality: int | None = None,
+    ) -> bytes:
+        """截图（png / jpeg）。"""
+        kind = (image_type or "png").strip().lower()
+        if kind not in {"png", "jpeg"}:
+            kind = "png"
+        kwargs: dict[str, Any] = {"type": kind}
+        if kind == "jpeg":
+            kwargs["quality"] = int(quality) if quality is not None else 60
         if path is not None:
             path.parent.mkdir(parents=True, exist_ok=True)
             kwargs["path"] = str(path)

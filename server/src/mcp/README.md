@@ -1,8 +1,11 @@
 # mcp
 
-把 [../tools/README.md](../tools/README.md) 暴露成 **stdio MCP**（命令 `dingda-mcp`）。当前工具与 registry 一致：`search` / `product` / `compare`。
+把 [../tools/README.md](../tools/README.md) 暴露成 **stdio MCP**（命令 `dingda-mcp`）。当前工具与 registry 一致：`search` / `product` / `compare` / `preview`。
 
-桌面壳：`uv run --directory server dingda-mcp`。
+大 JSON 出口经 [`agent/core/compress.py`](../agent/core/compress.py)（Headroom）压缩后再回给 CLI。
+
+桌面壳 / Python Runtime：`uv run --directory server dingda-mcp`。  
+**产品搜品不走 MCP**，走产品 Agent 进程内 `call_tool`。
 
 ## 本目录文件
 
@@ -12,7 +15,7 @@
 
 ### `register.py`
 
-`register_internal_tools(mcp)`：遍历 `list_tools()` 挂到 FastMCP。
+`register_internal_tools(mcp)`：遍历 `list_tools()` 挂到 FastMCP；返回前 `compress_tool_payload`。
 
 ### `catalog.py`
 

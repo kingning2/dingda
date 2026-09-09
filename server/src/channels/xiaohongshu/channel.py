@@ -56,10 +56,15 @@ class XiaohongshuQrChannel(QrLoginChannel):
                     avatar_url=runtime.avatar_url,
                     cookie=runtime.cookie,
                 )
-            if runtime.code_status == 1:
+            # code_status=2 但 cookie 未写：正在读昵称，对外仍当「已扫码」避免假 SUCCESS
+            if runtime.code_status in (1, 2):
                 return LoginSnapshot(
                     status=LoginStatus.SCANNED,
-                    detail="已扫码，请在手机确认登录",
+                    detail=(
+                        "正在读取账号资料…"
+                        if runtime.code_status == 2
+                        else "已扫码，请在手机确认登录"
+                    ),
                     qr_base64=runtime.qr_base64,
                     qr_url=runtime.qr_url,
                 )
@@ -272,6 +277,12 @@ class XiaohongshuQrChannel(QrLoginChannel):
                         page.wait_for_timeout(300)
                         continue
 
+                    # 手机已确认后不要刷二维码，只等 session
+                    if runtime.code_status == 2:
+                        expired_pending["value"] = False
+                        page.wait_for_timeout(300)
+                        continue
+
                     expired_pending["value"] = False
                     with runtime.lock:
                         runtime.refresh_count += 1
@@ -299,6 +310,18 @@ class XiaohongshuQrChannel(QrLoginChannel):
                     raise QrCancelled()
                 if not completion_holder.get("data"):
                     raise TimeoutError("扫码超时，请重试")
+
+                # userinfo 可能先报成功但没有 session：再补拉 status
+                if not api._has_login_session(completion_holder.get("data")):
+                    api.wait_for_login_session(
+                        page,
+                        qr_id=qr_id,
+                        qr_code=qr_code,
+                        runtime=runtime,
+                        completion_holder=completion_holder,
+                        login_complete=login_complete,
+                        expired_pending=expired_pending,
+                    )
 
                 if not runtime.cookie:
                     self._maybe_publish_login(

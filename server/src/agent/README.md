@@ -1,17 +1,23 @@
 # agent
 
-产品侧 Agent：规划、经 `tools.registry.call_tool` 调能力、调研 workflow。  
-禁止 import Playwright、Camoufox、sqlite、`channels.xianyu`。
+产品侧 Agent（进程内 Tool + Headroom）与外部 CLI Runtime 启动（Python spawn）。  
+禁止 import Playwright、Camoufox、`channels.xianyu` / crawler sources。
 
-HTTP 入口将来是 `api/agent.py`（现为空骨架）。外部 Codex 不走本包，走 MCP。
+HTTP：[`../api/agent.py`](../api/agent.py)
+
+- 产品：`POST /v1/agent/works/{work_id}/run` SSE
+- CLI：`POST /v1/agent/runtimes/{runtime_id}/run` SSE（codex / claude / opencode）
+
+外部 CLI 不再由 Tauri spawn；MCP 仅服务「Python 拉起的 CLI」。
 
 ## 本目录文件
 
 ### `__init__.py`
 
-包导出。实现在子目录。
+包导出。
 
 ## 子目录
 
-- [core/](core/README.md) — 执行循环 / `AgentService`
+- [core/](core/README.md) — `AgentService` / Headroom `compress`
+- [runtimes/](runtimes/README.md) — CLI spawn / MCP 注入 / 系统前言 / 流解析
 - [workflows/](workflows/README.md) — 调研等多步图

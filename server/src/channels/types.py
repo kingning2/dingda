@@ -32,8 +32,9 @@ class LoginSnapshot:
     display_name: str | None = None
     avatar_url: str | None = None
     cookie: str | None = None
+    local_storage: dict[str, str] | None = None
 
-    def as_dict(self) -> dict[str, str | None]:
+    def as_dict(self) -> dict[str, object]:
         return {
             "status": self.status.value,
             "qr_base64": self.qr_base64,
@@ -43,4 +44,5 @@ class LoginSnapshot:
             "display_name": self.display_name,
             "avatar_url": self.avatar_url,
             "cookie": self.cookie,
+            "local_storage": self.local_storage,
         }
