@@ -22,7 +22,8 @@ description: 约束叮答 Browser 基础设施与适配器。开发或修改浏�
 - 启动/关闭浏览器、Context、Page、Session
 - Cookie 注入与导出、导航、点击、填表、等网络
 - 新增 Playwright / Camoufox / CDP / Chromium 实现
-- 修改 `browser/adapters/`、`browser/sync.py`、`browser/slider.py`
+- 修改 `browser/adapters/`、`browser/sync.py`
+- （闲鱼过滑块在 `channels/xianyu/slider.py`，不在 Browser）
 
 ## 目标目录
 
@@ -33,10 +34,11 @@ server/src/browser/
 ├── context.py
 ├── page.py              # Playwright 协议的 Page 包装（操作层）
 ├── sync.py              # Channel 扫码线程同步开页
-├── slider.py            # 滑块交互原语
 └── adapters/
     └── camoufox.py      # 浏览器：Camoufox
 ```
+
+闲鱼自动过滑块在 `channels/xianyu/slider.py`，不放本目录。
 
 以后新增**浏览器**只加 adapter，例如 `adapters/firefox.py`。
 

@@ -12,7 +12,7 @@ description: 变更前最小计划。开发 Agent / Crawler / Browser / Tool 或
 
 2. **契约检查**
    - 产品 HTTP：`server/src/contracts/` 与 `src/contracts/` 对齐；顺序 Contract → Python → React（不必改 Rust）
-   - CLI Agent 事件：Rust `AgentEvent` 与 `src/contracts/agent-event.ts`；顺序契约 → Rust → React
+   - CLI Agent 事件：Python SSE 与 `src/contracts/agent-event.ts`；启动在 `server/src/agent/runtimes/`，探测在 Tauri
    - Tool：`server/src/tools/`（每工具一文件 + registry）
 
 3. **最小改动范围**

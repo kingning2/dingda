@@ -49,10 +49,10 @@ plugins/dingda-crawlers/ Codex 用 MCP 插件
 | 名称 | 路径 | 职责 |
 |------|------|------|
 | 产品 Agent | 目标：`server/src/agent/` | planning / tool 调用 / workflow |
-| CLI Agent Runtime | `src-tauri/src/runtime/` + `src-tauri/src/agent/` | 发现/拉起本机 Codex、Claude Code 等进程 |
+| CLI Agent Runtime | 探测/下载：`src-tauri/src/runtime/` + `agent/`；**启动**：`server/src/agent/runtimes/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
 
 - 产品 Agent 的代码不要写进 `src-tauri/src/agent/` 或 `src-tauri/src/runtime/`。
-- CLI Runtime 的代码不要写进 `server/src/agent/`。
+- CLI **探测/下载**在 Tauri；**spawn/SSE**在 `server/src/agent/runtimes/`，不要再写回 Tauri command。
 - `server/src/domains/runtime/` 只是 Python 进程快照，不是垃圾桶，也不是 CLI Runtime。
 
 ---
@@ -196,7 +196,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 |---------|-------------------|
 | `get_api_base_url` / `get_server_status` | 壳才知道 Python 进程起没起 |
 | `pick_file` / `pick_folder` / `show_in_folder` | OS 对话框 / 资源管理器 |
-| `list_agent_runtimes_command` / `probe_agent_runtime` / `login_agent_runtime` / `launch_agent_runtime` / `cancel_agent_runtime` | 拉起本机 CLI、读 PATH、解析 stdout |
+| `list_agent_runtimes_command` / `probe_agent_runtime` / `login_agent_runtime` / `download_agent_runtime` | 读 PATH、探测登录、托管下载（不 spawn） |
 | `log_frontend_error` | Python 未就绪时仍要落到壳日志 |
 
 新增同类能力：加在 `src-tauri/src/commands/`，不要新开仓库或 `src-tauri/src/ipc/` 平行体系。
@@ -222,7 +222,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 ✅ 账号/快照 SQLite 留在 Python infrastructure
 ```
 
-CLI Agent 的流式输出继续走 Rust `emit("agent-event")`（进程在壳里）。产品 Agent / 爬虫进度走 Python SSE/WSS，不要混用。
+产品 Agent 与外部 CLI 的流式输出都走 Python SSE（`/v1/agent/...`）。壳只做探测/下载，不要再 `emit("agent-event")` 起 CLI。
 
 ### SQLite 归属（覆盖通用模板）
 
@@ -340,12 +340,12 @@ server/src/browser/               # manager / session / context / adapters
 | 面 | 契约位置 |
 |----|----------|
 | 产品 HTTP | `server/src/contracts/` ↔ `src/contracts/` |
-| CLI Agent 事件 | Rust `AgentEvent` ↔ `src/contracts/agent-event.ts` |
+| CLI Agent 事件 | Python SSE ↔ `src/contracts/agent-event.ts`（壳探测不推事件） |
 | Tool | `server/src/tools/`（产品 Agent 与 MCP 共用；每工具一文件 + registry） |
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。
 
-改 CLI Runtime：**先事件契约，再 Rust，再 React**。不必改 Python。
+改 CLI Runtime：**探测/下载**改 Tauri；**启动/流式**改 Python `agent/runtimes` + `/v1/agent/runtimes/...`，再接 React。
 
 ---
 

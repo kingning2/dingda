@@ -53,7 +53,7 @@ Agent → Tool → Crawler → BrowserPort → Adapter
 ## 契约与改动顺序
 
 - 产品 API：`server/src/contracts/` ↔ `src/contracts/` → Python → React（不必改 Rust）
-- CLI Agent 事件：Rust ↔ `src/contracts/agent-event.ts`
+- CLI Agent 事件：Python SSE ↔ `src/contracts/agent-event.ts`（壳只做探测/下载）
 - 跨模块必须有明确 Input/Output Schema
 
 ## 语言规范（写代码时自动带上）
