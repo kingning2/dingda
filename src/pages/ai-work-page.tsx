@@ -1,4 +1,4 @@
-import { AiWorkView } from "@/components/ai-work";
+import { AiWorkView } from "@/components/ai";
 
 interface AiWorkPageProps {
   workId: string;

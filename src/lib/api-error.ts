@@ -1,3 +1,5 @@
+import { pushAppAlert } from "@/lib/app-alert";
+
 export interface ApiErrorPayload {
   ok?: boolean;
   code?: string;
@@ -18,12 +20,19 @@ export function isSessionExpiredPayload(payload: ApiErrorPayload): boolean {
   return payload.code === SESSION_EXPIRED_CODE;
 }
 
+/** 用应用内 Alert 展示错误，禁止 window.alert。 */
 export function showApiErrorMessage(payload: ApiErrorPayload, fallback = "请求失败") {
   const message = payload.message?.trim() || fallback;
-  window.alert(message);
+  pushAppAlert({
+    title: message,
+    variant: "destructive",
+  });
 }
 
-export async function handleApiResponseError(response: Response, fallback = "请求失败"): Promise<never> {
+export async function handleApiResponseError(
+  response: Response,
+  fallback = "请求失败",
+): Promise<never> {
   const payload = await readApiError(response);
   if (isSessionExpiredPayload(payload)) {
     showApiErrorMessage(payload, "登录已过期，请重新扫码登录");

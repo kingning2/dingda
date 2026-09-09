@@ -114,6 +114,31 @@ export async function fetchAgentWorkDetail(
   return data.detail;
 }
 
+export interface AgentWorkSummary {
+  work_id: string;
+  title: string;
+  updated_at: number;
+  status_label?: string | null;
+  status_state?: string | null;
+}
+
+interface AgentWorkListResponse {
+  ok?: boolean;
+  items: AgentWorkSummary[];
+}
+
+/** 最近工作列表（首页 / 全部项目）。 */
+export async function fetchAgentWorkList(
+  options?: { baseUrl?: string | null; limit?: number },
+): Promise<AgentWorkSummary[]> {
+  const limit = options?.limit ?? 40;
+  const { data } = await api.get<AgentWorkListResponse>(`/v1/agent/works?limit=${limit}`, {
+    baseUrl: options?.baseUrl,
+    fallbackError: "读取最近工作失败",
+  });
+  return Array.isArray(data?.items) ? data.items : [];
+}
+
 /** 把 AI 工作对话快照写入 SQLite。 */
 export async function putAgentWorkDetail(
   detail: AgentWorkDetailView,

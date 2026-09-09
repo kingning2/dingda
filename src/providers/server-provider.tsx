@@ -7,15 +7,14 @@ import {
   type ReactNode,
 } from "react";
 
+import { finishBootSplash, preloadAppHome } from "@/lib/app-preload";
 import {
   fetchServerStatus,
   getInitialServerStatus,
-  kickServerWarmup,
   subscribeServerEvents,
   type ServerStatus,
 } from "@/lib/server";
 import { setApiBaseUrl } from "@/lib/http-client";
-import { refreshDiscoveryOnServerReady } from "@/lib/discovery-scan";
 
 const ServerContext = createContext<ServerStatus>(getInitialServerStatus());
 
@@ -25,6 +24,7 @@ export function useServer(): ServerStatus {
 
 export function ServerProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<ServerStatus>(getInitialServerStatus);
+  const [homeReady, setHomeReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,12 +48,37 @@ export function ServerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setApiBaseUrl(status.apiBaseUrl);
+
+    // Server 起不来也卸启动屏，避免一直卡在 splash
+    if (status.phase === "error") {
+      setHomeReady(true);
+      finishBootSplash();
+      return;
+    }
+
     if (!status.ready || !status.apiBaseUrl) return;
-    void kickServerWarmup();
-    void refreshDiscoveryOnServerReady();
-  }, [status.ready, status.apiBaseUrl]);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await preloadAppHome();
+      } catch {
+        // 预热失败也进页，首页可再刷
+      }
+      if (cancelled) return;
+      setHomeReady(true);
+      finishBootSplash();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status.ready, status.apiBaseUrl, status.phase]);
 
   const value = useMemo(() => status, [status]);
+
+  // 预加载完成前不挂路由，启动屏继续挡着
+  if (!homeReady) return null;
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;
 }

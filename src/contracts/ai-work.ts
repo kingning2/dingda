@@ -13,14 +13,40 @@ export interface AgentWorkStatusView {
   badge_class: string;
 }
 
+/** 对话内嵌的「页面」快照（浏览器框 + 可选截图）。 */
+export interface AgentWorkStepPageView {
+  url: string;
+  title: string;
+  focus_label?: string | null;
+  /** true 时显示加载态。 */
+  loading?: boolean;
+  screenshot_url?: string | null;
+}
+
+/**
+ * 步骤类型：后端驱动前端挂哪些块。
+ * - tool：普通工具
+ * - browser_crawl：页面爬取（可挂 PageCard）
+ * - product_sample：抽样详情（可挂商品条）
+ * - thinking：思考（一般走 message.thinking，少用 step）
+ */
+export type AgentWorkStepKind = "tool" | "browser_crawl" | "product_sample" | "thinking";
+
 /** 单条执行步骤（工具调用 / 子任务）。 */
 export interface AgentWorkStepView {
   id: string;
   label: string;
   hint?: string | null;
+  /**
+   * 步骤类型。缺省按 tool。
+   * status.state 约定：pending 等待 / running 执行中 / ready 已完成 / error 失败
+   */
+  kind?: AgentWorkStepKind | null;
   status: AgentWorkStatusView;
   /** 关联的浏览帧，便于从步骤跳转到对应页面截图。 */
   browser_frame_id?: string | null;
+  /** 页面爬取步骤携带的直播/结果页快照。 */
+  page?: AgentWorkStepPageView | null;
 }
 
 export interface AgentWorkMessageView {
@@ -35,8 +61,19 @@ export interface AgentWorkMessageView {
   /** 思考/执行总秒数（完成后落库，刷新可回看）。 */
   thinking_duration_sec?: number | null;
   steps?: AgentWorkStepView[];
+  /**
+   * 按事件到达顺序交错的时间线（思考 / 工具 / 正文）。
+   * 有值时 UI 按此顺序渲染，避免工具全堆在底部。
+   */
+  timeline?: AgentWorkTimelineEntry[];
   attachments?: ComposerAttachmentView[];
 }
+
+/** 助手消息时间线条目。 */
+export type AgentWorkTimelineEntry =
+  | { kind: "thinking"; id: string; text: string }
+  | { kind: "step"; id: string }
+  | { kind: "text"; id: string; text: string };
 
 /**
  * 已离开页面的最后一帧截图（历史归档）。

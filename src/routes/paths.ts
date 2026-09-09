@@ -4,7 +4,8 @@ export type EntryView =
   | "community"
   | "plugins"
   | "design-systems"
-  | "assets"
+  | "agents"
+  | "accounts"
   | "crawler";
 
 const ENTRY_PATHS: Record<EntryView, string> = {
@@ -13,7 +14,8 @@ const ENTRY_PATHS: Record<EntryView, string> = {
   community: "/community",
   plugins: "/plugins",
   "design-systems": "/design-systems",
-  assets: "/assets",
+  agents: "/agents",
+  accounts: "/accounts",
   crawler: "/crawler",
 };
 
@@ -27,6 +29,9 @@ export const paths = {
   community: "/community",
   plugins: "/plugins",
   designSystems: "/design-systems",
+  agents: "/agents",
+  accounts: "/accounts",
+  /** @deprecated 使用 /agents 或 /accounts */
   assets: "/assets",
   crawler: "/crawler",
   work: (workId: string) => `/work/${encodeURIComponent(workId)}`,
@@ -41,6 +46,8 @@ export function entryPath(view: EntryView): string {
 /** 侧栏高亮：工作详情页沿用首页选中态（与旧版 hash 路由一致）。 */
 export function entryViewFromPathname(pathname: string): EntryView {
   if (pathname.startsWith("/work/")) return "home";
+  // 旧「资产」入口：按 query 或默认落到 Agent
+  if (pathname === "/assets" || pathname.startsWith("/assets/")) return "agents";
   return PATH_TO_ENTRY.get(pathname) ?? "home";
 }
 

@@ -1,10 +1,12 @@
 /**
- * 发现层：账号启动刷新；Agent 读 SQLite 缓存。
- * 仅「首次安装、库中无扫描结果」时自动扫一次，之后靠手动「扫描 Agent」。
+ * 发现层：账号启动刷新；Agent 读 SQLite 缓存；最近会话预热。
+ * 仅「首次安装、库中无扫描结果」时后台扫一次，之后靠手动「扫描 Agent」。
+ * OCR 不在此处预热。
  */
 
 import type { AccountListItem, AccountPlatform } from "@/contracts/account";
 import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import { AGENT_CATALOG } from "@/components/agent/agent-catalog";
 import {
   applyAgentPreferences,
   listAgentRegistryPlaceholders,
@@ -15,6 +17,7 @@ import {
 import {
   fetchAgentPreferences,
   fetchAgentRuntimesCatalog,
+  fetchAgentWorkList,
   putAgentRuntimesCatalog,
 } from "@/lib/agent-api";
 import { listStoredAccounts } from "@/lib/account-store";
@@ -31,8 +34,14 @@ let initialLoadStarted = false;
 let firstAutoScanStarted = false;
 let cancelBackgroundProbe: (() => void) | null = null;
 
+const SUPPORTED_AGENT_IDS = new Set(AGENT_CATALOG.map((entry) => entry.id));
+
+function filterSupportedAgents(agents: AgentRuntimeItem[]): AgentRuntimeItem[] {
+  return agents.filter((agent) => SUPPORTED_AGENT_IDS.has(agent.id));
+}
+
 function commitAgents(next: AgentRuntimeItem[]) {
-  useDiscoveryStore.getState().setAgents(next);
+  useDiscoveryStore.getState().setAgents(filterSupportedAgents(next));
 }
 
 function normalizeCatalog(agents: AgentRuntimeItem[]): AgentRuntimeItem[] {
@@ -95,6 +104,17 @@ export async function loadCachedAgentRuntimes(options?: {
   }
 
   commitAgents(agents);
+
+  // 缓存有目录但模型为空时，后台补探测（不挡首屏）
+  const needsModels = agents.some(
+    (agent) => agent.available && (!agent.models || agent.models.length === 0),
+  );
+  if (needsModels) {
+    cancelBackgroundProbe?.();
+    cancelBackgroundProbe = probeAgentsInBackground(agents, commitAgents, (finalAgents) => {
+      void persistAgentsCatalog(finalAgents);
+    });
+  }
 }
 
 /** 拉取全部平台账号，合并写入 store。 */
@@ -140,25 +160,45 @@ export async function refreshDiscoveryAccounts(): Promise<void> {
   }
 }
 
+/** 拉取最近工作会话写入 store（首页预热）。 */
+export async function refreshRecentWorks(options?: { limit?: number }): Promise<void> {
+  if (!getApiBaseUrl()) return;
+
+  const { setRecentWorks, setRecentWorksLoading } = useDiscoveryStore.getState();
+  setRecentWorksLoading(true);
+  try {
+    const items = await fetchAgentWorkList({ limit: options?.limit ?? 40 });
+    setRecentWorks(items);
+  } catch {
+    setRecentWorks([]);
+  }
+}
+
 /**
- * 应用启动后执行一次：先读 Agent 缓存 / 占位 + 刷账号。
- * 首次自动扫描等 Server 就绪后再做（见 refreshDiscoveryOnServerReady）。
+ * 应用启动后执行一次：Agent 缓存 + 账号 + 最近会话。
+ * 若 Boot 预加载已写过 store，则直接跳过。
  */
 export async function ensureDiscoveryScanned(): Promise<void> {
   if (initialLoadStarted) return;
+  if (useDiscoveryStore.getState().recentWorksLoaded) {
+    initialLoadStarted = true;
+    return;
+  }
   initialLoadStarted = true;
 
   await Promise.all([
-    loadCachedAgentRuntimes({ autoScanIfEmpty: Boolean(getApiBaseUrl()) }),
+    loadCachedAgentRuntimes({ autoScanIfEmpty: false }),
     refreshDiscoveryAccounts(),
+    refreshRecentWorks(),
   ]);
 }
 
-/** Server 就绪后：有缓存只读库；无缓存则首次自动扫描。 */
+/** Server 就绪后：Agent 目录缓存 + 账号 + 最近会话（进首页前 await）。 */
 export async function refreshDiscoveryOnServerReady(): Promise<void> {
   await Promise.all([
-    loadCachedAgentRuntimes({ autoScanIfEmpty: true }),
+    loadCachedAgentRuntimes({ autoScanIfEmpty: false }),
     refreshDiscoveryAccounts(),
+    refreshRecentWorks(),
   ]);
 }
 

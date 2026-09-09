@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Search } from "lucide-react";
 import type { CrawlPlatform, CrawlSearchResponse } from "@/contracts/crawler";
-import { CRAWL_PLATFORM_TABS, mockCrawlSearchApi } from "./mock-data";
+import { CRAWL_PLATFORM_TABS } from "./mock-data";
 import { CrawlerResults, CrawlerStatusBanner } from "./crawler-results";
+import { searchCrawlerProductsLive } from "@/lib/crawler-api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,24 +16,85 @@ export function CrawlerPanel({ platform }: CrawlerPanelProps) {
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<CrawlSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   async function handleCrawl() {
     const trimmed = query.trim();
-    if (!trimmed) {
-      return;
-    }
+    if (!trimmed) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setLoading(true);
-    setResponse(null);
+    setError(null);
+    setResponse({
+      task_id: `crawl-${platform}`,
+      status: {
+        state: "running",
+        label: "爬取中",
+        hint: "正在连接爬虫…",
+        badge_class: "bg-sky-500/15 text-sky-600",
+      },
+      items: [],
+      total: 0,
+    });
 
     try {
-      const result = await mockCrawlSearchApi(
-        { platform, query: trimmed },
-        (progress) => setResponse(progress),
+      const result = await searchCrawlerProductsLive(
+        { platform, query: trimmed, limit: 12 },
+        {
+          onStatus: (status) => {
+            setResponse((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: {
+                      state: status.state,
+                      label: status.label,
+                      hint: status.hint ?? null,
+                      badge_class:
+                        status.state === "error"
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-sky-500/15 text-sky-600",
+                    },
+                    search_url: status.search_url ?? prev.search_url,
+                  }
+                : prev,
+            );
+          },
+          onResult: (next) => setResponse(next),
+          onError: (err) => setError(err.message),
+        },
+        { signal: controller.signal },
       );
       setResponse(result);
+      if (result.status.state === "error" || result.error_code) {
+        setError(result.message?.trim() || "爬取失败");
+      }
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      const message = err instanceof Error ? err.message : "爬取失败";
+      setError(message);
+      setResponse((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: {
+                state: "error",
+                label: "失败",
+                hint: message,
+                badge_class: "bg-destructive/15 text-destructive",
+              },
+            }
+          : prev,
+      );
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -42,7 +104,7 @@ export function CrawlerPanel({ platform }: CrawlerPanelProps) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        在 {platformLabel} 按关键词直接爬取商品，不经过 AI 选品流程。
+        在 {platformLabel} 按关键词直接爬取商品（真实 Python Crawler），不经过 AI 选品流程。
       </p>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -71,11 +133,16 @@ export function CrawlerPanel({ platform }: CrawlerPanelProps) {
         />
       ) : null}
 
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
       {!loading && response && response.total > 0 ? (
         <p className="text-sm text-muted-foreground">共 {response.total} 条结果</p>
       ) : null}
 
-      <CrawlerResults items={response?.items ?? []} loading={loading} />
+      <CrawlerResults
+        items={response?.items ?? []}
+        loading={loading && (response?.items.length ?? 0) === 0}
+      />
     </div>
   );
 }

@@ -3,9 +3,12 @@ import type { ComposerAgentOption } from "@/contracts/composer";
 import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
 import { useDiscoveryStore } from "@/stores/discovery-store";
 
+/** 自研产品 Agent 未开放前，不出现在输入框/设置里。 */
+const HIDDEN_PRODUCT_AGENT_IDS = new Set(["dingda", "product"]);
+
 function toComposerOptions(agents: AgentRuntimeItem[]): ComposerAgentOption[] {
   return agents
-    .filter((agent) => agent.available)
+    .filter((agent) => agent.available && !HIDDEN_PRODUCT_AGENT_IDS.has(agent.id))
     .map((agent) => ({
       id: agent.id,
       name: agent.name,

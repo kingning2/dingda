@@ -120,6 +120,10 @@ export interface AgentRuntimeItem {
 
   can_probe?: boolean;
 
+  /** 是否支持叮答托管一键下载（当前 OpenCode / Claude / Codex）。 */
+
+  can_download?: boolean;
+
   status: AgentRuntimeStatusView;
 
 }

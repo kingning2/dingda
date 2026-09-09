@@ -12,7 +12,7 @@ export interface ComposerAgentOption {
   id: string;
   name: string;
   is_default?: boolean;
-  /** 资产页为该 Agent 持久化的默认模型。 */
+  /** 该 Agent 持久化的默认模型（Agent 页写入）。 */
   preferred_model_id?: string | null;
   models?: ComposerModelOption[];
 }
@@ -28,4 +28,6 @@ export interface ComposerSubmitPayload {
   /** 为空时由 Agent CLI 使用自身默认模型。 */
   model_id?: string | null;
   attachments: ComposerAttachmentView[];
+  /** Demo 爬虫目标平台；省略则从文案推断。 */
+  crawl_platform?: "xianyu" | "ali1688" | "xiaohongshu" | null;
 }

@@ -1,3 +1,11 @@
+/**
+ * 工作页会话：本地 draft/snapshot + 从 SQLite 加载详情。
+ *
+ * - draft：首页提交 → 进入工作页之间的首条中转
+ * - snapshot：对话快照同步备份（Ctrl+R 兜底）
+ * 真相源仍是 SQLite（/v1/agent/works）
+ */
+
 import type { AgentWorkDetailView, AgentWorkStatusView } from "@/contracts/ai-work";
 import type { ComposerSubmitPayload } from "@/contracts/composer";
 import {
@@ -5,11 +13,82 @@ import {
   resolveDefaultAgentId,
 } from "@/components/composer/composer-agents";
 import { fetchAgentWorkDetail } from "@/lib/agent-api";
-import {
-  peekWorkDraft,
-  clearWorkDraft,
-  peekWorkSnapshot,
-} from "./work-draft";
+
+const WORK_DRAFT_PREFIX = "dingda:work-draft:";
+const WORK_SNAPSHOT_PREFIX = "dingda:work-snapshot:";
+
+function draftKey(workId: string): string {
+  return `${WORK_DRAFT_PREFIX}${workId}`;
+}
+
+function snapshotKey(workId: string): string {
+  return `${WORK_SNAPSHOT_PREFIX}${workId}`;
+}
+
+/** 首页提交后暂存首条消息，进入工作页再消费。 */
+export function stashWorkDraft(workId: string, draft: ComposerSubmitPayload): void {
+  try {
+    sessionStorage.setItem(draftKey(workId), JSON.stringify(draft));
+  } catch {
+    // sessionStorage may be unavailable
+  }
+}
+
+/** @deprecated 使用 stashWorkDraft */
+export function stashWorkPrompt(workId: string, prompt: string): void {
+  stashWorkDraft(workId, {
+    message: prompt,
+    agent_id: resolveDefaultAgentId(getComposerAgentOptions()) ?? "codex",
+    attachments: [],
+  });
+}
+
+/** 只读草稿，不删除（避免 Strict Mode 双挂载把首条吃掉）。 */
+export function peekWorkDraft(workId: string): ComposerSubmitPayload | null {
+  try {
+    const value = sessionStorage.getItem(draftKey(workId));
+    if (!value) return null;
+    return JSON.parse(value) as ComposerSubmitPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function clearWorkDraft(workId: string): void {
+  try {
+    sessionStorage.removeItem(draftKey(workId));
+  } catch {
+    // ignore
+  }
+}
+
+export function stashWorkSnapshot(detail: AgentWorkDetailView): void {
+  try {
+    sessionStorage.setItem(snapshotKey(detail.work_id), JSON.stringify(detail));
+  } catch {
+    // quota / private mode
+  }
+}
+
+export function peekWorkSnapshot(workId: string): AgentWorkDetailView | null {
+  try {
+    const value = sessionStorage.getItem(snapshotKey(workId));
+    if (!value) return null;
+    const parsed = JSON.parse(value) as AgentWorkDetailView;
+    if (!parsed?.work_id || !Array.isArray(parsed.messages)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearWorkSnapshot(workId: string): void {
+  try {
+    sessionStorage.removeItem(snapshotKey(workId));
+  } catch {
+    // ignore
+  }
+}
 
 function status(
   state: string,
@@ -47,7 +126,6 @@ function hydrateComposerAgents(detail: AgentWorkDetailView): AgentWorkDetailView
   };
 }
 
-/** 刷新时若上次执行中被打断，放开输入并补齐思考秒数。 */
 function recoverInterruptedRun(detail: AgentWorkDetailView): AgentWorkDetailView {
   const interrupted = !detail.can_send || detail.status.state === "running";
   if (!interrupted) return detail;
@@ -78,7 +156,7 @@ function recoverInterruptedRun(detail: AgentWorkDetailView): AgentWorkDetailView
   };
 }
 
-/** 真实工作区空壳（无 demo 数据）。 */
+/** 真实工作区空壳。 */
 export function buildEmptyWorkDetail(
   workId: string,
   seed?: Pick<ComposerSubmitPayload, "message" | "agent_id" | "model_id"> | null,
@@ -107,7 +185,7 @@ export function buildEmptyWorkDetail(
       url: "about:blank",
       title: "等待任务",
       status: status("idle", "待命", "bg-muted text-muted-foreground"),
-      progress_hint: "Agent 开始执行后，这里会同步当前浏览的网页。",
+      progress_hint: null,
       focus_label: null,
     },
     browser_history: [],
@@ -121,15 +199,29 @@ export function buildEmptyWorkDetail(
 
 export interface AgentWorkLoadResult {
   detail: AgentWorkDetailView;
-  /** 首页草稿，需由 CLI 发送首条。 */
   pendingSend: ComposerSubmitPayload | null;
 }
 
+/** 同 work 并发 load 共用一个 Promise，避免 Strict Mode 打两次 GET。 */
+const inflightLoads = new Map<string, Promise<AgentWorkLoadResult>>();
+
 /**
- * 加载真实 AI 工作。
- * 顺序：SQLite（真相源）→ session 快照（Ctrl+R 兜底）→ 首页草稿 → 空壳。
+ * 加载 AI 工作。顺序：SQLite → session 快照 → 首页草稿 → 空壳。
  */
 export async function loadAgentWorkDetail(workId: string): Promise<AgentWorkLoadResult> {
+  const existing = inflightLoads.get(workId);
+  if (existing) return existing;
+
+  const pending = loadAgentWorkDetailOnce(workId).finally(() => {
+    if (inflightLoads.get(workId) === pending) {
+      inflightLoads.delete(workId);
+    }
+  });
+  inflightLoads.set(workId, pending);
+  return pending;
+}
+
+async function loadAgentWorkDetailOnce(workId: string): Promise<AgentWorkLoadResult> {
   const seedDraft = peekWorkDraft(workId);
   const localSnapshot = peekWorkSnapshot(workId);
 
@@ -137,13 +229,12 @@ export async function loadAgentWorkDetail(workId: string): Promise<AgentWorkLoad
   try {
     saved = await fetchAgentWorkDetail(workId);
   } catch {
-    // 读库失败则走本地快照/草稿
+    // 读库失败则走本地
   }
 
   const savedMessages = saved?.messages?.length ?? 0;
   const localMessages = localSnapshot?.messages?.length ?? 0;
 
-  // 库里已有消息：以库为准
   if (saved && savedMessages > 0) {
     if (seedDraft) clearWorkDraft(workId);
     return {
@@ -152,7 +243,6 @@ export async function loadAgentWorkDetail(workId: string): Promise<AgentWorkLoad
     };
   }
 
-  // SQLite 还没写上（常见于 Ctrl+R 打断 PUT），用同步快照恢复
   if (localSnapshot && localMessages > 0) {
     if (seedDraft) clearWorkDraft(workId);
     return {

@@ -1,21 +1,22 @@
 import {
   BarChart3,
+  Bot,
   Folder,
   Home,
   LogOut,
-  Mail,
   PanelLeftClose,
   Palette,
   ScanSearch,
   Search,
   Settings,
+  UserRound,
   Users,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { NAV_ITEMS } from "@/lib/mock-data";
+import { supportsExternalAgents } from "@/lib/capabilities";
 import { entryPath, entryViewFromPathname } from "@/routes/paths";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -34,7 +35,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   community: Users,
   folder: Folder,
   palette: Palette,
-  wallet: Wallet,
+  bot: Bot,
+  "user-round": UserRound,
   spider: ScanSearch,
 };
 
@@ -48,6 +50,10 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
   const navigate = useNavigate();
   const location = useLocation();
   const activeView = entryViewFromPathname(location.pathname);
+  const showExternalAgents = supportsExternalAgents();
+  const navItems = NAV_ITEMS.filter(
+    (item) => !("requiresExternalAgents" in item && item.requiresExternalAgents) || showExternalAgents,
+  );
 
   return (
     <nav
@@ -82,7 +88,7 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
           </div>
 
           <div className="mt-1 flex flex-col gap-0.5">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = ICON_MAP[item.icon] ?? Home;
               const active = activeView === item.id;
               return (
@@ -118,9 +124,9 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
               <Settings className="size-3.5 shrink-0 text-muted-foreground" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="top" className="w-48">
-              <DropdownMenuItem onClick={() => navigate(entryPath("assets"))}>
+              <DropdownMenuItem onClick={() => navigate(entryPath("accounts"))}>
                 <Settings className="size-4" />
-                设置
+                账号
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <BarChart3 className="size-4" />

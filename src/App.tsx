@@ -1,5 +1,6 @@
 import { RouterProvider } from "react-router-dom";
 
+import { AppAlertHost } from "@/components/feedback/app-alert-host";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServerProvider } from "@/providers/server-provider";
 import { router } from "@/routes/router";
@@ -9,6 +10,7 @@ function App() {
     <ServerProvider>
       <TooltipProvider>
         <RouterProvider router={router} />
+        <AppAlertHost />
       </TooltipProvider>
     </ServerProvider>
   );

@@ -79,6 +79,28 @@ export interface AccountProfileResponse {
   profile: AccountProfileView;
 }
 
+/** 桌面商品预览注入用 Cookie。 */
+export interface BrowserCookieItem {
+  name: string;
+  value: string;
+  domain: string;
+  path?: string;
+  secure?: boolean;
+  http_only?: boolean;
+  same_site?: string;
+  expires?: number | null;
+}
+
+/** GET /v1/accounts/browser-session */
+export interface BrowserSessionResponse {
+  ok: boolean;
+  platform: AccountPlatform;
+  account_id?: string | null;
+  cookies: BrowserCookieItem[];
+  local_storage: Record<string, string>;
+  message?: string | null;
+}
+
 /** 扫码启动响应（contracts/schema/v1/channel/sidecar/qr_start.response）。 */
 export interface AccountQrStartResponse {
   ok: boolean;

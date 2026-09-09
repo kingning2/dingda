@@ -12,13 +12,14 @@ import { fetchAgentPreferences } from "@/lib/agent-api";
 
 let mockCodexAuthenticated = false;
 
-type RawAgentRuntimeItem = AgentRuntimeItem & {
+  type RawAgentRuntimeItem = AgentRuntimeItem & {
   installUrl?: string | null;
   docsUrl?: string | null;
   isDefault?: boolean;
   externalMcpInjection?: string | null;
   canLogin?: boolean;
   canProbe?: boolean;
+  canDownload?: boolean;
   source?: string | null;
   status?: RawAgentRuntimeStatusView;
 };
@@ -59,6 +60,7 @@ export function normalizeAgentRuntimeItem(raw: RawAgentRuntimeItem): AgentRuntim
     models: raw.models ?? null,
     can_login: raw.can_login ?? raw.canLogin,
     can_probe: raw.can_probe ?? raw.canProbe,
+    can_download: raw.can_download ?? raw.canDownload,
     status: {
       state: status?.state ?? "missing",
       label: status?.label ?? "未知",
@@ -127,31 +129,36 @@ export async function listAgentRegistryPlaceholders(): Promise<AgentRuntimeItem[
   );
 }
 
+/** 根据探针鉴权结果组装统一鉴权视图（登录按钮 / 文档配置 API 共用）。 */
 export function buildAuthView(
-  agentId: string,
+  agent: Pick<AgentRuntimeItem, "name" | "can_login">,
   authenticated: boolean | null,
 ): AgentRuntimeAuthView | null {
-  if (agentId !== "codex") return null;
-  if (authenticated === null) {
-    return {
-      state: "unknown",
-      label: "未检测",
-      can_login: true,
-      hint: "点击「扫描 Agent」查看登录状态",
-    };
-  }
-  if (authenticated) {
+  const canLogin = Boolean(agent.can_login);
+  if (authenticated === true) {
     return {
       state: "authenticated",
       label: "已登录",
       can_login: false,
     };
   }
+  if (authenticated === false) {
+    return {
+      state: "unauthenticated",
+      label: canLogin ? "未登录" : "未配置",
+      can_login: canLogin,
+      hint: canLogin
+        ? `点击「登录」完成 ${agent.name} 授权`
+        : "请在终端登录或配置 API Key，完成后点「扫描 Agent」",
+    };
+  }
+  // 无鉴权探针（OpenCode / Claude 等）：不臆造「需配置」
+  if (!canLogin) return null;
   return {
-    state: "unauthenticated",
-    label: "未登录",
+    state: "unknown",
+    label: "未检测",
     can_login: true,
-    hint: "点击「登录」将调用 codex login 打开浏览器完成授权",
+    hint: "点击「扫描 Agent」查看登录状态",
   };
 }
 
@@ -163,40 +170,39 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
       command: raw.command ?? agent.command ?? null,
       source: raw.source ?? agent.source ?? null,
       version: raw.version ?? null,
-      auth: supportsAgentLogin(agent) ? buildAuthView(agent.id, null) : null,
+      auth: null,
       models: null,
       status: {
         state: "missing",
         label: "未安装",
-        hint: raw.error ?? null,
+        hint:
+          raw.error ??
+          (agent.can_download
+            ? "可点击「下载」安装到叮答托管目录"
+            : "请按接入文档安装 CLI 后扫描"),
         badge_class: "bg-muted text-muted-foreground",
       },
     };
   }
 
   const authenticated = raw.authenticated ?? null;
-  const auth = buildAuthView(agent.id, authenticated);
+  const auth = buildAuthView(agent, authenticated);
   const models = raw.models?.length ? raw.models : null;
+  const canLogin = Boolean(agent.can_login);
 
-  return {
-    ...agent,
-    available: true,
-    command: raw.command ?? agent.command ?? null,
-    version: raw.version ?? agent.version ?? null,
-    auth,
-    models,
-    status: authenticated
+  const status: AgentRuntimeStatusView =
+    authenticated === false
       ? {
-          state: "ready",
-          label: "已就绪",
-          hint: null,
-          badge_class: "bg-emerald-500/15 text-emerald-600",
+          state: "auth_required",
+          label: canLogin ? "待登录" : "待配置",
+          hint: auth?.hint ?? null,
+          badge_class: "bg-amber-500/15 text-amber-700",
         }
-      : supportsAgentLogin(agent)
+      : canLogin && authenticated == null
         ? {
             state: "auth_required",
             label: "待登录",
-            hint: "请先登录 Codex CLI",
+            hint: auth?.hint ?? null,
             badge_class: "bg-amber-500/15 text-amber-700",
           }
         : {
@@ -204,7 +210,17 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
             label: "已就绪",
             hint: null,
             badge_class: "bg-emerald-500/15 text-emerald-600",
-          },
+          };
+
+  return {
+    ...agent,
+    available: true,
+    command: raw.command ?? agent.command ?? null,
+    source: raw.source ?? agent.source ?? null,
+    version: raw.version ?? agent.version ?? null,
+    auth,
+    models,
+    status,
   };
 }
 
@@ -365,6 +381,41 @@ export async function loginAgentRuntime(agentId: string): Promise<AgentRuntimeLo
     started: true,
     message: "已调用 codex login（mock）。实际环境会在浏览器中完成授权，完成后请点击「扫描 Agent」。",
   };
+}
+
+export interface AgentDownloadResult {
+  agentId: string;
+  path: string;
+  version?: string | null;
+  message: string;
+}
+
+/** 下载到叮答托管目录（当前仅 OpenCode）。 */
+export async function downloadAgentRuntime(agentId: string): Promise<AgentDownloadResult> {
+  if (!isTauri()) {
+    throw new Error("downloadAgentRuntime 仅在桌面端可用");
+  }
+  const raw = await invoke<{
+    agentId?: string;
+    agent_id?: string;
+    path: string;
+    version?: string | null;
+    message: string;
+  }>("download_agent_runtime", { agentId });
+
+  return {
+    agentId: raw.agentId ?? raw.agent_id ?? agentId,
+    path: raw.path,
+    version: raw.version ?? null,
+    message: raw.message,
+  };
+}
+
+export interface AgentRuntimeDownloadResult {
+  agentId: string;
+  path: string;
+  version?: string | null;
+  message: string;
 }
 
 function delay(ms: number): Promise<void> {

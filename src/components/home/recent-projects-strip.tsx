@@ -60,7 +60,9 @@ export function RecentProjectsStrip({
             <CardFooter className="items-start justify-between gap-2 border-t-0 bg-transparent p-3">
               <div className="min-w-0">
                 <p className="truncate text-[13px] font-medium text-foreground">{project.name}</p>
-                <p className="mt-0.5 text-[12px] text-muted-foreground">{project.updatedAt}</p>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  {project.updatedAt || "刚刚"}
+                </p>
               </div>
               <Button
                 variant="ghost"
@@ -68,6 +70,7 @@ export function RecentProjectsStrip({
                 className="opacity-0 group-hover:opacity-100"
                 aria-hidden
                 tabIndex={-1}
+                onClick={(event) => event.stopPropagation()}
               >
                 <MoreHorizontal className="size-3.5" />
               </Button>

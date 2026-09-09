@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
-import { loginAgentRuntime, applyAgentPreferences } from "@/lib/agent-runtime";
+import { downloadAgentRuntime, loginAgentRuntime, applyAgentPreferences } from "@/lib/agent-runtime";
 import { putDefaultAgentId, putDefaultModelId } from "@/lib/agent-api";
 import { probeSingleAgent, rescanAgentRuntimes } from "@/lib/discovery-scan";
 import { useDiscoveryStore } from "@/stores/discovery-store";
@@ -15,6 +15,7 @@ export function AgentRuntimesPanel() {
   const scanning = useDiscoveryStore((state) => state.agentsScanning);
   const setAgents = useDiscoveryStore((state) => state.setAgents);
   const [loggingInId, setLoggingInId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [actionHint, setActionHint] = useState<string | null>(null);
 
   const installed = agents.filter((agent) => agent.available);
@@ -34,6 +35,21 @@ export function AgentRuntimesPanel() {
       probeSingleAgent(agent.id);
     }
     setLoggingInId(null);
+  }
+
+  async function handleDownload(agent: AgentRuntimeItem) {
+    setDownloadingId(agent.id);
+    setActionHint(null);
+    try {
+      const result = await downloadAgentRuntime(agent.id);
+      setActionHint(`${result.message}${result.version ? `（${result.version}）` : ""}`);
+      probeSingleAgent(agent.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActionHint(message);
+    } finally {
+      setDownloadingId(null);
+    }
   }
 
   async function handleSetDefault(agentId: string) {
@@ -74,8 +90,8 @@ export function AgentRuntimesPanel() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
-          首次安装打开会自动扫描一次并写入本地库；之后启动直接读缓存。安装或更新 CLI
-          后，可点右上角「扫描 Agent」重新检测。
+          每个 Agent 共用同一张配置卡：下载/安装 CLI → 登录或配置 API →
+          选模型。支持托管下载的可一键装到叮答目录；其余按文档安装后点「扫描 Agent」。
         </p>
         <Button size="sm" variant="outline" disabled={scanning} onClick={() => void handleRescan()}>
           <RefreshCw className={scanning ? "size-4 animate-spin" : "size-4"} />
@@ -114,7 +130,14 @@ export function AgentRuntimesPanel() {
           <h2 className="text-sm font-medium">未安装（{missing.length}）</h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {missing.map((agent) => (
-              <AgentRuntimeCard key={agent.id} agent={agent} />
+              <AgentRuntimeCard
+                key={agent.id}
+                agent={agent}
+                downloading={downloadingId === agent.id}
+                onDownload={
+                  agent.can_download ? () => void handleDownload(agent) : undefined
+                }
+              />
             ))}
           </div>
         </section>

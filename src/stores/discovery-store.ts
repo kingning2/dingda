@@ -1,12 +1,13 @@
 /**
- * 启动探测结果（Agent CLI + 平台账号）的全局状态。
- * 探测写这里，组件只订阅下发。
+ * 启动探测结果（Agent CLI + 平台账号 + 最近会话）的全局状态。
+ * 预热写这里，首页 / 项目页只订阅下发。
  */
 
 import { create } from "zustand";
 
 import type { AccountListItem, AccountPlatform } from "@/contracts/account";
 import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import type { AgentWorkSummary } from "@/lib/agent-api";
 import { supportsExternalAgents } from "@/lib/capabilities";
 
 export const ACCOUNT_PLATFORMS: AccountPlatform[] = [
@@ -25,6 +26,11 @@ type DiscoveryState = {
   accountsError: string | null;
   accountsLoaded: boolean;
 
+  /** 最近工作会话（首页 / 全部项目共用）。 */
+  recentWorks: AgentWorkSummary[];
+  recentWorksLoading: boolean;
+  recentWorksLoaded: boolean;
+
   setAgents: (agents: AgentRuntimeItem[]) => void;
   setAgentsScanning: (scanning: boolean) => void;
 
@@ -37,6 +43,9 @@ type DiscoveryState = {
   setAutoConnectIds: (ids: string[]) => void;
   setAccountsLoading: (loading: boolean) => void;
   setAccountsError: (error: string | null) => void;
+
+  setRecentWorks: (works: AgentWorkSummary[]) => void;
+  setRecentWorksLoading: (loading: boolean) => void;
 };
 
 export const useDiscoveryStore = create<DiscoveryState>((set) => ({
@@ -48,6 +57,10 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
   accountsLoading: false,
   accountsError: null,
   accountsLoaded: false,
+
+  recentWorks: [],
+  recentWorksLoading: false,
+  recentWorksLoaded: false,
 
   setAgents: (agents) =>
     set((state) => (state.agents === agents ? state : { agents })),
@@ -85,6 +98,14 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
   setAutoConnectIds: (autoConnectIds) => set({ autoConnectIds }),
   setAccountsLoading: (accountsLoading) => set({ accountsLoading }),
   setAccountsError: (accountsError) => set({ accountsError }),
+
+  setRecentWorks: (recentWorks) =>
+    set({
+      recentWorks,
+      recentWorksLoaded: true,
+      recentWorksLoading: false,
+    }),
+  setRecentWorksLoading: (recentWorksLoading) => set({ recentWorksLoading }),
 }));
 
 export function getDiscoveryAgents(): AgentRuntimeItem[] {

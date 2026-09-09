@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Paperclip } from "lucide-react";
+import { ArrowUp, Paperclip, Square } from "lucide-react";
 import type { ComposerAgentOption, ComposerAttachmentView, ComposerSubmitPayload } from "@/contracts/composer";
 import { ComposerAgentPicker } from "./composer-agent-picker";
 import { ComposerAttachments } from "./composer-attachments";
@@ -21,7 +21,11 @@ interface PromptComposerProps {
   defaultAgentId?: string | null;
   defaultModelId?: string | null;
   defaultMessage?: string;
+  /** 隐藏 Agent 选择器（由外部设置面板接管）。 */
+  hideAgentPicker?: boolean;
   onSubmit: (payload: ComposerSubmitPayload) => void;
+  /** 生成中点击停止（有则 busy 时显示停止按钮）。 */
+  onCancel?: () => void;
   /** 输入区内容/高度变化时回调（用于聊天区滚到底）。 */
   onInputActivity?: () => void;
   className?: string;
@@ -37,7 +41,9 @@ export function PromptComposer({
   defaultAgentId = null,
   defaultModelId = null,
   defaultMessage = "",
+  hideAgentPicker = false,
   onSubmit,
+  onCancel,
   onInputActivity,
   className,
   textareaClassName,
@@ -82,6 +88,7 @@ export function PromptComposer({
     !busy &&
     (!requiresExternalAgent || Boolean(resolvedAgentId)) &&
     (message.trim().length > 0 || attachments.length > 0);
+  const canCancel = busy && Boolean(onCancel);
 
   async function appendFiles(files: FileList | File[]) {
     const list = Array.from(files);
@@ -107,7 +114,7 @@ export function PromptComposer({
     const trimmed = message.trim();
     onSubmit({
       message: trimmed,
-      agent_id: resolvedAgentId ?? "product",
+      agent_id: resolvedAgentId ?? "codex",
       model_id: resolvedModelId,
       attachments: attachments.map((item) => ({ ...item })),
     });
@@ -129,6 +136,7 @@ export function PromptComposer({
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey) {
             event.preventDefault();
+            if (canCancel) return;
             handleSubmit();
           }
         }}
@@ -162,7 +170,7 @@ export function PromptComposer({
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {requiresExternalAgent ? (
+          {requiresExternalAgent && !hideAgentPicker ? (
             <ComposerAgentPicker
               agents={agents}
               agentId={resolvedAgentId}
@@ -185,16 +193,29 @@ export function PromptComposer({
             <Paperclip className="size-4" />
           </Button>
         </div>
-        <Button
-          type="button"
-          size="icon"
-          className="rounded-full"
-          disabled={!canSubmit}
-          onClick={handleSubmit}
-          aria-label="发送"
-        >
-          <ArrowUp className="size-4" />
-        </Button>
+        {canCancel ? (
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className="rounded-full"
+            onClick={() => onCancel?.()}
+            aria-label="停止生成"
+          >
+            <Square className="size-3.5 fill-current" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="icon"
+            className="rounded-full"
+            disabled={!canSubmit}
+            onClick={handleSubmit}
+            aria-label="发送"
+          >
+            <ArrowUp className="size-4" />
+          </Button>
+        )}
       </div>
     </div>
   );

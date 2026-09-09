@@ -1,6 +1,10 @@
-import { Navigate } from "react-router-dom";
+import { AccountsHub } from "@/components/accounts";
 
-/** @deprecated 使用 /assets?tab=accounts */
+/** 平台账号页（闲鱼 / 小红书 / 1688）。 */
 export function AccountsPage() {
-  return <Navigate to="/assets?tab=accounts" replace />;
+  return (
+    <section>
+      <AccountsHub />
+    </section>
+  );
 }

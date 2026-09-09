@@ -36,7 +36,7 @@ export function ComposerAgentPicker({
   if (agents.length === 0) {
     return (
       <a
-        href="#/assets"
+        href="#/agents"
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "gap-1.5 text-muted-foreground",
@@ -44,7 +44,7 @@ export function ComposerAgentPicker({
         )}
       >
         <Plug className="size-3.5" />
-        管理资产
+        管理 Agent
       </a>
     );
   }

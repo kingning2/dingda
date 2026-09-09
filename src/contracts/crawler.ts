@@ -23,12 +23,34 @@ export interface CrawlProductItem {
   location?: string;
   image_url?: string;
   product_url?: string;
+  /** 闲鱼「想要」人数（详情接口）。 */
+  want_count?: string | null;
+  browse_count?: string | null;
+  /** 小红书搜索下发；拉详情必须带回，否则 300031。 */
+  xsec_token?: string | null;
   crawled_at: string;
 }
 
 export interface CrawlSearchRequest {
   platform: CrawlPlatform;
   query: string;
+  limit?: number;
+  cookie?: string | null;
+}
+
+export interface CrawlProductRequest {
+  platform: CrawlPlatform;
+  item_id: string;
+  cookie?: string | null;
+  xsec_token?: string | null;
+}
+
+export interface CrawlProductResponse {
+  ok: boolean;
+  platform: CrawlPlatform | string;
+  item?: CrawlProductItem | null;
+  error_code?: string | null;
+  message?: string | null;
 }
 
 export interface CrawlSearchResponse {
@@ -36,6 +58,10 @@ export interface CrawlSearchResponse {
   status: CrawlTaskStatusView;
   items: CrawlProductItem[];
   total: number;
+  /** 对应平台搜索页，供对话内嵌展示。 */
+  search_url?: string | null;
+  error_code?: string | null;
+  message?: string | null;
 }
 
 export interface CrawlHistoryItem {

@@ -1,12 +1,26 @@
+/**
+ * 把 Agent SSE 事件折叠成助手消息状态。
+ * 步骤块（kind / page / status）只接受后端下发的 step / page，前端不猜。
+ * timeline 按事件到达顺序交错（思考 ↔ 工具 ↔ 正文），与服务端日志一致。
+ */
+
 import type { AgentEvent } from "@/contracts/agent-event";
-import type { AgentWorkDetailView, AgentWorkMessageView, AgentWorkStepView } from "@/contracts/ai-work";
+import type {
+  AgentWorkDetailView,
+  AgentWorkMessageView,
+  AgentWorkStepView,
+  AgentWorkTimelineEntry,
+} from "@/contracts/ai-work";
 
 export interface AgentRunMessageState {
   content: string;
   thinking: string;
   steps: AgentWorkStepView[];
+  timeline: AgentWorkTimelineEntry[];
   error: string | null;
   completed: boolean;
+  /** 本轮 SSE 下发的 CLI session / thread id。 */
+  sessionId: string | null;
 }
 
 export function createAgentRunMessageState(): AgentRunMessageState {
@@ -14,34 +28,78 @@ export function createAgentRunMessageState(): AgentRunMessageState {
     content: "",
     thinking: "",
     steps: [],
+    timeline: [],
     error: null,
     completed: false,
+    sessionId: null,
   };
 }
 
-const STEP_RUNNING = {
+/** 追加思考/正文片段：连续同 kind 合并，否则新开一段。 */
+function appendTextSegment(
+  timeline: AgentWorkTimelineEntry[],
+  kind: "thinking" | "text",
+  chunk: string,
+): AgentWorkTimelineEntry[] {
+  const last = timeline[timeline.length - 1];
+  if (last?.kind === kind) {
+    return [...timeline.slice(0, -1), { ...last, text: last.text + chunk }];
+  }
+  return [...timeline, { kind, id: `${kind}-${timeline.length}`, text: chunk }];
+}
+
+/** 工具步骤入时间线；同 id 不重复。browser-live 被真实工具接管时改写 id。 */
+function appendStepSegment(
+  timeline: AgentWorkTimelineEntry[],
+  stepId: string,
+  replaceLiveId?: string,
+): AgentWorkTimelineEntry[] {
+  let next = timeline;
+  if (replaceLiveId) {
+    next = next.map((entry) =>
+      entry.kind === "step" && entry.id === replaceLiveId ? { kind: "step", id: stepId } : entry,
+    );
+  }
+  if (next.some((entry) => entry.kind === "step" && entry.id === stepId)) return next;
+  return [...next, { kind: "step", id: stepId }];
+}
+
+const STEP_RUNNING: AgentWorkStepView["status"] = {
   state: "running",
   label: "执行中",
   hint: null,
   badge_class: "bg-sky-500/15 text-sky-700",
 };
 
-const STEP_DONE = {
+const STEP_DONE: AgentWorkStepView["status"] = {
   state: "ready",
   label: "已完成",
   hint: null,
   badge_class: "bg-emerald-500/15 text-emerald-600",
 };
 
-function summarizeToolInput(input: unknown): string | null {
-  if (input === null || input === undefined) return null;
-  if (typeof input === "string") return input;
-  try {
-    const text = JSON.stringify(input);
-    return text.length > 120 ? `${text.slice(0, 117)}...` : text;
-  } catch {
-    return null;
-  }
+function upsertStep(steps: AgentWorkStepView[], step: AgentWorkStepView): AgentWorkStepView[] {
+  const idx = steps.findIndex((item) => item.id === step.id);
+  if (idx < 0) return [...steps, step];
+  const next = [...steps];
+  next[idx] = { ...next[idx], ...step, page: step.page ?? next[idx].page };
+  return next;
+}
+
+function patchStep(
+  steps: AgentWorkStepView[],
+  id: string,
+  patch: Partial<AgentWorkStepView> & { page_loading?: boolean },
+): AgentWorkStepView[] {
+  return steps.map((step) => {
+    if (step.id !== id) return step;
+    const page =
+      step.page && patch.page_loading === false
+        ? { ...step.page, loading: false }
+        : (patch.page ?? step.page);
+    const { page_loading: _, ...rest } = patch;
+    return { ...step, ...rest, page };
+  });
 }
 
 export function reduceAgentEvent(
@@ -52,51 +110,154 @@ export function reduceAgentEvent(
     case "runStarted":
       return state;
     case "textDelta":
-      return { ...state, content: state.content + event.text };
-    case "thinking":
-      return { ...state, thinking: state.thinking + event.text };
-    case "toolCall": {
-      const hint = summarizeToolInput(event.input);
-      const step: AgentWorkStepView = {
-        id: event.id || `tool-${state.steps.length + 1}`,
-        label: event.name,
-        hint,
-        status: STEP_RUNNING,
+      if (!event.text) return state;
+      return {
+        ...state,
+        content: state.content + event.text,
+        timeline: appendTextSegment(state.timeline, "text", event.text),
       };
-      const existing = state.steps.findIndex((item) => item.id === step.id);
-      if (existing >= 0) {
-        const steps = [...state.steps];
-        steps[existing] = { ...steps[existing], label: step.label, hint: step.hint };
-        return { ...state, steps };
+    case "thinking":
+      if (!event.text) return state;
+      return {
+        ...state,
+        thinking: state.thinking + event.text,
+        timeline: appendTextSegment(state.timeline, "thinking", event.text),
+      };
+    case "toolCall": {
+      const incoming =
+        event.step?.id
+          ? event.step
+          : event.id && event.name
+            ? {
+                id: event.id,
+                label: event.name,
+                kind: "tool" as const,
+                status: STEP_RUNNING,
+              }
+            : null;
+      if (!incoming) return state;
+
+      let steps = [...state.steps];
+      let step = { ...incoming };
+      let replacedLive = false;
+
+      // OpenCode 常在工具结束后才发 tool_use：直播帧先落在 browser-live，这里挪到对应工具下
+      if (step.kind === "browser_crawl" || step.id) {
+        const liveIdx = steps.findIndex((item) => item.id === "browser-live");
+        if (liveIdx >= 0 && steps[liveIdx]?.page?.screenshot_url) {
+          const live = steps[liveIdx];
+          step = {
+            ...step,
+            kind: "browser_crawl",
+            label: step.label || live.label,
+            hint: step.hint ?? live.hint,
+            page: live.page,
+            status: step.status?.state === "running" ? step.status : STEP_RUNNING,
+          };
+          steps = steps.filter((_, index) => index !== liveIdx);
+          replacedLive = true;
+        }
       }
-      return { ...state, steps: [...state.steps, step] };
+
+      return {
+        ...state,
+        steps: upsertStep(steps, step),
+        timeline: appendStepSegment(
+          state.timeline,
+          step.id,
+          replacedLive ? "browser-live" : undefined,
+        ),
+      };
     }
     case "toolResult": {
-      const steps = state.steps.map((step) =>
-        step.id === event.id
-          ? {
-              ...step,
-              status: STEP_DONE,
-              hint: summarizeToolInput(event.output) ?? step.hint,
-            }
-          : step,
+      if (event.step?.id) {
+        return { ...state, steps: patchStep(state.steps, event.step.id, event.step) };
+      }
+      if (!event.id) return state;
+      return {
+        ...state,
+        steps: patchStep(state.steps, event.id, {
+          status: STEP_DONE,
+          page_loading: false,
+        }),
+      };
+    }
+    case "browserFrame": {
+      const page = event.page ?? {
+        url: event.url,
+        title: event.title,
+        focus_label: event.hint ?? null,
+        loading: true,
+        screenshot_url: event.screenshot_url,
+      };
+      if (!page.screenshot_url) return state;
+      // OpenCode 工具完成前不发 tool_use：帧会先到，需合成直播步骤
+      let idx = state.steps.findIndex(
+        (step) => step.kind === "browser_crawl" && step.status.state === "running",
       );
-      return { ...state, steps };
+      if (idx < 0) {
+        idx = state.steps.findIndex((step) => step.id === "browser-live");
+      }
+      const steps = [...state.steps];
+      let timeline = state.timeline;
+      if (idx < 0) {
+        steps.push({
+          id: "browser-live",
+          label: page.title || "浏览器直播",
+          hint: page.focus_label ?? null,
+          kind: "browser_crawl",
+          status: STEP_RUNNING,
+          page,
+        });
+        timeline = appendStepSegment(timeline, "browser-live");
+      } else {
+        const prev = steps[idx];
+        steps[idx] = {
+          ...prev,
+          label: page.title || prev.label,
+          hint: page.focus_label ?? prev.hint,
+          kind: "browser_crawl",
+          status: prev.status.state === "running" ? prev.status : STEP_RUNNING,
+          page,
+        };
+      }
+      return { ...state, steps, timeline };
     }
     case "fileChanged":
       return state;
-    case "session":
-      return state;
-    case "error": {
-      const errorLine = `[错误] ${event.message}`;
-      return {
-        ...state,
-        error: event.message,
-        content: state.content ? `${state.content}\n\n${errorLine}` : errorLine,
-      };
+    case "session": {
+      const sid = event.sessionId?.trim();
+      if (!sid) return state;
+      return { ...state, sessionId: sid };
     }
-    case "runCompleted":
-      return { ...state, completed: true };
+    case "error":
+      if (!event.message) return state;
+      {
+        const suffix = `\n\n[错误] ${event.message}`;
+        const errOnly = `[错误] ${event.message}`;
+        return {
+          ...state,
+          error: event.message,
+          content: state.content ? `${state.content}${suffix}` : errOnly,
+          timeline: appendTextSegment(
+            state.timeline,
+            "text",
+            state.content ? suffix : errOnly,
+          ),
+        };
+      }
+    case "runCompleted": {
+      const steps = state.steps.map((step) =>
+        step.status.state === "running"
+          ? {
+              ...step,
+              status: STEP_DONE,
+              page: step.page ? { ...step.page, loading: false } : step.page,
+            }
+          : step,
+      );
+      return { ...state, steps, completed: true };
+    }
     default:
       return state;
   }
@@ -122,6 +283,7 @@ export function applyRunStateToAssistantMessage(
     thinking_started_at: startedAt,
     thinking_duration_sec,
     steps: state.steps.length > 0 ? state.steps : message.steps,
+    timeline: state.timeline.length > 0 ? state.timeline : message.timeline,
   };
 }
 
@@ -152,11 +314,65 @@ export function applyRunStateToDetail(
         }
       : detail.status;
 
+  const crawl = [...state.steps]
+    .reverse()
+    .find((step) => step.kind === "browser_crawl" && step.page?.screenshot_url);
+
+  const browser_live = crawl?.page
+    ? {
+        ...detail.browser_live,
+        frame_id: crawl.id,
+        url: crawl.page.url,
+        title: crawl.page.title,
+        progress_hint: crawl.page.focus_label ?? null,
+        screenshot_url: crawl.page.screenshot_url ?? null,
+        focus_label: crawl.page.focus_label ?? null,
+        status: {
+          state: crawl.status.state,
+          label: crawl.status.label,
+          hint: crawl.page.focus_label ?? crawl.hint ?? null,
+          badge_class: crawl.status.badge_class,
+        },
+      }
+    : detail.browser_live;
+
   return {
     ...detail,
     messages,
     status,
     can_send: state.completed,
+    browser_live,
+    ...(state.sessionId
+      ? {
+          cli_session_id: state.sessionId,
+          cli_session_runtime_id: detail.composer_agent_id ?? detail.cli_session_runtime_id ?? null,
+        }
+      : {}),
+  };
+}
+
+/** 丢掉某条用户消息及其之后的全部内容，便于从此处重新生成。 */
+export function truncateBeforeUserMessage(
+  detail: AgentWorkDetailView,
+  userMessageId: string,
+): AgentWorkDetailView | null {
+  const idx = detail.messages.findIndex(
+    (message) => message.id === userMessageId && message.role === "user",
+  );
+  if (idx < 0) return null;
+  return {
+    ...detail,
+    messages: detail.messages.slice(0, idx),
+    can_send: true,
+    // 截断后 CLI 历史对不上，丢掉 session，下一轮当新会话
+    cli_session_id: null,
+    cli_session_runtime_id: null,
+    status: {
+      state: "ready",
+      label: "已完成",
+      hint: null,
+      badge_class: "bg-emerald-500/15 text-emerald-600",
+    },
   };
 }
 
@@ -183,6 +399,7 @@ export function createOptimisticSendDetail(
     thinking_started_at: now,
     thinking_duration_sec: null,
     steps: [],
+    timeline: [],
   };
 
   const nextTitle =
@@ -192,6 +409,10 @@ export function createOptimisticSendDetail(
         : userText.trim()
       : detail.title;
 
+  const sameRuntime =
+    Boolean(detail.cli_session_id) &&
+    (detail.cli_session_runtime_id ?? detail.composer_agent_id) === agentId;
+
   return {
     assistantMessageId,
     detail: {
@@ -200,10 +421,13 @@ export function createOptimisticSendDetail(
       can_send: false,
       composer_agent_id: agentId,
       composer_model_id: modelId ?? null,
+      // 换 Agent 时丢掉旧 CLI session
+      cli_session_id: sameRuntime ? detail.cli_session_id : null,
+      cli_session_runtime_id: sameRuntime ? agentId : null,
       status: {
         state: "running",
         label: "执行中",
-        hint: "Agent CLI 正在处理请求…",
+        hint: "Agent 执行中…",
         badge_class: "bg-sky-500/15 text-sky-700",
       },
       messages: [...detail.messages, userMessage, assistantMessage],

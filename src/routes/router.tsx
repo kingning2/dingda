@@ -1,10 +1,9 @@
 import { createHashRouter } from "react-router-dom";
 
 import { AccountsPage } from "@/pages/accounts-page";
+import { AgentsPage } from "@/pages/agents-page";
 import { AssetsPage } from "@/pages/assets-page";
-import { CommunityPage } from "@/pages/community-page";
 import { CrawlerPage } from "@/pages/crawler-page";
-import { DesignSystemsPage } from "@/pages/design-systems-page";
 import { IntegrationsPage } from "@/pages/integrations-page";
 import { PluginsPage } from "@/pages/plugins-page";
 import { AppLayout } from "@/routes/layouts/app-layout";
@@ -53,9 +52,18 @@ export const router = createHashRouter([
                 handle: entry("扩展"),
               },
               {
+                path: "agents",
+                element: <AgentsPage />,
+                handle: entry("Agent"),
+              },
+              {
+                path: "accounts",
+                element: <AccountsPage />,
+                handle: entry("账号"),
+              },
+              {
                 path: "assets",
                 element: <AssetsPage />,
-                handle: entry("资产"),
               },
               { path: "integrations", element: <IntegrationsPage /> },
               {
@@ -63,7 +71,6 @@ export const router = createHashRouter([
                 element: <CrawlerPage />,
                 handle: entry("自主爬虫"),
               },
-              { path: "accounts", element: <AccountsPage /> },
               {
                 path: "work/:workId",
                 element: <WorkRoute />,
