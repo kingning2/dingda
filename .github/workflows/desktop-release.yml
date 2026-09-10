@@ -1,0 +1,84 @@
+# Desktop release (Tauri) — runs on GitHub, not a developer laptop.
+#
+# Builds Windows / macOS / Linux installers with:
+#   - bundled uv + server (China PyPI mirrors in packaged uv.toml)
+#   - platform Camoufox zip from daijro/camoufox Releases
+#
+# Trigger: push tag v* or manual workflow_dispatch.
+
+name: desktop-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-lock-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require server/uv.lock in repo
+        run: test -f server/uv.lock
+
+  desktop:
+    needs: prepare-lock-check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          - platform: macos-latest
+          - platform: ubuntu-22.04
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux WebKit deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare desktop runtime (uv + server + Camoufox zip)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUIRE_CAMOUFOX: "1"
+          CAMOUFOX_RELEASE_TAG: ${{ vars.CAMOUFOX_RELEASE_TAG }}
+        run: pnpm prepare:desktop-runtime
+
+      - name: Build Tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('desktop-{0}', github.sha) }}
+          releaseName: DingDa v2 ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          releaseBody: |
+            Slim desktop build from GitHub Actions.
+            - Bundled uv + server (China mirrors for first-run sync)
+            - Platform Camoufox zip extracted on first launch
+          releaseDraft: true
+          prerelease: false

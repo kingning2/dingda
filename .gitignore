@@ -5,8 +5,13 @@ __pycache__/
 .venv/
 .ruff_cache/
 .pytest_cache/
+# Keep server lock for CI `uv sync --frozen` / GitHub desktop builds
 uv.lock
+!server/uv.lock
 server/tmp/
+
+# Desktop bundled runtime（prepare-desktop-runtime 产出；Camoufox zip 很大）
+src-tauri/resources/runtime/
 
 # Rust
 target/

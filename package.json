@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "prepare:server": "cd server && uv sync --frozen",
+    "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
