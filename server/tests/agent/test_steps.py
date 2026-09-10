@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.agent.runtimes.steps import (
+from src.cli.steps import (
     normalize_tool_name,
     page_from_live_frame,
     step_for_tool_call,

@@ -12,7 +12,7 @@ import pytest
 from src.crawler.core.types import CrawlContext
 from src.crawler.sources.xianyu import crawler as xianyu_crawler
 from src.crawler.sources.xianyu.crawler import XianyuCrawler
-from src.shared.errors import AppError
+from src.shared.errors import AppError, risk_control_error
 
 
 class _FakePage:
@@ -70,14 +70,11 @@ def test_search_passes_slider_when_blocked() -> None:
         crawler.close_page = AsyncMock()  # type: ignore[method-assign]
 
         with (
-            patch.object(xianyu_crawler, "auto_slider_enabled", return_value=True),
-            patch.object(xianyu_crawler, "clear_risk_cookies", new_callable=AsyncMock) as clear_ck,
             patch.object(
-                xianyu_crawler,
-                "try_solve_slider",
+                xianyu_crawler._XIANYU_RISK,
+                "recover_risk",
                 new_callable=AsyncMock,
-                return_value=(True, "自动滑块验证成功"),
-            ) as solve,
+            ) as recover,
             patch("src.crawler.core.live.emit_live_frame", new_callable=AsyncMock),
             patch("src.crawler.core.live.live_frame_pump", new_callable=AsyncMock) as pump,
         ):
@@ -87,9 +84,7 @@ def test_search_passes_slider_when_blocked() -> None:
         assert len(result.items) == 1
         assert result.items[0].item_id == "9"
         assert result.items[0].raw.get("image_url") == "https://img.test/a.jpg"
-        clear_ck.assert_awaited()
-        solve.assert_awaited_once()
-        assert solve.await_args.kwargs.get("prefer_page_mouse") is True
+        recover.assert_awaited()
 
     asyncio.run(_run())
 
@@ -110,14 +105,12 @@ def test_search_raises_when_slider_fails() -> None:
         crawler.close_page = AsyncMock()  # type: ignore[method-assign]
 
         with (
-            patch.object(xianyu_crawler, "auto_slider_enabled", return_value=True),
-            patch.object(xianyu_crawler, "clear_risk_cookies", new_callable=AsyncMock),
             patch.object(
-                xianyu_crawler,
-                "try_solve_slider",
+                xianyu_crawler._XIANYU_RISK,
+                "recover_risk",
                 new_callable=AsyncMock,
-                return_value=(False, "自动滑块失败"),
-            ) as solve,
+                side_effect=risk_control_error("search 人工滑块超时"),
+            ) as recover,
             patch("src.crawler.core.live.emit_live_frame", new_callable=AsyncMock),
             patch("src.crawler.core.live.live_frame_pump", new_callable=AsyncMock) as pump,
             pytest.raises(AppError) as raised,
@@ -126,6 +119,6 @@ def test_search_raises_when_slider_fails() -> None:
             await crawler.search(CrawlContext(task_id="t2", meta={"limit": 5}), "手机")
 
         assert raised.value.code == "channel.risk"
-        solve.assert_awaited_once()
+        recover.assert_awaited()
 
     asyncio.run(_run())

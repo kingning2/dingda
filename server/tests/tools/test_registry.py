@@ -20,8 +20,18 @@ def test_get_tool() -> None:
 
 def test_list_tools_includes_login() -> None:
     names = [s.name for s in list_tools()]
-    assert names == ["compare", "login", "preview", "product", "search"]
+    assert names == [
+        "compare",
+        "login",
+        "preview",
+        "product",
+        "search",
+        "validate_selectors",
+    ]
     assert get_tool("login").name == "login"
+    # 校验工具只给修复子 agent，不进默认工具面
+    assert get_tool("validate_selectors").internal_only is True
+    assert get_tool("search").internal_only is False
 
 
 def test_call_unsupported_platform() -> None:

@@ -6,10 +6,10 @@ import json
 import os
 from pathlib import Path
 
-from src.agent.runtimes.mcp_inject import apply_mcp_inject
-from src.agent.runtimes.prompts import compose_agent_prompt
-from src.agent.runtimes.registry import get_runtime, list_runtime_ids
-from src.agent.runtimes.stream import parse_lines
+from src.cli.inject.mcp import apply_mcp_inject
+from src.cli.prompts import compose_agent_prompt
+from src.cli.registry import get_runtime, list_runtime_ids
+from src.cli.stream.parse import parse_lines
 
 
 def test_list_runtime_ids() -> None:
@@ -163,19 +163,25 @@ def test_opencode_mcp_inject_sets_env(tmp_path: Path, monkeypatch) -> None:
     assert out == ["run", "--format", "json"]
     raw = env["OPENCODE_CONFIG_CONTENT"]
     data = json.loads(raw)
-    assert data["mcp"]["dingda"]["type"] == "local"
-    assert "dingda-mcp" in data["mcp"]["dingda"]["command"]
-    assert data["mcp"]["dingda"]["environment"]["DINGDA_AGENT_RUN_ID"] == "run-abc"
+    entry = data["mcp"]["dingda"]
+    assert entry["type"] == "local"
+    # 必须是绝对解释器 + `-m src.mcp.server`：裸 `uv` 会被 codex 判 MCP startup failed (os error 3)
+    assert isinstance(entry["command"], list) and entry["command"]
+    assert entry["command"][0]
+    assert "src.mcp.server" in entry["command"]
+    assert entry["environment"]["DINGDA_AGENT_RUN_ID"] == "run-abc"
+    # 子进程 cwd 未必在仓库里，得靠 PYTHONPATH 才能 import src
+    assert entry["environment"]["PYTHONPATH"]
 
 
 def test_resolve_binary_prefers_managed(tmp_path: Path, monkeypatch) -> None:
-    from src.agent.runtimes.registry import resolve_binary
+    from src.cli.registry import resolve_binary
 
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", lambda: home)
     monkeypatch.delenv("DINGDA_OPENCODE_PATH", raising=False)
     monkeypatch.setattr(
-        "src.agent.runtimes.registry.shutil.which",
+        "src.cli.registry.shutil.which",
         lambda *_a, **_k: None,
     )
 
@@ -188,17 +194,17 @@ def test_resolve_binary_prefers_managed(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_resolve_binary_finds_opencode_home_bin(tmp_path: Path, monkeypatch) -> None:
-    from src.agent.runtimes.registry import resolve_binary
+    from src.cli.registry import resolve_binary
 
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", lambda: home)
     monkeypatch.delenv("DINGDA_OPENCODE_PATH", raising=False)
     monkeypatch.setattr(
-        "src.agent.runtimes.registry.shutil.which",
+        "src.cli.registry.shutil.which",
         lambda *_a, **_k: None,
     )
     monkeypatch.setattr(
-        "src.agent.runtimes.registry._windows_registry_path",
+        "src.cli.registry._windows_registry_path",
         lambda: "",
     )
 
@@ -211,7 +217,7 @@ def test_resolve_binary_finds_opencode_home_bin(tmp_path: Path, monkeypatch) -> 
 
 
 def test_resolve_binary_preferred_strips_extended_prefix(tmp_path: Path) -> None:
-    from src.agent.runtimes.registry import resolve_binary
+    from src.cli.registry import resolve_binary
 
     binary = tmp_path / ("opencode.exe" if os.name == "nt" else "opencode")
     binary.write_bytes(b"x")
