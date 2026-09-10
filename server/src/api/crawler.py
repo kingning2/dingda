@@ -68,8 +68,22 @@ class CrawlerProductItem(BaseModel):
     product_url: str | None = None
     want_count: str | None = None
     browse_count: str | None = None
+    desc: str | None = None
+    comments: list[CrawlerProductComment] = Field(default_factory=list)
+    ocr_text: str | None = None
+    content_text: str | None = None
+    note_type: str | None = None
     xsec_token: str | None = None
     crawled_at: str
+
+
+class CrawlerProductComment(BaseModel):
+    """闲鱼商品留言。"""
+
+    author: str
+    content: str
+    time: str | None = None
+    reply: str | None = None
 
 
 class CrawlerTaskStatus(BaseModel):
@@ -139,8 +153,24 @@ def _to_response(platform: str, query: str, out: Any) -> CrawlerSearchResponse:
             price=item.price or "",
             platform=platform,
             seller=getattr(item, "seller_nick", None) or None,
+            location=getattr(item, "location", None) or None,
             image_url=getattr(item, "image_url", None) or None,
             product_url=item.url or None,
+            want_count=getattr(item, "want_count", None) or None,
+            browse_count=getattr(item, "browse_count", None) or None,
+            desc=getattr(item, "desc", None) or None,
+            comments=[
+                CrawlerProductComment(
+                    author=c.author,
+                    content=c.content,
+                    time=c.time,
+                    reply=c.reply,
+                )
+                for c in (getattr(item, "comments", None) or [])
+            ],
+            ocr_text=getattr(item, "ocr_text", None) or None,
+            content_text=getattr(item, "content_text", None) or None,
+            note_type=getattr(item, "note_type", None) or None,
             xsec_token=getattr(item, "xsec_token", None) or None,
             crawled_at=now,
         )
@@ -217,28 +247,48 @@ async def product_detail(body: CrawlerProductRequest) -> CrawlerProductResponse:
             message=out.message,
         )
     row = out.item
-    now = datetime.now(timezone.utc).isoformat()
     logger.info(
-        "crawler product done item_id=%s price=%s want=%s",
+        "crawler product done item_id=%s price=%s want=%s comments=%s",
         row.item_id,
         row.price,
         row.want_count,
+        len(row.comments),
     )
     return CrawlerProductResponse(
         ok=True,
         platform=platform,
-        item=CrawlerProductItem(
-            id=row.item_id,
-            title=row.title,
-            price=row.price or "",
-            platform=platform,
-            seller=row.seller_nick,
-            image_url=row.image_url,
-            product_url=row.url or None,
-            want_count=row.want_count,
-            browse_count=row.browse_count,
-            crawled_at=now,
-        ),
+        item=_to_product_item(platform, row),
+    )
+
+
+def _to_product_item(platform: str, row: Any) -> CrawlerProductItem:
+    """ProductItem → 前端商品 DTO（含描述与留言）。"""
+    now = datetime.now(timezone.utc).isoformat()
+    comments = [
+        CrawlerProductComment(
+            author=c.author,
+            content=c.content,
+            time=c.time,
+            reply=c.reply,
+        )
+        for c in (row.comments or [])
+    ]
+    return CrawlerProductItem(
+        id=row.item_id,
+        title=row.title,
+        price=row.price or "",
+        platform=platform,
+        seller=row.seller_nick,
+        location=row.location,
+        image_url=row.image_url,
+        product_url=row.url or None,
+        want_count=row.want_count,
+        browse_count=row.browse_count,
+        desc=row.desc,
+        comments=comments,
+        ocr_text=row.ocr_text,
+        content_text=row.content_text,
+        crawled_at=now,
     )
 
 
@@ -251,23 +301,10 @@ def _product_response(platform: str, item_id: str, out: Any) -> CrawlerProductRe
             error_code=out.error_code,
             message=out.message,
         )
-    row = out.item
-    now = datetime.now(timezone.utc).isoformat()
     return CrawlerProductResponse(
         ok=True,
         platform=platform,
-        item=CrawlerProductItem(
-            id=row.item_id,
-            title=row.title,
-            price=row.price or "",
-            platform=platform,
-            seller=row.seller_nick,
-            image_url=row.image_url,
-            product_url=row.url or None,
-            want_count=row.want_count,
-            browse_count=row.browse_count,
-            crawled_at=now,
-        ),
+        item=_to_product_item(platform, out.item),
     )
 
 

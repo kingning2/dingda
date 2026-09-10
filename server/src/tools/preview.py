@@ -100,7 +100,7 @@ async def run_preview(inp: PreviewInput) -> PreviewOutput:
             await post_live_frame(run_id, frame)
         else:
             try:
-                from src.agent.runtimes import live_hub
+                from src.cli.live import hub as live_hub
 
                 live_hub.push_frame(
                     "orphan",

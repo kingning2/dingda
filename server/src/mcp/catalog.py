@@ -24,7 +24,7 @@ def _server_dir() -> Path:
 def list_builtin_mcp_servers() -> list[dict[str, object]]:
     """返回与前端 ``McpListResponse`` 对齐的内置 MCP 配置。"""
     server = str(_server_dir())
-    tool_names = [spec.name for spec in list_tools()]
+    tool_names = [spec.name for spec in list_tools() if not spec.internal_only]
     python = (os.getenv("DINGDA_PYTHON") or "").strip()
     if python:
         command = python

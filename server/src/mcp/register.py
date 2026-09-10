@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -20,13 +21,34 @@ from src.tools.registry import ToolSpec, call_tool, list_tools
 logger = logging.getLogger("dingda.mcp.register")
 
 
+def _allowed_tool_names() -> set[str] | None:
+    """``DINGDA_MCP_TOOLS`` 白名单（逗号分隔）；未设则不过滤。"""
+    raw = (os.getenv("DINGDA_MCP_TOOLS") or "").strip()
+    if not raw:
+        return None
+    return {name.strip() for name in raw.split(",") if name.strip()}
+
+
 def register_internal_tools(mcp: FastMCP) -> list[str]:
-    """注册 registry 中的全部 Tool；返回已注册名。"""
+    """注册 Tool；``DINGDA_MCP_TOOLS`` 有值时只注册白名单内的，返回已注册名。
+
+    没有白名单时（父 agent）跳过 ``internal_only`` 的工具 —— 那些只给特定子 agent。
+    """
+    allowed = _allowed_tool_names()
     registered: list[str] = []
     for spec in list_tools():
+        if allowed is not None:
+            if spec.name not in allowed:
+                continue
+        elif spec.internal_only:
+            continue
         _bind(mcp, spec)
         registered.append(spec.name)
-        logger.info("mcp tool registered name=%s", spec.name)
+    logger.info(
+        "mcp tools registered=%s allowlist=%s",
+        registered,
+        sorted(allowed) if allowed is not None else "全部（除内部工具）",
+    )
     return registered
 
 

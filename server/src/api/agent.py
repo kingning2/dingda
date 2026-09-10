@@ -7,7 +7,7 @@
 设计说明：
     - 偏好与扫描目录落在 SQLite ``app_settings``
     - 对话快照落在 ``agent_works``
-    - CLI 启动在 Python ``agent.runtimes``，不再经 Tauri spawn
+    - CLI 启动在 Python ``cli``，不再经 Tauri spawn
     - PATH 探测/下载仍可由 Tauri 完成；运行一律走本模块
 """
 
@@ -24,9 +24,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from src.agent.core.agent import AgentService
-from src.agent.runtimes import live_hub
-from src.agent.runtimes.spawn import cancel_run, run_cli
-from src.agent.runtimes.steps import page_from_live_frame
+from src.cli.live import hub as live_hub
+from src.cli.spawn import cancel_run, run_cli
+from src.cli.steps import page_from_live_frame
 from src.contracts.agent import (
     AgentDefaultModelPutRequest,
     AgentDefaultModelView,

@@ -63,6 +63,14 @@ from src.tools.search import (
     SearchOutput,
     run_search,
 )
+from src.tools.validate import (
+    DEFAULT_TIMEOUT_S as VALIDATE_TIMEOUT_S,
+    TOOL_DESCRIPTION as VALIDATE_DESCRIPTION,
+    TOOL_NAME as VALIDATE_NAME,
+    ValidateInput,
+    ValidateOutput,
+    run_validate,
+)
 
 logger = logging.getLogger("dingda.tools.registry")
 
@@ -77,6 +85,8 @@ class ToolSpec:
     output_model: type[BaseModel]
     handler: Callable[..., Awaitable[BaseModel]]
     timeout_s: float
+    # 只给特定 agent 用（如修复子 agent 的校验工具）：默认面不暴露
+    internal_only: bool = False
 
 
 def _spec(
@@ -86,6 +96,8 @@ def _spec(
     output_model: type[BaseModel],
     handler: Callable[..., Awaitable[BaseModel]],
     timeout_s: float,
+    *,
+    internal_only: bool = False,
 ) -> ToolSpec:
     return ToolSpec(
         name=name,
@@ -94,6 +106,7 @@ def _spec(
         output_model=output_model,
         handler=handler,
         timeout_s=timeout_s,
+        internal_only=internal_only,
     )
 
 
@@ -137,6 +150,16 @@ _TOOLS: dict[str, ToolSpec] = {
         LoginOutput,
         run_login,  # type: ignore[arg-type]
         LOGIN_TIMEOUT_S,
+    ),
+    # 只给修复子 agent 用：靠 DINGDA_VALIDATE_URL 回打修复现场那个页面
+    VALIDATE_NAME: _spec(
+        VALIDATE_NAME,
+        VALIDATE_DESCRIPTION,
+        ValidateInput,
+        ValidateOutput,
+        run_validate,  # type: ignore[arg-type]
+        VALIDATE_TIMEOUT_S,
+        internal_only=True,
     ),
 }
 
