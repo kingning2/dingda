@@ -6,7 +6,7 @@ alwaysApply: false
 
 # 架构 Skill 入口
 
-全局硬约束见 `dingda-coding.mdc`（alwaysApply）。本规则触发时**先读再写**：
+全局硬约束见 `project-coding.mdc`（alwaysApply）。本规则触发时**先读再写**：
 
 1. `.agents/skills/layers.md`
 2. 按任务选一份：

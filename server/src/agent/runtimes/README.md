@@ -26,7 +26,7 @@
 
 按 run_id 收 MCP `preview` 投递的 browserFrame，spawn 侧 drain 进 SSE。
 
-### `prompts.py` / `dingda-system.md`
+### `prompts.py` / `system.md`
 
 选品系统前言；`compose_agent_prompt` 拼进 CLI stdin。首轮带前言；有 `session_id` 续聊时只传用户原文。前言要求多轮 search、单次 limit 尽量大、累计约 ≥100 条样本。
 

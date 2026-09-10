@@ -1,0 +1,10 @@
+{
+  "name": "@local/crawlers-codex-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Codex plugin bundle for internal crawler MCP tools.",
+  "files": [
+    ".codex-plugin/plugin.json",
+    ".mcp.json"
+  ]
+}

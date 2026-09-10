@@ -1,9 +1,9 @@
 ---
-description: 叮答全局编码约束。写任何前端 / Server / Tauri 代码前必须遵守：目录、IPC、能力注入、分层依赖。
+description: 项目全局编码约束。写任何前端 / Server / Tauri 代码前必须遵守：目录、IPC、能力注入、分层依赖。
 alwaysApply: true
 ---
 
-# 叮答编码约束
+# 项目编码约束
 
 写代码前先对齐本规则。细节在 `.agents/skills/`；改 Agent/Crawler/Browser/Tool/前端能力注入时**必须先读**对应 SKILL。
 

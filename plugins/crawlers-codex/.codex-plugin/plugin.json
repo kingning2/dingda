@@ -1,31 +1,30 @@
 {
-  "name": "dingda-crawlers",
+  "name": "crawlers-codex",
   "version": "0.1.0",
-  "description": "DingDa internal crawler MCP tools for Codex (via dingda-mcp).",
+  "description": "Internal crawler MCP tools for Codex (via local MCP entry).",
   "author": {
-    "name": "DingDa",
+    "name": "local",
     "url": "https://github.com/kingning2/dingda"
   },
   "homepage": "https://github.com/kingning2/dingda",
   "repository": "https://github.com/kingning2/dingda",
   "license": "Proprietary",
   "keywords": [
-    "dingda",
     "crawler",
     "mcp"
   ],
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "DingDa Tools",
-    "shortDescription": "Call DingDa internal crawler tools over MCP.",
-    "longDescription": "Expose DingDa internal Tool Registry (crawler.search_products, …) as MCP tools. No third-party CLI command passthrough.",
-    "developerName": "DingDa",
+    "displayName": "Crawler Tools",
+    "shortDescription": "Call internal crawler tools over MCP.",
+    "longDescription": "Expose internal Tool Registry (crawler.search_products, …) as MCP tools. No third-party CLI command passthrough.",
+    "developerName": "local",
     "category": "Productivity",
     "capabilities": [
       "MCP tools"
     ],
     "defaultPrompt": [
-      "用叮答爬虫在闲鱼搜一下二手机械键盘。",
+      "用爬虫在闲鱼搜一下二手机械键盘。",
       "帮我按关键词搜一批闲鱼商品并列出标题和链接。"
     ]
   }

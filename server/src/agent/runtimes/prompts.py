@@ -1,7 +1,7 @@
 """外部 CLI 选品系统前言。
 
 职责：
-    把 ``dingda-system.md`` 与用户原文拼成一次 CLI stdin prompt。
+    把 ``system.md`` 与用户原文拼成一次 CLI stdin prompt。
     供 Codex / Claude / OpenCode spawn 使用；续聊（有 session）只传用户增量。
 
 设计说明：
@@ -13,11 +13,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-_SYSTEM_PATH = Path(__file__).with_name("dingda-system.md")
+_SYSTEM_PATH = Path(__file__).with_name("system.md")
 _cached: str | None = None
 
 
-def dingda_system_prompt() -> str:
+def system_prompt() -> str:
     """读选品系统前言（缓存）。"""
     global _cached
     if _cached is None:
@@ -36,7 +36,7 @@ def compose_agent_prompt(
     if resume:
         return f"{text}\n" if text else "\n"
 
-    parts = [dingda_system_prompt(), "", "---", "", "## 用户请求", ""]
+    parts = [system_prompt(), "", "---", "", "## 用户请求", ""]
     hint = (platform_hint or "").strip().lower()
     if hint in {"xianyu", "xiaohongshu", "ali1688"}:
         label = {"xianyu": "闲鱼", "xiaohongshu": "小红书", "ali1688": "1688"}[hint]

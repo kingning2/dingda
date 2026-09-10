@@ -23,7 +23,7 @@ from typing import Any
 
 from src.agent.runtimes import live_hub
 from src.agent.runtimes.mcp_inject import SERVER_NAME, apply_mcp_inject
-from src.agent.runtimes.prompts import compose_agent_prompt, dingda_system_prompt
+from src.agent.runtimes.prompts import compose_agent_prompt, system_prompt
 from src.agent.runtimes.registry import get_runtime, resolve_binary
 from src.agent.runtimes.stream import parse_lines
 from src.crawler.ocr import warm_ocr
@@ -44,11 +44,11 @@ def _api_base() -> str:
 
 def _mcp_config_line(mcp_mode: str) -> str:
     tools = ", ".join(spec.name for spec in list_tools()) or "(无)"
-    prompt_chars = len(dingda_system_prompt())
+    prompt_chars = len(system_prompt())
     return (
         f"MCP 服务器 `{SERVER_NAME}`（工具：{tools}）；"
         f"注入方式={mcp_mode}；"
-        f"提示词=dingda-system.md（{prompt_chars} 字）"
+        f"提示词=system.md（{prompt_chars} 字）"
     )
 
 
