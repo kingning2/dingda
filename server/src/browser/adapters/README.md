@@ -7,7 +7,7 @@
 
 ### `camoufox.py`
 
-`CamoufoxAdapter(BrowserPort)`。默认采集/扫码引擎。指纹 OS 来自 `LaunchOptions`/profile，无商品逻辑。
+`CamoufoxAdapter(BrowserPort)`。启动时通过 [`../camoufox_bin.py`](../camoufox_bin.py) 注入 `executable_path`（安装包平台 zip，禁止 GitHub fetch）。
 
 ### `__init__.py`
 

@@ -35,9 +35,13 @@
 
 `ContextOptions`；`normalize_cookies` / `cookies_to_playwright` / `serialize_cookies` / `proxy_server`。域名由调用方填进 `Cookie.domain`，本文件不写 `.goofish.com`。
 
-### `session.py`
+### `sync.py`
 
-`async with BrowserSession(port)`：拿一页，离开自动 close。Crawler 基类内部会用类似生命周期。
+扫码专用线程上的同步 Camoufox；同样走 `camoufox_bin.require_camoufox_exe()`。
+
+### `camoufox_bin.py`
+
+解析 `DINGDA_CAMOUFOX_EXE` / 本地解压缓存；不联网下载。
 
 ### `sync.py`
 

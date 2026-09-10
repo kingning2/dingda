@@ -82,12 +82,15 @@ class _SyncBrowserHolder:
 
         started = time.perf_counter()
         logger.info("同步浏览器开始启动 headless=%s", headless)
+        from src.browser.camoufox_bin import require_camoufox_exe
+
         self._cm = Camoufox(
             headless=headless,
             humanize=False,
             locale="zh-CN",
             i_know_what_im_doing=True,
             exclude_addons=[DefaultAddons.UBO],
+            executable_path=str(require_camoufox_exe()),
         )
         self._browser = self._cm.__enter__()
         elapsed = time.perf_counter() - started

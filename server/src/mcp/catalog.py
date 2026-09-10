@@ -7,25 +7,39 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from src.tools.registry import list_tools
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_SERVER_DIR = _REPO_ROOT / "server"
+
+def _server_dir() -> Path:
+    env = (os.getenv("DINGDA_SERVER_DIR") or "").strip()
+    if env:
+        return Path(env)
+    # catalog 在 server/src/mcp/ → parents[2] == server/
+    return Path(__file__).resolve().parents[2]
 
 
 def list_builtin_mcp_servers() -> list[dict[str, object]]:
     """返回与前端 ``McpListResponse`` 对齐的内置 MCP 配置。"""
-    server = str(_SERVER_DIR)
+    server = str(_server_dir())
     tool_names = [spec.name for spec in list_tools()]
+    python = (os.getenv("DINGDA_PYTHON") or "").strip()
+    if python:
+        command = python
+        args: list[str] = ["-m", "src.mcp.server"]
+    else:
+        uv = (os.getenv("DINGDA_UV") or "").strip() or "uv"
+        command = uv
+        args = ["run", "--directory", server, "dingda-mcp"]
     return [
         {
             "id": "dingda",
             "name": "叮答爬虫工具",
             "transport": "stdio",
-            "command": "uv",
-            "args": ["run", "--directory", server, "dingda-mcp"],
+            "command": command,
+            "args": args,
             "enabled": True,
             "source": "builtin",
             "status": {
@@ -37,7 +51,7 @@ def list_builtin_mcp_servers() -> list[dict[str, object]]:
                 ),
                 "badge_class": "bg-emerald-100 text-emerald-800",
             },
-            "env": {"PYTHONUTF8": "1"},
+            "env": {"PYTHONUTF8": "1", "DINGDA_SERVER_DIR": server},
             "tool_filter": {"include": tool_names},
         }
     ]

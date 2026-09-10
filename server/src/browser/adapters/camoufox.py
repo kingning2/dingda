@@ -70,6 +70,9 @@ class CamoufoxAdapter(BrowserPort):
             "i_know_what_im_doing": True,
             "exclude_addons": [DefaultAddons.UBO],
         }
+        from src.browser.camoufox_bin import require_camoufox_exe
+
+        kwargs["executable_path"] = str(require_camoufox_exe())
         proxy = proxy_server(self._options.proxy_url)
         if proxy:
             kwargs["proxy"] = proxy
