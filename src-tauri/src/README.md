@@ -30,7 +30,7 @@ Windows release 隐藏控制台；`v2_lib::run()`。几乎无逻辑。
 
 ### `camoufox.rs`
 
-按 `std::env::consts::{OS,ARCH}` 映射官方 tag（`win.x86_64` 等），从 `resources/runtime/camoufox/camoufox-{tag}.zip` 用 **`zip` crate** 解压到 `~/.dingda/v2/camoufox/current`。
+按 `std::env::consts::{OS,ARCH}` 映射官方 tag（`win.x86_64` 等），从 `resources/runtime/camoufox/camoufox-{tag}.zip` 用 **`zip` crate** 解压到 `~/.dingda/v2/camoufox/current`。就绪条件为 exe + `properties.json` + `.extract-stamp`（对齐 zip size/mtime），避免半截解压后误判可用。
 
 ### `platform.rs`
 
