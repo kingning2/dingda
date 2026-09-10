@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm prepare:server && pnpm build",
+    "beforeBuildCommand": "pnpm prepare:desktop-runtime && pnpm build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -27,6 +27,9 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": [
+      "resources/runtime/**/*"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -1,4 +1,4 @@
-//! Spawn and stop the v2 FastAPI server (`uv run python -m src`).
+//! 拉起 / 停止 Python Server（bundled uv + 国内镜像；dev 回退系统 uv）。
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -37,6 +37,8 @@ pub struct PythonConfig {
     pub port: u16,
     pub server_dir: PathBuf,
     pub use_uv: bool,
+    pub uv_bin: PathBuf,
+    pub extra_env: Vec<(String, String)>,
     pub startup_timeout: Duration,
 }
 
@@ -55,6 +57,8 @@ impl PythonConfig {
             use_uv: std::env::var("DINGDA_USE_UV")
                 .map(|value| value != "0")
                 .unwrap_or(true),
+            uv_bin: PathBuf::from(if cfg!(windows) { "uv.exe" } else { "uv" }),
+            extra_env: Vec::new(),
             startup_timeout: STARTUP_TIMEOUT,
         }
     }
@@ -87,7 +91,7 @@ impl PythonLifecycle {
         self.ready.load(Ordering::Relaxed)
     }
 
-    /// 在后台拉起 Python 并探活，不阻塞窗口显示。
+    /// 后台启动 Server：sync → spawn → 探活 → emit ready/error。
     pub async fn start_background(&self, app: AppHandle) -> Result<(), PythonLifecycleError> {
         self.ready.store(false, Ordering::Relaxed);
 
@@ -115,22 +119,6 @@ impl PythonLifecycle {
             }
         }
     }
-
-    // #[allow(dead_code)]
-    // pub async fn start(&self) -> Result<(), PythonLifecycleError> {
-    //     if self.health_check().await.unwrap_or(false) {
-    //         log_shell(
-    //             "stopping existing server on",
-    //             Some(self.api_base_url().as_str()),
-    //         );
-    //         self.stop().await?;
-    //     }
-
-    //     self.spawn().await?;
-    //     self.wait_until_healthy().await?;
-    //     self.ready.store(true, Ordering::Relaxed);
-    //     Ok(())
-    // }
 
     pub async fn stop(&self) -> Result<(), PythonLifecycleError> {
         self.ready.store(false, Ordering::Relaxed);
@@ -160,14 +148,16 @@ impl PythonLifecycle {
 
         let host = self.config.host.clone();
         let port = self.config.port.to_string();
+        let uv = self.config.uv_bin.clone();
+
         if self.config.use_uv {
-            // 安装/首次启动时把 Python 依赖拉齐
-            let mut sync = Command::new("uv");
+            let mut sync = Command::new(&uv);
             sync.args(["sync", "--frozen"])
                 .current_dir(&self.config.server_dir)
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .env_remove("VIRTUAL_ENV");
+            apply_extra_env(&mut sync, &self.config.extra_env);
             #[cfg(windows)]
             {
                 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -188,8 +178,9 @@ impl PythonLifecycle {
                 }
             }
         }
+
         let mut command = if self.config.use_uv {
-            let mut cmd = Command::new("uv");
+            let mut cmd = Command::new(&uv);
             cmd.args([
                 "run",
                 "python",
@@ -200,6 +191,16 @@ impl PythonLifecycle {
                 "--port",
                 &port,
             ]);
+            cmd
+        } else if let Some(python) = self
+            .config
+            .extra_env
+            .iter()
+            .find(|(k, _)| k == "DINGDA_PYTHON")
+            .map(|(_, v)| v.clone())
+        {
+            let mut cmd = Command::new(python);
+            cmd.args(["-m", "src", "--host", &host, "--port", &port]);
             cmd
         } else {
             let mut cmd = Command::new("python");
@@ -215,6 +216,7 @@ impl PythonLifecycle {
             .env_remove("VIRTUAL_ENV")
             .env("PYTHONUNBUFFERED", "1")
             .env("FORCE_COLOR", "1");
+        apply_extra_env(&mut command, &self.config.extra_env);
 
         #[cfg(windows)]
         {
@@ -229,6 +231,8 @@ impl PythonLifecycle {
         log_shell("python server spawned at", Some(self.api_base_url().as_str()));
         let server_dir = self.config.server_dir.display().to_string();
         log_shell("python server dir", Some(server_dir.as_str()));
+        let uv_disp = uv.display().to_string();
+        log_shell("python uv bin", Some(uv_disp.as_str()));
         *self.child.lock().await = Some(child);
         Ok(())
     }
@@ -252,6 +256,12 @@ impl PythonLifecycle {
         let url = format!("{}/health", self.api_base_url());
         let response = Client::new().get(url).send().await?;
         Ok(response.status().is_success())
+    }
+}
+
+fn apply_extra_env(cmd: &mut Command, extra: &[(String, String)]) {
+    for (key, value) in extra {
+        cmd.env(key, value);
     }
 }
 

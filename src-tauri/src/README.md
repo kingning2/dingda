@@ -26,7 +26,11 @@ Windows release 隐藏控制台；`v2_lib::run()`。几乎无逻辑。
 
 ### `paths.rs`
 
-`resolve_server_dir()`：`DINGDA_SERVER_DIR` 或 `CARGO_MANIFEST_DIR/../server`。Python 起进程和 MCP `uv run --directory` 都用它。
+`resolve_server_dir()`（开发态）、`ensure_server_workdir()`（打包态从 resources 同步到 `~/.dingda/v2/server-runtime`）、`resolve_uv_bin()`、`desktop_runtime_env()`（清华 PyPI / npmmirror + Camoufox exe）。
+
+### `camoufox.rs`
+
+按 `std::env::consts::{OS,ARCH}` 映射官方 tag（`win.x86_64` 等），从 `resources/runtime/camoufox/camoufox-{tag}.zip` 用 **`zip` crate** 解压到 `~/.dingda/v2/camoufox/current`。
 
 ### `platform.rs`
 

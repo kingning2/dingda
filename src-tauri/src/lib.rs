@@ -1,4 +1,5 @@
 mod agent;
+mod camoufox;
 mod commands;
 mod paths;
 mod platform;
@@ -20,7 +21,19 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .append_invoke_initialization_script(platform_initialization_script())
         .setup(|app| {
-            let runtime = Arc::new(PythonLifecycle::new(PythonConfig::from_env()));
+            let server_dir = paths::ensure_server_workdir(app.handle());
+            let uv_bin = paths::resolve_uv_bin(app.handle());
+            let runtime_env = paths::desktop_runtime_env(app.handle(), &server_dir);
+            let mut config = PythonConfig::from_env();
+            config.server_dir = server_dir;
+            config.uv_bin = uv_bin;
+            config.extra_env = runtime_env;
+            // 首次 uv sync 可能较久（国内镜像拉依赖）
+            if paths::resolve_runtime_dir(app.handle()).is_some() {
+                config.startup_timeout = std::time::Duration::from_secs(600);
+                config.use_uv = true;
+            }
+            let runtime = Arc::new(PythonLifecycle::new(config));
             let runtime_for_bg = Arc::clone(&runtime);
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
