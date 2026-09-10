@@ -1,0 +1,314 @@
+{
+  "version": 1,
+  "urls": {
+    "search": "https://www.xiaohongshu.com/search_result",
+    "note": "https://www.xiaohongshu.com/explore",
+    "cookie_domain": ".xiaohongshu.com",
+    "ocr_referer": "https://www.xiaohongshu.com/"
+  },
+  "search_params": {
+    "keyword_key": "keyword",
+    "static": {
+      "source": "web_explore_feed"
+    }
+  },
+  "detail_params": {
+    "xsec_token_key": "xsec_token",
+    "xsec_source_key": "xsec_source",
+    "default_xsec_source": "pc_search",
+    "meta_token_key": "xsec_token",
+    "meta_source_key": "xsec_source"
+  },
+  "list_api": {
+    "match_urls": [
+      "api/sns/web/v1/search/notes",
+      "api/sns/web/v2/search/notes",
+      "/search/notes"
+    ],
+    "rows": [
+      "items",
+      "data.items",
+      "data"
+    ],
+    "card_keys": [
+      "noteCard",
+      "note_card",
+      "note"
+    ],
+    "fields": {
+      "item_id": [
+        "id",
+        "note_id",
+        "noteId"
+      ],
+      "title": [
+        "display_title",
+        "displayTitle",
+        "title"
+      ],
+      "seller": [
+        "user.nickname",
+        "user.nickName"
+      ],
+      "cover": [
+        "cover.url",
+        "cover.url_default",
+        "cover.info_list.0.url",
+        "cover.infoList.0.url",
+        "imagesList.0.url",
+        "imageList.0.url"
+      ],
+      "xsec_token": [
+        "xsecToken",
+        "xsec_token"
+      ],
+      "note_type": [
+        "type",
+        "note_type",
+        "noteType",
+        "model_type",
+        "modelType"
+      ]
+    },
+    "note_type_video": [
+      "video",
+      "videos",
+      "视频"
+    ],
+    "note_type_normal": [
+      "normal",
+      "image",
+      "multi",
+      "图文",
+      "0"
+    ],
+    "normalized_video": "video",
+    "normalized_normal": "normal"
+  },
+  "detail_api": {
+    "match_urls": [
+      "api/sns/web/v1/feed",
+      "api/sns/web/v2/feed"
+    ],
+    "rows": [
+      "items",
+      "data.items"
+    ],
+    "card_keys": [
+      "note_card",
+      "noteCard",
+      "note"
+    ],
+    "fields": {
+      "item_id": [
+        "noteId",
+        "note_id",
+        "id"
+      ],
+      "title": [
+        "title",
+        "displayTitle",
+        "display_title"
+      ],
+      "seller": [
+        "user.nickname",
+        "user.nickName"
+      ],
+      "xsec_token": [
+        "xsecToken",
+        "xsec_token"
+      ],
+      "desc": [
+        "desc",
+        "description",
+        "content"
+      ],
+      "liked": [
+        "interact_info.liked_count",
+        "interactInfo.likedCount"
+      ],
+      "collected": [
+        "interact_info.collected_count",
+        "interactInfo.collectedCount"
+      ],
+      "note_type": [
+        "type",
+        "note_type",
+        "noteType",
+        "model_type",
+        "modelType"
+      ]
+    },
+    "image_keys": [
+      "image_list",
+      "imageList",
+      "images_list",
+      "imagesList"
+    ],
+    "image_url_paths": [
+      "url",
+      "url_default",
+      "info_list.0.url",
+      "infoList.0.url"
+    ]
+  },
+  "comment_api": {
+    "match_contains": [
+      "api/sns/web/",
+      "comment/page"
+    ],
+    "match_excludes": [
+      "sub/page"
+    ],
+    "rows": [
+      "data.comments",
+      "data.comment_list",
+      "data.commentList",
+      "comments"
+    ],
+    "anonymous_author": "匿名",
+    "fields": {
+      "content": [
+        "content",
+        "comment"
+      ],
+      "author": [
+        "user.nickname",
+        "user.nickName",
+        "user.name"
+      ],
+      "time": [
+        "create_time",
+        "createTime",
+        "time"
+      ],
+      "replies": [
+        "sub_comments",
+        "subComments",
+        "replies"
+      ],
+      "reply_content": [
+        "content",
+        "comment"
+      ]
+    }
+  },
+  "capture": {
+    "url_hints": [
+      "edith.xiaohongshu.com",
+      "/api/sns/"
+    ],
+    "http_methods": [
+      "GET",
+      "POST"
+    ]
+  },
+  "dom": {
+    "links": "a[href*=\"/explore/\"], a[href*=\"/search_result/\"]",
+    "id_pattern": "/(?:explore|search_result)/([0-9a-f]{24})",
+    "card": "section, .note-item, [class*=\"note\"]",
+    "title": ".title, .footer .title, a.title, [class*=\"title\"]",
+    "note_link_count": "a[href*=\"/explore/\"]",
+    "img": "img",
+    "title_attrs": [
+      "title",
+      "aria-label"
+    ],
+    "card_output": {
+      "id_key": "id",
+      "card_key": "noteCard",
+      "title_key": "displayTitle",
+      "cover_url_keys": [
+        "cover",
+        "url"
+      ]
+    }
+  },
+  "detail_dom": {
+    "id_pattern": "/explore/([0-9a-f]{24})",
+    "blocked_url": "error_code=300031|/404\\?",
+    "author": ".author-container .username, .author-wrapper .username, .author-wrapper .name, a.name .username, [class*=\"author\"] .username",
+    "title": "#detail-title, .note-content .title, .interaction-content .title, [class*=\"note-content\"] [class*=\"title\"]",
+    "card": ".interactions-footer, .engage-bar, .note-detail-mask, #noteContainer, .note-container",
+    "title_noise": [
+      "你访问的页面不存在",
+      "^小红书$",
+      "小红书 - 你的生活兴趣社区"
+    ],
+    "title_suffix_strip": "\\s*[-–|]\\s*小红书\\s*$",
+    "note_id_key": "noteId",
+    "user_nick_key": "nickname"
+  },
+  "detail_hint_dom": {
+    "card": "#noteContainer, .note-container, .author-container, .interactions-footer, .engage-bar",
+    "error_code_param": "error_code",
+    "error_msg_param": "error_msg"
+  },
+  "comments_dom": {
+    "scroll": [
+      ".comments-container",
+      ".comments-el",
+      ".note-scroller",
+      "#noteContainer",
+      ".note-container",
+      "[class*=\"comments\"]",
+      "[class*=\"comment-list\"]"
+    ],
+    "item": ".comment-item, .parent-comment, [class*=\"comment-item\"], [class*=\"CommentItem\"]",
+    "content": ".content, .note-text, [class*=\"content\"], [class*=\"comment-text\"]",
+    "author": ".name, .username, .author, [class*=\"name\"], [class*=\"author\"]",
+    "limit": 40,
+    "scroll_fallback_px": 1600,
+    "scroll_fallback_label": "window"
+  },
+  "signals": {
+    "login": [
+      "登录后",
+      "扫码登录",
+      "手机号登录",
+      "请先登录",
+      "打开小红书App"
+    ],
+    "login_dom": ".login-container, .qrcode-img, [class*=\"login-box\"], [class*=\"login-modal\"]",
+    "blocked_url": [
+      "website-login/captcha"
+    ],
+    "login_url": [
+      "xiaohongshu.com/login"
+    ],
+    "note_blocked_url": [
+      "error_code=300031",
+      "/404?"
+    ],
+    "note_error_codes": [
+      "300031"
+    ]
+  },
+  "state": {
+    "global_name": "__INITIAL_STATE__",
+    "search_feeds": "search.feeds",
+    "note_detail_map": "note.noteDetailMap",
+    "unwrap_raw_keys": [
+      "_rawValue",
+      "_value",
+      "value"
+    ],
+    "unwrap_skip_keys": [
+      "dep"
+    ],
+    "unwrap_skip_prefix": "__",
+    "unwrap_max_depth": 6
+  },
+  "behavior": {
+    "body_preview_chars": 2500,
+    "ready_tries": 50,
+    "poll_wait_ms": 250,
+    "comment_scroll_rounds": 6,
+    "comment_scroll_wait_ms": 450,
+    "anonymous_author": "匿名"
+  },
+  "limits": {
+    "default_limit": 20,
+    "max_limit": 100
+  }
+}

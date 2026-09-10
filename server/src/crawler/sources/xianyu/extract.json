@@ -1,0 +1,334 @@
+{
+  "version": 1,
+  "urls": {
+    "search": "https://www.goofish.com/search",
+    "item": "https://www.goofish.com/item",
+    "item_id_param": "id",
+    "item_id_pattern": "[?&]id=(\\d+)",
+    "cookie_domain": ".goofish.com"
+  },
+  "list_api": {
+    "api": "mtop.taobao.idlemtopsearch.pc.search",
+    "version": "1.0",
+    "spm_cnt": "a21ybx.search.0.0",
+    "page_size": 30,
+    "max_pages": 10,
+    "rows": [
+      "data.resultList",
+      "data.items"
+    ],
+    "card_roots": [
+      "data.item.main",
+      "data.item",
+      "data",
+      "."
+    ],
+    "request_keys": {
+      "page": "pageNumber",
+      "keyword": "keyword",
+      "rows": "rowsPerPage"
+    },
+    "request_static": {
+      "fromFilter": false,
+      "sortValue": "",
+      "sortField": "",
+      "customDistance": "",
+      "gps": "",
+      "customGps": "",
+      "propValueStr": {},
+      "searchReqFromPage": "pcSearch",
+      "extraFilterValue": "{}",
+      "userPositionJson": "{}"
+    },
+    "fields": {
+      "item_id": [
+        "clickParam.args.item_id",
+        "clickParam.args.id",
+        "click_param.args.item_id",
+        "exContent.itemId",
+        "exContent.item_id",
+        "exContent.id",
+        "ex_content.itemId"
+      ],
+      "title": [
+        "exContent.detailParams.title",
+        "exContent.title",
+        "ex_content.title"
+      ],
+      "price": [
+        "exContent.price",
+        "exContent.priceStr",
+        "exContent.showPrice",
+        "ex_content.price"
+      ],
+      "image": [
+        "exContent.picUrl",
+        "exContent.pic_url",
+        "exContent.imgUrl",
+        "exContent.imageUrl",
+        "exContent.imageInfos"
+      ],
+      "location": [
+        "exContent.area",
+        "exContent.location",
+        "ex_content.area"
+      ],
+      "seller": [
+        "exContent.userNickName",
+        "exContent.user_nick_name",
+        "exContent.nick",
+        "exContent.sellerNick"
+      ]
+    },
+    "price_part_keys": [
+      "text",
+      "priceText"
+    ]
+  },
+  "detail_api": {
+    "api": "mtop.taobao.idle.pc.detail",
+    "version": "1.0",
+    "spm_cnt": "a21ybx.item.0.0",
+    "data_item_id_key": "itemId",
+    "item": [
+      "data.itemDO"
+    ],
+    "seller": [
+      "data.sellerDO"
+    ],
+    "track": [
+      "data.trackParams"
+    ],
+    "fields": {
+      "item_id": [
+        "itemId",
+        "id"
+      ],
+      "title": [
+        "title"
+      ],
+      "price": [
+        "soldPrice",
+        "defaultPrice",
+        "price"
+      ],
+      "desc": [
+        "desc"
+      ],
+      "want_count": [
+        "wantCnt"
+      ],
+      "browse_count": [
+        "browseCnt"
+      ],
+      "collect_count": [
+        "collectCnt"
+      ],
+      "status": [
+        "itemStatusStr",
+        "itemStatus"
+      ],
+      "image": [
+        "imageInfos",
+        "picUrl"
+      ],
+      "seller_nick": [
+        "nick",
+        "uniqueName",
+        "seller_nick"
+      ],
+      "location": [
+        "publishCity",
+        "city"
+      ]
+    }
+  },
+  "comment_api": {
+    "api": "mtop.taobao.idlemtopsearch.pc.item.comment.list",
+    "version": "1.0",
+    "page_size": 20,
+    "rows": [
+      "data.commentList",
+      "data.cardList"
+    ],
+    "card_keys": [
+      "cardData"
+    ],
+    "request_keys": {
+      "item_id": "itemId",
+      "page": "currentPage",
+      "page_size": "pageSize"
+    },
+    "first_page": 1,
+    "anonymous_author": "匿名",
+    "fields": {
+      "content": [
+        "content",
+        "comment",
+        "text"
+      ],
+      "author": [
+        "userNickName",
+        "nick",
+        "authorNick",
+        "userName"
+      ],
+      "time": [
+        "createTime",
+        "time",
+        "gmtCreate"
+      ],
+      "replies": [
+        "replyList",
+        "replies",
+        "subComments"
+      ],
+      "reply_content": [
+        "content",
+        "comment",
+        "text"
+      ]
+    }
+  },
+  "dom": {
+    "card": "a[href*=\"/item?id=\"]",
+    "title": "[class*=\"row1-wrap-title\"], [class*=\"main-title\"]",
+    "attrs": "[class*=\"row2-wrap-cpv\"] span[class*=\"cpv--\"]",
+    "priceWrap": "[class*=\"price-wrap\"]",
+    "priceNum": "[class*=\"number\"]",
+    "priceDec": "[class*=\"decimal\"]",
+    "priceDesc": "[class*=\"price-desc\"] [title], [class*=\"price-desc\"] [style*=\"line-through\"]",
+    "sellerWrap": "[class*=\"row4-wrap-seller\"]",
+    "sellerText": "[class*=\"seller-text\"]",
+    "badge": "[class*=\"credit-container\"] [title], [class*=\"credit-container\"] span",
+    "img": "img",
+    "img_attrs": [
+      "currentSrc",
+      "src",
+      "data-src"
+    ],
+    "empty_selector": ".__none__"
+  },
+  "detail_dom": {
+    "root": "[class*=\"item-main-container\"]",
+    "info": "[class*=\"item-main-info\"]",
+    "price": "[class*=\"item-main-info\"] [class*=\"price\"]",
+    "want": "[class*=\"item-main-info\"] [class*=\"want\"]",
+    "desc": "[class*=\"item-main-info\"] [class*=\"desc\"]",
+    "labels": "[class*=\"item-main-info\"] [class*=\"labels\"]",
+    "seller_nick": "[class*=\"item-user-info-nick\"]",
+    "seller_intro": "[class*=\"item-user-info-intro\"]",
+    "img": "[class*=\"item-main-window\"] img, [class*=\"carouselItem\"] img, [class*=\"fadeInImg\"]",
+    "img_attrs": [
+      "currentSrc",
+      "src",
+      "data-src"
+    ],
+    "want_re": "([\\d.]+\\s*万?)\\s*人想要",
+    "browse_re": "([\\d.]+\\s*万?)\\s*浏览",
+    "ready_timeout_ms": 8000
+  },
+  "view": {
+    "api": "mtop.taobao.idle.pc.detail",
+    "version": "1.0",
+    "item": "itemDO",
+    "seller": "sellerDO",
+    "images": "imageInfos",
+    "labels": "itemLabelExtList",
+    "request_type": "POST",
+    "data_type": "json",
+    "ecode": 0,
+    "need_login": false,
+    "need_login_pc": false,
+    "session_option": "AutoLoginOnly",
+    "success_code": "SUCCESS",
+    "data_item_id_key": "itemId",
+    "fields": {
+      "item_id": [
+        "itemId"
+      ],
+      "title": [
+        "title"
+      ],
+      "desc": [
+        "desc"
+      ],
+      "sold_price": [
+        "soldPrice",
+        "defaultPrice"
+      ],
+      "original_price": [
+        "originalPrice"
+      ],
+      "want_count": [
+        "wantCnt"
+      ],
+      "collect_count": [
+        "collectCnt"
+      ],
+      "browse_count": [
+        "browseCnt"
+      ],
+      "status": [
+        "itemStatusStr"
+      ],
+      "seller_nick": [
+        "nick",
+        "uniqueName"
+      ],
+      "seller_id": [
+        "sellerId"
+      ],
+      "location": [
+        "publishCity",
+        "city"
+      ],
+      "seller_score": [
+        "xianyuSummary"
+      ],
+      "reply_ratio_24h": [
+        "replyRatio24h"
+      ],
+      "reply_interval": [
+        "replyInterval"
+      ]
+    },
+    "label_names": {
+      "condition": "成色",
+      "brand": "品牌",
+      "category": "分类"
+    },
+    "label_property_key": "propertyText",
+    "label_text_key": "text",
+    "image_url_key": "url"
+  },
+  "image": {
+    "entry_keys": [
+      "url",
+      "picUrl"
+    ]
+  },
+  "signals": {
+    "requires_auth": [
+      "请先登录",
+      "登录后"
+    ],
+    "blocked": [
+      "验证码",
+      "安全验证",
+      "异常访问"
+    ],
+    "empty": [
+      "暂无相关宝贝",
+      "未找到相关宝贝",
+      "没有找到"
+    ],
+    "session_expired": [
+      "SESSION_EXPIRED"
+    ]
+  },
+  "limits": {
+    "default_limit": 20,
+    "max_limit": 100
+  }
+}
