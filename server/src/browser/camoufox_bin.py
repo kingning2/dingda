@@ -64,9 +64,8 @@ def resolve_camoufox_exe(*, download: bool = True) -> Path | None:
         logger.info("camoufox exe from cache path=%s", cached)
         return cached
 
-    logger.warning(
-        "未找到 Camoufox（需壳注入 DINGDA_CAMOUFOX_EXE，或安装包含平台 zip 并已解压）"
-    )
+    # 开发态：不强制安装包 zip，交给 Camoufox 默认缓存（~/.cache / LocalAppData）
+    logger.debug("camoufox exe unset; using library default path")
     return None
 
 

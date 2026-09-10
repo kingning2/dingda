@@ -66,6 +66,17 @@ RISK_COOKIE_NAMES = (
     "isg",
 )
 
+# 验证页正文关键字；Baxia 的弹窗多挂在 iframe 内，必须逐 frame 找。
+# 只收滑块专属文案 —— "验证码" 这类泛词在正常商品页正文里也会出现，
+# 误判成风控会让已经过完的人白等到超时。
+RISK_TEXT_HINTS = (
+    "拖动下方滑块",
+    "请按住滑块",
+    "请完成验证",
+)
+
+_PUNISH_URL_TOKENS = ("punish", "captcha", "_____tmd_____")
+
 STRATEGY_NAMES = {0: "最小急动度物理拖动", 1: "容器内拖动", 2: "超出容器拖动"}
 
 
@@ -667,7 +678,38 @@ async def _click_retry(scope: Any) -> None:
 def _page_is_punish(page: Any) -> bool:
     """页面 URL 是否处于风控 / 验证码状态。"""
     url = (page.url or "").lower()
-    return any(token in url for token in ("punish", "captcha", "_____tmd_____"))
+    return any(token in url for token in _PUNISH_URL_TOKENS)
+
+
+async def page_is_risk_block(page: Any) -> bool:
+    """当前页（含子 frame）是否仍卡在风控 / 验证页。
+
+    顶层 URL 未必跳 punish —— Baxia 常把验证弹窗塞进 iframe，只看主文档
+    的 URL 与文案会漏判，从而在页面还没渲染时误判为"已通过"。
+    """
+    if _page_is_punish(page):
+        return True
+
+    scopes: list[Any] = [page]
+    with contextlib.suppress(Exception):
+        scopes.extend(page.frames)
+
+    for scope in scopes:
+        url = str(getattr(scope, "url", "") or "").lower()
+        if any(token in url for token in _PUNISH_URL_TOKENS):
+            return True
+        try:
+            text = await scope.evaluate(
+                "() => (document.body && document.body.innerText || '').slice(0, 2000)"
+            )
+        except Exception:  # noqa: BLE001
+            continue
+        blob = str(text or "")
+        if any(hint in blob for hint in RISK_TEXT_HINTS):
+            return True
+
+    button, _track, _scope = await find_slider(page)
+    return button is not None
 
 
 async def try_solve_slider(
