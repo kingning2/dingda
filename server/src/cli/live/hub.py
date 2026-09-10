@@ -20,9 +20,14 @@ import logging
 from collections import defaultdict, deque
 from typing import Any
 
-logger = logging.getLogger("dingda.agent.live_hub")
+logger = logging.getLogger("dingda.cli.live.hub")
 
 _MAX_QUEUED = 24
+
+_queues: defaultdict[str, deque[dict[str, Any]]] = defaultdict(
+    lambda: deque(maxlen=_MAX_QUEUED)
+)
+_locks: dict[str, asyncio.Lock] = {}
 
 
 def open_run(run_id: str) -> None:

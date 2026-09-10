@@ -1,14 +1,14 @@
 # agent
 
-产品侧 Agent（进程内 Tool + Headroom）与外部 CLI Runtime 启动（Python spawn）。  
+产品侧 Agent（进程内 LLM + Tool 循环）。  
 禁止 import Playwright、Camoufox、`channels.xianyu` / crawler sources。
 
 HTTP：[`../api/agent.py`](../api/agent.py)
 
 - 产品：`POST /v1/agent/works/{work_id}/run` SSE
-- CLI：`POST /v1/agent/runtimes/{runtime_id}/run` SSE（codex / claude / opencode）
 
-外部 CLI 不再由 Tauri spawn；MCP 仅服务「Python 拉起的 CLI」。
+外部 CLI Runtime（codex / claude / opencode）不在这里，在 [../cli/](../cli/README.md)。
+两者不要混用：本目录是进程内的 Agent，`cli/` 只负责把外部 CLI 拉起来。
 
 ## 本目录文件
 
@@ -19,5 +19,4 @@ HTTP：[`../api/agent.py`](../api/agent.py)
 ## 子目录
 
 - [core/](core/README.md) — `AgentService` / Headroom `compress`
-- [runtimes/](runtimes/README.md) — CLI spawn / MCP 注入 / 系统前言 / 流解析
 - [workflows/](workflows/README.md) — 调研等多步图
