@@ -1,10 +1,11 @@
 /**
  * 会话商品预览：打开自绘 Modal（不嵌入外站）。
+ * 闲鱼 → XianyuPreviewDialog；小红书 → XiaohongshuPreviewDialog。
  */
 
-import type { AccountPlatform } from "@/contracts/account";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { AgentWorkProductItem } from "@/contracts/ai-work";
-import type { CrawlPlatform, CrawlProductItem } from "@/contracts/crawler";
+import type { CrawlProductItem } from "@/contracts/crawler";
 import { getHostCapabilities } from "@/lib/capabilities";
 
 export type ProductPreviewTarget = Pick<
@@ -19,9 +20,13 @@ export type ProductPreviewTarget = Pick<
   | "product_url"
   | "want_count"
   | "browse_count"
-> & {
-  platform?: CrawlPlatform | AccountPlatform | string;
-};
+  | "desc"
+  | "comments"
+  | "ocr_text"
+  | "content_text"
+  | "note_type"
+  | "xsec_token"
+>;
 
 type PreviewListener = (target: ProductPreviewTarget | null) => void;
 
@@ -56,7 +61,7 @@ export function openProductPreview(
     console.warn("product preview dialog not mounted");
     const url = normalizeHttpUrl(item.product_url);
     if (url && !getHostCapabilities().desktop) {
-      openProductInBrowserTab(url);
+      void openProductInBrowserTab(url);
     }
     return "none";
   }
@@ -71,6 +76,12 @@ export function openProductPreview(
     product_url: normalizeHttpUrl(item.product_url) ?? item.product_url,
     want_count: item.want_count,
     browse_count: item.browse_count,
+    desc: item.desc,
+    comments: item.comments ?? [],
+    ocr_text: item.ocr_text,
+    content_text: item.content_text,
+    note_type: item.note_type,
+    xsec_token: item.xsec_token,
   });
   return "dialog";
 }
@@ -79,8 +90,13 @@ export function closeProductPreviewUi(): void {
   previewListener?.(null);
 }
 
-export function openProductInBrowserTab(url: string): void {
+/** 系统默认浏览器打开链接；桌面壳走 opener，Web 走 window.open。 */
+export async function openProductInBrowserTab(url: string): Promise<void> {
   const normalized = normalizeHttpUrl(url);
   if (!normalized) return;
+  if (getHostCapabilities().desktop) {
+    await openUrl(normalized);
+    return;
+  }
   window.open(normalized, "_blank", "noopener,noreferrer");
 }
