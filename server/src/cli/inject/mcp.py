@@ -1,10 +1,13 @@
-"""外部 CLI 的 dingda-mcp 进程级注入。
+"""外部 CLI 的 dingda-mcp 进程级注入（历史分支）。
 
 职责：
     按 MCP 模式写入 cwd 配置或拼 CLI 覆盖参数，不改用户全局配置。
     注入 ``DINGDA_AGENT_RUN_ID`` / ``DINGDA_API_BASE`` 供 preview 推帧。
 
 设计说明：
+    - **当前主链路不走这里**：注入方式已统一为 skill（``mcp_mode="none"``），
+      工具由 ``src/tools/skill.py`` 渲染成 ``dingda-crawl/SKILL.md`` 提供。
+      本模块保留给仍需 MCP 的 CLI，mode 不匹配时 ``apply_mcp_inject`` 原样返回 args。
     - 优先 ``DINGDA_PYTHON -m src.mcp.server``（桌面打包态）
     - 其次 ``DINGDA_UV`` / ``uv run --directory <server> dingda-mcp``（开发态）
     - server 目录：``DINGDA_SERVER_DIR`` 或本包上溯到 ``server/``

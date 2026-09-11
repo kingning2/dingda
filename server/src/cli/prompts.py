@@ -42,7 +42,7 @@ def compose_agent_prompt(
         label = {"xianyu": "闲鱼", "xiaohongshu": "小红书", "ali1688": "1688"}[hint]
         parts.append(
             f"本轮优先平台：{label}（platform=`{hint}`）。"
-            "请用 MCP 工具 `search` / `product` 取证，勿编造商品。"
+            "请按 `dingda-crawl` skill 里的命令调 `search` / `product` 取证，勿编造商品。"
             "闲鱼 / 小红书图文 search 会逐条拉详情；小红书优先读 content_text；视频暂跳过。"
         )
         parts.append("")

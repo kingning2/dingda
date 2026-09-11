@@ -37,16 +37,20 @@ def test_roles_are_agent_role_sockets() -> None:
     assert isinstance(get_role("child"), AgentRole)
 
 
-def test_parent_role_keeps_system_prompt_and_tools(tmp_path: Path) -> None:
+def test_parent_role_keeps_system_prompt_and_uses_skill_only(tmp_path: Path) -> None:
     role = ParentRole()
     text = role.compose_prompt("搜露营椅", platform_hint="xianyu")
     assert "用户请求" in text  # system.md 前言拼进来了
     assert "搜露营椅" in text
-    assert role.mcp_mode("codex-mcp") == "codex-mcp"  # 不拦工具
+    # 注入方式已统一为 skill：父 agent 也不注入 MCP，
+    # 工具由 runtime 读 dingda-crawl/SKILL.md 得到
+    assert role.mcp_mode("codex-mcp") == "none"
+    assert role.mcp_mode("claude-mcp-json") == "none"
+    assert role.mcp_mode("opencode-env-content") == "none"
     assert role.workdir(str(tmp_path)) == tmp_path.resolve()
 
 
-def test_child_role_strips_prompt_but_keeps_narrow_tools(
+def test_child_role_strips_prompt_and_uses_cli_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from src.cli.roles import child as child_mod
@@ -57,9 +61,14 @@ def test_child_role_strips_prompt_but_keeps_narrow_tools(
     assert text.strip() == "只发这一句"
     assert "用户请求" not in text  # 不拼父前言
     assert role.uses_system_prompt is False
-    # MCP 照常注入，但工具面靠白名单收窄
-    assert role.mcp_mode("codex-mcp") == "codex-mcp"
-    assert role.mcp_env()["DINGDA_MCP_TOOLS"] == "validate_selectors"
+    # 注入方式已统一为 skill：子 agent 不注入工具总线，
+    # 工具面收成 prompt 里写死的那条 validate_cli 命令行
+    assert role.mcp_mode("codex-mcp") == "none"
+    assert role.mcp_mode("claude-mcp-json") == "none"
+    env = role.mcp_env()
+    assert "DINGDA_MCP_TOOLS" not in env
+    # PYTHONPATH 给 CLI 回打用：cwd 是临时目录，没有它找不到 src
+    assert env["PYTHONPATH"].endswith("server")
     # cwd 忽略调用方给的，落隔离目录
     assert role.workdir("D:/Desktop/dingda/server") == tmp_path / "scratch"
 

@@ -1,14 +1,16 @@
 """外部 CLI Runtime 插座。
 
 职责：
-    统一一次 CLI 会话的生命周期：解析可执行文件 → 注入 MCP → 拼 prompt → spawn
+    统一一次 CLI 会话的生命周期：解析可执行文件 → 拼 prompt（工具走 skill 注入）→ spawn
     → 流式解析 → 会话日志；顺带提供压缩方法。
     每个 CLI 的差异只留在 ``runtimes/<id>.py`` 的插头里。
 
 设计说明：
     - 禁止插头自己 ``create_subprocess`` / 自己拼 system 前言 / 自己找二进制
-    - 父 / 子 agent 的差异（提示词怎么拼 / MCP 给不给 / cwd 落哪）全在 ``roles/``
-      的角色插头里；本文件只按 ``role`` 取那三条策略，不写「是不是子 agent」
+    - 父 / 子 agent 的差异（提示词怎么拼 / 工具注入方式 / cwd 落哪）全在 ``roles/``
+      的角色插头里；本文件只按 ``role`` 取那几条策略，不写「是不是子 agent」
+    - **工具注入统一走 skill**：runtime 读 skills 目录里的 ``dingda-crawl/SKILL.md``，
+      角色 ``mcp_mode()`` 恒返回 ``"none"``，不再注入 MCP
     - 压缩是插座上的一个方法（``compress_payload``），不另立插座
 
 使用示例：
@@ -52,28 +54,25 @@ def _api_base() -> str:
     ).rstrip("/")
 
 
-def _allowed_tools(mcp_env: dict[str, str]) -> list[str] | None:
-    """``DINGDA_MCP_TOOLS`` 白名单里的工具名；没白名单返回 None（全部）。"""
-    raw = str(mcp_env.get("DINGDA_MCP_TOOLS") or "").strip()
-    if not raw:
-        return None
-    return [name.strip() for name in raw.split(",") if name.strip()]
-
-
 def _mcp_config_line(
     mcp_mode: str,
     *,
     tools: list[str] | None = None,
     uses_system_prompt: bool = True,
 ) -> str:
-    """会话日志里的「当前配置」行。"""
+    """会话日志里的「当前配置」行。
+
+    工具注入已统一为 skill：``mcp_mode`` 恒为 ``"none"``，不再列 MCP 工具白名单。
+    ``tools`` / ``mcp_mode`` 参数保留只为兼容旧调用形状。
+    """
     prompt_note = (
         f"system.md（{len(system_prompt())} 字）"
         if uses_system_prompt
         else "仅本次 prompt（不拼父提示词）"
     )
     if mcp_mode == "none":
-        return f"MCP 服务器：未注入；提示词：{prompt_note}"
+        # 注入方式已统一为 skill：工具由 runtime 读 skills 目录里的 SKILL.md 得到
+        return f"工具注入：skill（未注入 MCP）；提示词：{prompt_note}"
     tools_note = ", ".join(tools) if tools else "全部"
     return (
         f"MCP 服务器 `{SERVER_NAME}`（工具：{tools_note}）；"
@@ -365,6 +364,9 @@ class CliRuntime(ABC):
         session_mcp_env = {**session_role.mcp_env(), **(mcp_env or {})}
         # 同一份会话 env 也给 CLI 进程：子 agent 可能靠 CLI 回打（不一定走 MCP）
         env.update(session_mcp_env)
+        # 推帧所需：无论是否注入 MCP，search/login/preview 都要把浏览器截图 POST 回来
+        env.setdefault("DINGDA_AGENT_RUN_ID", rid)
+        env.setdefault("DINGDA_API_BASE", _api_base())
         args = apply_mcp_inject(
             mcp_mode,
             cwd=workdir,
@@ -384,7 +386,7 @@ class CliRuntime(ABC):
             model=str(model_id or "").strip() or "default",
             user_prompt=prompt,
             mcp_mode=mcp_mode,
-            tools=_allowed_tools(session_mcp_env),
+            tools=None,
             uses_system_prompt=session_role.uses_system_prompt,
         )
         session_log.start()
