@@ -45,7 +45,8 @@ MCP 入口不在这里，在 [mcp/README.md](mcp/README.md) 的 `server.py`（`d
 | [browser/](browser/README.md) | 启动浏览器、Page、Cookie、滑块原语（无商品逻辑） |
 | [tools/](tools/README.md) | MCP/Agent 可调用的工具名与实现 |
 | [mcp/](mcp/README.md) | 把 tools 挂到 FastMCP stdio |
-| [agent/](agent/README.md) | 产品侧 Agent/调研 workflow（骨架） |
+| [agent/](agent/README.md) | 产品侧 Agent / 调研 workflow（进程内 LLM + Tool） |
+| [cli/](cli/README.md) | 外部 CLI Agent Runtime（Codex / Claude / OpenCode 的启动、流、MCP 注入） |
 | [core/](core/README.md) | 配置、日志、启动、预热 |
 | [infrastructure/](infrastructure/README.md) | SQLite、内存事件总线 |
 | [shared/](shared/README.md) | `AppError` 错误码 |

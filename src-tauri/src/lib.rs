@@ -29,7 +29,7 @@ pub fn run() {
             config.uv_bin = uv_bin;
             config.extra_env = runtime_env;
             // 首次 uv sync 可能较久（国内镜像拉依赖）
-            if paths::resolve_runtime_dir(app.handle()).is_some() {
+            if paths::is_packaged_install() {
                 config.startup_timeout = std::time::Duration::from_secs(600);
                 config.use_uv = true;
             }

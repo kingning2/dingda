@@ -2,7 +2,7 @@
 
 本机 CLI Agent：**找二进制 → 探测 → 模型列表 → 托管下载**。
 
-启动与取消在 Python：`server/src/agent/runtimes/` + `/v1/agent/runtimes/...` SSE。
+启动与取消在 Python：`server/src/cli/` + `/v1/agent/runtimes/...` SSE。
 
 ```text
 RuntimeDefinition (defs/)

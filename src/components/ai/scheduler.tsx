@@ -291,14 +291,18 @@ function renderAssistantBlock(
 function extractProducts(output: unknown): CrawlProductItem[] {
   if (!output || typeof output !== "object") return [];
   const record = output as Record<string, unknown>;
-  const items = record.items;
-  if (!Array.isArray(items) || typeof record.platform !== "string" || !record.platform) {
-    return [];
-  }
+  if (typeof record.platform !== "string" || !record.platform) return [];
   const platform = record.platform as CrawlProductItem["platform"];
   const now = new Date().toISOString();
+
+  const rows: unknown[] = Array.isArray(record.items)
+    ? record.items
+    : record.item && typeof record.item === "object"
+      ? [record.item]
+      : [];
+
   const out: CrawlProductItem[] = [];
-  for (const row of items) {
+  for (const row of rows) {
     if (!row || typeof row !== "object") continue;
     const item = row as Record<string, unknown>;
     const id = String(item.item_id ?? item.id ?? "");
@@ -310,10 +314,41 @@ function extractProducts(output: unknown): CrawlProductItem[] {
       price: String(item.price ?? ""),
       platform,
       seller: typeof item.seller_nick === "string" ? item.seller_nick : undefined,
+      location: typeof item.location === "string" ? item.location : undefined,
       image_url: typeof item.image_url === "string" ? item.image_url : undefined,
-      product_url: typeof item.url === "string" ? item.url : undefined,
+      product_url:
+        typeof item.url === "string"
+          ? item.url
+          : typeof item.product_url === "string"
+            ? item.product_url
+            : undefined,
+      want_count: typeof item.want_count === "string" ? item.want_count : undefined,
+      browse_count: typeof item.browse_count === "string" ? item.browse_count : undefined,
+      desc: typeof item.desc === "string" ? item.desc : undefined,
+      comments: parseComments(item.comments),
+      ocr_text: typeof item.ocr_text === "string" ? item.ocr_text : undefined,
+      content_text: typeof item.content_text === "string" ? item.content_text : undefined,
+      note_type: typeof item.note_type === "string" ? item.note_type : undefined,
       xsec_token: typeof item.xsec_token === "string" ? item.xsec_token : undefined,
       crawled_at: now,
+    });
+  }
+  return out;
+}
+
+function parseComments(value: unknown): CrawlProductItem["comments"] {
+  if (!Array.isArray(value)) return [];
+  const out: NonNullable<CrawlProductItem["comments"]> = [];
+  for (const row of value) {
+    if (!row || typeof row !== "object") continue;
+    const item = row as Record<string, unknown>;
+    const content = String(item.content ?? "").trim();
+    if (!content) continue;
+    out.push({
+      author: String(item.author ?? "").trim() || "匿名",
+      content,
+      time: typeof item.time === "string" ? item.time : null,
+      reply: typeof item.reply === "string" ? item.reply : null,
     });
   }
   return out;

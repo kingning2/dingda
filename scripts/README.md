@@ -21,3 +21,11 @@
 - `SKIP_CAMOUFOX=1` — 仅调试
 
 平台 tag 与 Rust `camoufox_platform_tag()` 一致。
+
+## 分支与发布
+
+- **开发**：在 `develop` / `feature/*` 等分支，不要在 `main` 上堆功能提交
+- **发布**：PR 合入 `main` 后，`.github/workflows/desktop-release.yml` 自动：
+  1. 按最新 `v*` tag 做 patch +1（如 `v0.1.8` → `v0.1.9`）
+  2. push annotated tag
+  3. 打 Windows / macOS / Linux 安装包并挂到该 tag 的 Release

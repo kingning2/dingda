@@ -1,32 +1,30 @@
 # crawler/sources/xianyu
 
-闲鱼采集插头。搜索必须开 goofish 搜索页（列表不在公开稳定 mtop 上）；详情尽量 HTTP，少开商品页。
+闲鱼采集插头。搜索开页直播；列表优先 mtop，失败再 DOM。详情优先 mtop HTTP，再页内 `lib.mtop`，再 **DOM（`detail_dom`）**。
+**平台选择器 / API / 字段一律改 `extract.json`。**
 
 调用方：`tools/search.py`、`tools/product.py`（经 `crawler.registry`）。
 
 ## 本目录文件
 
+### `extract.json`（改版只改这里）
+
+- `urls` — 搜索/商品 URL、cookie 域名
+- `list_api` / `detail_api` / `comment_api` — mtop 名与字段路径
+- `dom` / `view` / `detail_dom` — 搜索 DOM、页内详情 mtop、详情 DOM 兜底
+- `signals` — 登录墙 / 风控 / 空结果文案
+
+### `DOM_PROBE.md`
+
+详情 DOM 探测方法与实测结构（如何拿到选择器）。
+
 ### `crawler.py`
 
-`XianyuCrawler(BrowserCrawler)`：
-
-- `search` — `goto` `https://www.goofish.com/search`，`evaluate(EXTRACT_JS)`，滚动 `SCROLL_JS`，`items_from_payload`
-- `detail` — `Session.from_cookie_header` + mtop 详情；失败则开商品页 `evaluate(VIEW_JS)`，`item_from_view`
-
-Cookie 域名 `.goofish.com`。命中 punish / 验证码时先 `channels.xianyu.slider.try_solve_slider`，通过后再重开搜索/详情；仍失败才抛 `channel.risk`。登录过期抛 `account.session_expired`。
-
-`DINGDA_SLIDER_AUTO=0` 可关闭自动滑块。
+`XianyuCrawler`：开页直播 + 套用 `extract.json`。
 
 ### `extractor.py`
 
-页面脚本常量 + Python 解析：
-
-- `EXTRACT_JS` / `SCROLL_JS` — 搜索卡片
-- `VIEW_JS` — 商品页内嵌 mtop
-- `items_from_payload` / `item_from_view` / `item_from_mtop_detail` → `CrawlItem`（`raw.image_url` 封面）
-- `item_id_from_url`
-
-选择器只允许出现在本文件，不要渗进 `browser/`。
+脚本骨架 + 标准化；不写死平台选择器/字段。
 
 ### `__init__.py`
 
@@ -34,4 +32,4 @@ Cookie 域名 `.goofish.com`。命中 punish / 验证码时先 `channels.xianyu.
 
 ## 子目录
 
-无。扫码/签名：[../../../channels/xianyu/README.md](../../../channels/xianyu/README.md)。开页：[../../../browser/README.md](../../../browser/README.md)。
+无。扫码/签名：[../../../channels/xianyu/README.md](../../../channels/xianyu/README.md)。

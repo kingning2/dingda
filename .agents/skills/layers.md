@@ -39,7 +39,6 @@ server/src/             Python Server
   infrastructure/db/     产品 SQLite（Python 拥有）
   mcp/                   把能力暴露给外部 CLI（MCP stdio）
   domains/               现存应用服务（骨架 + 账号等）
-plugins/crawlers-codex/ Codex 用 MCP 插件
 ```
 
 ---
@@ -49,10 +48,10 @@ plugins/crawlers-codex/ Codex 用 MCP 插件
 | 名称 | 路径 | 职责 |
 |------|------|------|
 | 产品 Agent | 目标：`server/src/agent/` | planning / tool 调用 / workflow |
-| CLI Agent Runtime | 探测/下载：`src-tauri/src/runtime/` + `agent/`；**启动**：`server/src/agent/runtimes/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
+| CLI Agent Runtime | 探测/下载：`src-tauri/src/runtime/` + `agent/`；**启动**：`server/src/cli/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
 
 - 产品 Agent 的代码不要写进 `src-tauri/src/agent/` 或 `src-tauri/src/runtime/`。
-- CLI **探测/下载**在 Tauri；**spawn/SSE**在 `server/src/agent/runtimes/`，不要再写回 Tauri command。
+- CLI **探测/下载**在 Tauri；**spawn/SSE**在 `server/src/cli/`，不要再写回 Tauri command。
 - `server/src/domains/runtime/` 只是 Python 进程快照，不是垃圾桶，也不是 CLI Runtime。
 
 ---
@@ -345,7 +344,7 @@ server/src/browser/               # manager / session / context / adapters
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。
 
-改 CLI Runtime：**探测/下载**改 Tauri；**启动/流式**改 Python `agent/runtimes` + `/v1/agent/runtimes/...`，再接 React。
+改 CLI Runtime：**探测/下载**改 Tauri；**启动/流式**改 Python `cli` + `/v1/agent/runtimes/...`，再接 React。
 
 ---
 

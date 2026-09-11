@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from src.agent.runtimes import live_hub
+from src.cli.live import hub as live_hub
 from src.tools.preview import PreviewInput
 from src.tools.registry import get_tool, list_tools
 

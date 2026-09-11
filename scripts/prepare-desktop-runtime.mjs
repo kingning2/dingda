@@ -151,10 +151,13 @@ async function main() {
   writeFileSync(
     join(serverOut, "uv.toml"),
     [
-      "# desktop packaged mirrors (China)",
+      "# desktop packaged mirrors (China); pypi.org as fallback",
       "[[index]]",
-      'url = "https://pypi.tuna.tsinghua.edu.cn/simple"',
+      'url = "https://mirrors.aliyun.com/pypi/simple/"',
       "default = true",
+      "",
+      "[[index]]",
+      'url = "https://pypi.org/simple"',
       "",
       "[python]",
       'install-mirror = "https://registry.npmmirror.com/-/binary/python-build-standalone"',

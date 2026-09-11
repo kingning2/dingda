@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "./session";
 import { ChatPane, send, type SendHandle } from "./scheduler";
 import { Products } from "./Products";
-import { ProductPreviewHost } from "./ProductPreviewDialog";
+import { ProductPreviewHost } from "./ProductPreviewHost";
 import { Settings } from "./Settings";
 import { truncateBeforeUserMessage } from "@/lib/agent-event-reducer";
 

@@ -13,7 +13,11 @@ MCP 与产品 Agent **共用**的选品能力。每个 Tool 一个文件（契�
 | `compare.py` | 1688 同款比价 |
 | `preview.py` | 打开任意 URL，直播截图给前端预览 |
 | `login.py` | 平台扫码登录（阻塞等用户扫码） |
+| `validate.py` | **内部工具**：在修复现场页面上试跑候选选择器（只给修复子 agent） |
+| `validate_cli.py` | 同上的命令行形态：`python -m src.tools.validate_cli --selectors '<JSON>'` |
 | `registry.py` | `list_tools` / `get_tool` / `call_tool` |
+
+> `validate` 标了 `internal_only`：不进默认工具面，也不进设置页展示，只能由 `DINGDA_MCP_TOOLS` 白名单放进来。
 | `__init__.py` | 包导出 |
 
 新增 Tool：在本目录加 `<name>.py`，再在 `registry.py` 的 `_TOOLS` 挂一条。

@@ -7,7 +7,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::camoufox;
 
-const DEFAULT_INDEX: &str = "https://pypi.tuna.tsinghua.edu.cn/simple";
+const DEFAULT_INDEX: &str = "https://mirrors.aliyun.com/pypi/simple/";
 const PYTHON_INSTALL_MIRROR: &str =
     "https://registry.npmmirror.com/-/binary/python-build-standalone";
 
@@ -41,20 +41,31 @@ pub fn resolve_resource_dir(app: &AppHandle) -> Option<PathBuf> {
     app.path().resource_dir().ok()
 }
 
-/// `resources/runtime`（prepare-desktop-runtime 产出）。
+/// `resources/runtime`：安装包 resource，或开发态 `src-tauri/resources/runtime`。
 pub fn resolve_runtime_dir(app: &AppHandle) -> Option<PathBuf> {
-    let resource = resolve_resource_dir(app)?;
-    let runtime = resource.join("runtime");
-    if runtime.is_dir() {
-        Some(runtime)
-    } else {
+    if let Some(resource) = resolve_resource_dir(app) {
+        let runtime = resource.join("runtime");
+        if runtime.is_dir() {
+            return Some(runtime);
+        }
         let flat = resource.join("bin").join(uv_bin_name());
         if flat.is_file() {
-            Some(resource)
-        } else {
-            None
+            return Some(resource);
         }
     }
+    // tauri dev：resource_dir 往往对不上，直接读源码树里的 resources
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("runtime");
+    if dev.is_dir() {
+        return Some(dev);
+    }
+    None
+}
+
+/// 是否客户安装包（非 `tauri dev`）。只有此时才注入国内镜像 / 可写 venv。
+pub fn is_packaged_install() -> bool {
+    !cfg!(dev)
 }
 
 fn uv_bin_name() -> &'static str {
@@ -65,7 +76,7 @@ fn uv_bin_name() -> &'static str {
     }
 }
 
-/// 打包态优先用 resource 里的 uv；否则 PATH 上的 uv。
+/// 打包态优先用 resource 里的 uv；开发态用 PATH。
 pub fn resolve_uv_bin(app: &AppHandle) -> PathBuf {
     if let Ok(path) = std::env::var("DINGDA_UV") {
         let p = PathBuf::from(path);
@@ -73,21 +84,27 @@ pub fn resolve_uv_bin(app: &AppHandle) -> PathBuf {
             return p;
         }
     }
-    if let Some(runtime) = resolve_runtime_dir(app) {
-        let bundled = runtime.join("bin").join(uv_bin_name());
-        if bundled.is_file() {
-            return bundled;
+    if is_packaged_install() {
+        if let Some(runtime) = resolve_runtime_dir(app) {
+            let bundled = runtime.join("bin").join(uv_bin_name());
+            if bundled.is_file() {
+                return bundled;
+            }
         }
     }
     PathBuf::from(uv_bin_name())
 }
 
-/// 可写的 Server 工作副本：从 resource 同步后供 `uv sync`。
+/// 可写的 Server 工作副本：仅安装包从 resource 同步；开发态用仓库 `server/`。
 pub fn ensure_server_workdir(app: &AppHandle) -> PathBuf {
     if let Ok(path) = std::env::var("DINGDA_SERVER_DIR") {
         if !path.trim().is_empty() {
             return PathBuf::from(path);
         }
+    }
+
+    if !is_packaged_install() {
+        return resolve_server_dir();
     }
 
     let Some(runtime) = resolve_runtime_dir(app) else {
@@ -199,34 +216,42 @@ pub fn find_camoufox_exe(root: &Path) -> Option<PathBuf> {
     None
 }
 
-/// 启动子进程时注入的国内镜像与路径环境。
+/// 启动子进程环境：开发态不改 PyPI；安装包才注入国内镜像与可写 venv。
 pub fn desktop_runtime_env(app: &AppHandle, server_dir: &Path) -> Vec<(String, String)> {
     let mut env = vec![
         ("DINGDA_SERVER_DIR".into(), server_dir.display().to_string()),
-        ("UV_DEFAULT_INDEX".into(), DEFAULT_INDEX.into()),
-        (
-            "UV_PYTHON_INSTALL_MIRROR".into(),
-            PYTHON_INSTALL_MIRROR.into(),
-        ),
         ("PYTHONUTF8".into(), "1".into()),
     ];
 
-    let uv = resolve_uv_bin(app);
-    env.push(("DINGDA_UV".into(), uv.display().to_string()));
+    if is_packaged_install() {
+        // 客户机免翻墙；阿里云 + pypi.org 兜底。tauri dev 不要注入。
+        env.push(("UV_DEFAULT_INDEX".into(), DEFAULT_INDEX.into()));
+        env.push((
+            "UV_PYTHON_INSTALL_MIRROR".into(),
+            PYTHON_INSTALL_MIRROR.into(),
+        ));
+        env.push(("UV_INDEX".into(), "https://pypi.org/simple".into()));
 
-    let venv = data_dir().join("venvs").join("server");
-    env.push((
-        "UV_PROJECT_ENVIRONMENT".into(),
-        venv.display().to_string(),
-    ));
+        let uv = resolve_uv_bin(app);
+        env.push(("DINGDA_UV".into(), uv.display().to_string()));
+
+        let venv = data_dir().join("venvs").join("server");
+        env.push((
+            "UV_PROJECT_ENVIRONMENT".into(),
+            venv.display().to_string(),
+        ));
+    }
 
     match camoufox::ensure_camoufox_exe(app) {
         Ok(exe) => {
             eprintln!("[shell] camoufox exe={}", exe.display());
             env.push(("DINGDA_CAMOUFOX_EXE".into(), exe.display().to_string()));
         }
-        Err(error) => {
-            eprintln!("[shell] camoufox not ready: {error}");
+        Err(error) if is_packaged_install() => {
+            eprintln!("[shell] camoufox missing in install package: {error}");
+        }
+        Err(_) => {
+            // tauri dev 无 zip 时用本机 camoufox 缓存，不刷屏
         }
     }
 

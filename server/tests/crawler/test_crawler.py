@@ -35,16 +35,26 @@ class _FakeRaw:
     async def wait_for_timeout(self, ms: int) -> None:
         return None
 
+    def on(self, event: str, handler: Any) -> None:
+        """小红书截获 response 用；测试无网络事件，注册即忽略。"""
+        return None
+
+    def remove_listener(self, event: str, handler: Any) -> None:
+        return None
+
     async def evaluate(self, script: Any, arg: Any = None) -> Any:
         self.evaluate_calls.append((script, arg))
-        # SCROLL_JS 参数是 times；EXTRACT_JS 参数是 limit
+        # SCROLL_JS 参数是 times（int）
         if isinstance(arg, int) and "scrollBy" in str(script):
             return None
-        # VIEW_JS 参数是 item_id
+        # VIEW_JS 参数是 item_id（str），DETAIL_DOM_JS 是 {"itemId": ...}
+        item_id = ""
         if isinstance(arg, str):
-            if arg in self.views:
-                return self.views[arg]
-            return self.payload
+            item_id = arg
+        elif isinstance(arg, dict):
+            item_id = str(arg.get("itemId") or arg.get("noteId") or "")
+        if item_id and item_id in self.views:
+            return self.views[item_id]
         return self.payload
 
 
@@ -225,8 +235,11 @@ def test_xianyu_search_uses_evaluate() -> None:
         assert port.last_page.closed
         assert port.last_page.goto_calls[0][0] == "https://www.goofish.com/search"
         assert port.last_page.goto_calls[0][1] == {"q": "手机"}
-        # EXTRACT_JS 调用带 limit=5
-        assert any(call[1] == 5 for call in port.last_page.raw.evaluate_calls)
+        # EXTRACT_JS 调用携带 limit=5（search_dom_arg）
+        assert any(
+            isinstance(call[1], dict) and call[1].get("limit") == 5
+            for call in port.last_page.raw.evaluate_calls
+        )
 
     asyncio.run(_run())
 
@@ -262,7 +275,13 @@ def test_xianyu_detail_mtop() -> None:
         assert len(result.items) == 1
         assert result.items[0].title == "相机"
         session_factory.assert_called_once()
-        mtop.assert_called_once()
+        # mtop 会调详情 + 留言两个 API；断言详情那次
+        assert any(
+            call.kwargs.get("api", call.args[1] if len(call.args) > 1 else "").endswith(
+                ".detail"
+            )
+            for call in mtop.call_args_list
+        )
         assert port.last_page is None
 
     asyncio.run(_run())
@@ -300,7 +319,10 @@ def test_xianyu_detail_falls_back_to_view() -> None:
         assert port.last_page.closed
         assert port.last_page.goto_calls[0][0] == "https://www.goofish.com/item"
         assert port.last_page.goto_calls[0][1] == {"id": "77"}
-        assert any(call[1] == "77" for call in port.last_page.raw.evaluate_calls)
+        assert any(
+            isinstance(call[1], dict) and call[1].get("itemId") == "77"
+            for call in port.last_page.raw.evaluate_calls
+        )
 
     asyncio.run(_run())
 
@@ -377,9 +399,12 @@ def test_xiaohongshu_detail() -> None:
         assert port.last_page.goto_calls[0][0] == "https://www.xiaohongshu.com/explore/n1"
         assert port.last_page.goto_calls[0][1] == {
             "xsec_token": "tok",
-            "xsec_source": "pc_feed",
+            "xsec_source": "pc_search",
         }
-        assert any(call[1] == "n1" for call in port.last_page.raw.evaluate_calls)
+        assert any(
+            isinstance(call[1], dict) and call[1].get("noteId") == "n1"
+            for call in port.last_page.raw.evaluate_calls
+        )
 
     asyncio.run(_run())
 

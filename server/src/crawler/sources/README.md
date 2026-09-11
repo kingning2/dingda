@@ -10,6 +10,6 @@
 
 ## 子目录
 
-- [xianyu/](xianyu/README.md) — 闲鱼搜索 DOM + 详情 mtop/页内 fallback
-- [xiaohongshu/](xiaohongshu/README.md) — 小红书搜索 / 笔记详情（`__INITIAL_STATE__`）
+- [xianyu/](xianyu/README.md) — 闲鱼：列表 mtop+DOM（`extract.json`）/ 详情 mtop
+- [xiaohongshu/](xiaohongshu/README.md) — 小红书：列表 XHR+DOM（`extract.json`）/ 笔记详情
 - [ali1688/](ali1688/README.md) — 1688 官方找货 API（文本/以图/链接/比价，无 Browser）
