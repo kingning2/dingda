@@ -9,6 +9,8 @@ __pycache__/
 uv.lock
 !server/uv.lock
 server/tmp/
+server/.tmp/
+.tmp/
 
 # Desktop bundled runtime（prepare-desktop-runtime 产出；Camoufox zip 很大）
 src-tauri/resources/runtime/
