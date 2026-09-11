@@ -1,104 +1,88 @@
 <p align="center">
-  <img src="./public/logo.svg" alt="叮答" width="72" />
+  <img src="./public/logo.svg" alt="叮答" width="64" />
 </p>
 
 <h1 align="center">叮答 DingDa</h1>
 
 <p align="center">
-  <strong>描述想法，立刻开干。</strong><br />
-  把选品调研、跨平台爬虫和多 Agent 编排，收进同一个桌面工作台。
+  用自然语言做选品调研的桌面 Agent —— 接上 Codex / Claude / OpenCode，就能搜闲鱼、对 1688、采小红书。
 </p>
 
 <p align="center">
-  闲鱼 · 1688 · 小红书 &nbsp;|&nbsp; OpenCode · Claude · Codex &nbsp;|&nbsp; 一句话启动任务
+  <img src="./public/home.png" alt="叮答首页" width="900" />
 </p>
 
 ---
 
-## 为什么是叮答
+## Introduction
 
-电商选品、行情摸底、内容风向——以前要开十几个网页、记一堆脚本、换好几个 CLI。  
-叮答把「想清楚」和「跑起来」放在同一处：你说一句自然语言，Agent 去搜、去比、去采；过程看得见，结果可沉淀。
+叮答是一个桌面端选品工作台：React 界面 + Tauri 壳 + Python Server。  
+你在对话里描述需求，外部 CLI Agent（Codex / Claude / OpenCode）调用内置工具完成搜索、详情、比价与预览；爬虫过程可实时直播，撞风控或 DOM 改版时会自动恢复。
 
-| 你想做的事 | 叮答怎么帮你 |
-| --- | --- |
-| 快速验证一个卖货点子 | 首页一句话创建项目，边聊边出原型 / 看板 / 文档 |
-| 摸清二手价、货源利润 | 爬虫跨闲鱼 / 1688 / 小红书，结构化出结果 |
-| 用最顺手的大模型干活 | Agent 页统一安装、登录、切换 CLI 与模型 |
+架构与分层约束见 [`AGENTS.md`](AGENTS.md)。
 
----
+## Features
 
-## 产品一览
+- **自然语言选品** — 一句话启动任务，支持原型 / 看板 / 应用 / 文档等入口
+- **多平台爬虫** — 闲鱼 · 1688 · 小红书；1688 支持图搜 / 链接搜同款比价（销量最高 / 价格最低 / 严选）
+- **步骤实时直播** — 采集过程推送截图帧，打开页、翻页、进详情全程可见
+- **风控自动恢复** — 先自动过滑块；失败则弹有头窗口等人，Cookie 写回后从断点续跑
+- **DOM 自动修复** — 厂家改版导致选择器失效时，指纹重定位 + AI 修抽取规则，验证通过后热加载继续采
+- **Codex 即插即用** — Agent 页安装登录即可；运行时注入 `dingda-mcp`（`search` / `product` / `compare` / `preview`）
+- **多 Agent 管理** — OpenCode / Claude / Codex 同屏：版本、模型、默认 Agent 一键切换
+- **本地一体** — 数据与浏览器会话跑在本机，不依赖远程爬虫 SaaS
 
-### 首页：从想法到项目
+## Screenshots
 
-![叮答首页](./public/home.png)
+| 首页 | 爬虫过程 | Agent 配置 |
+| :--: | :------: | :--------: |
+| <img src="./public/home.png" width="280" alt="首页" /> | <img src="./public/crawler.png" width="280" alt="爬虫" /> | <img src="./public/agent.png" width="280" alt="Agent" /> |
 
-一句话描述你想做的事，可上传参考图；支持原型、看板、应用、文档等多种创作入口。  
-最近项目一眼回看，已发布状态清晰可见——适合把「我想卖花」「我想卖汽车零件」这类念头，立刻变成可跟进的工作区。
+**爬虫工作台**：左侧 Agent 轨迹，中间步骤直播，右侧结构化结果（标题 / 价格 / 来源 / 详情）。
 
-### 爬虫：边聊边采，跨平台对照
+**Agent 页**：托管 CLI 一键安装，本地 CLI 一键扫描；设好默认 Agent 后，首页与爬虫页直接复用。
 
-![叮答爬虫过程](./public/crawler.png)
+## Get Started
 
-不用写抓取规则。你说「手机显存怎么样」，Agent 会自己拆步骤：先搜闲鱼看行情，再跳 1688 对货源利润。  
-左侧是思考与执行轨迹，右侧是结构化结果（标题、价格、缩略图、来源、详情链接）——一次任务就能沉淀上百条可浏览数据。
-
-### Agent：多 CLI，一页管齐
-
-![叮答 Agent 配置](./public/agent.png)
-
-托管 Agent 一键安装，本地 CLI 一键扫描。  
-OpenCode、Claude、Codex 就绪状态、版本与默认模型同屏管理；哪个当默认、用哪条模型，点一下就切——让「换模型」不再等于「换一整套工具链」。
-
----
-
-## 核心能力
-
-- **自然语言驱动**：任务入口是对话，不是复杂表单
-- **多平台采集**：闲鱼 / 1688 / 小红书等渠道统一进工作流
-- **过程可观测**：思考时长、分步进度、平台切换全程可见
-- **结果可复用**：卡片式结果列表，方便比价、选品、二次筛选
-- **Agent 可插拔**：官方与开源 CLI 同屏，模型自由切换
-- **桌面一体**：React 产品界面 + Tauri 壳 + Python Server，本地跑得稳
-
----
-
-## 适合谁
-
-- 想快速验证卖点、摸行情的 **个人卖家 / 选品人**
-- 需要把调研、采集、比价串成一条流的 **运营与研究同学**
-- 希望一套界面管多个 Agent CLI 的 **开发者与重度 AI 用户**
-
----
-
-## 快速开始（开发）
+### 开发运行
 
 ```bash
-# 前端
 pnpm install
-pnpm prepare:server
-pnpm tauri dev
+pnpm prepare:server   # uv sync --frozen（server/）
+pnpm tauri dev        # 桌面壳 + 前端
 
 # 仅 Web 联调（默认 API http://127.0.0.1:8787）
 pnpm dev
 ```
 
-Python 侧依赖见 `server/`（`uv sync`）。架构与分层约束见 [`AGENTS.md`](AGENTS.md)。
+### 接上 Codex 就能用
 
----
+1. 打开 **Agent** 页，安装并登录 **Codex**（或 Claude / OpenCode）
+2. 选好模型，设为默认，状态显示「已就绪」
+3. 回首页或爬虫页，用自然语言描述选品 / 调研任务
 
-## 仓库结构（极简）
+工具经 `dingda-mcp` 注入，无需手写第二套爬虫脚本。
+
+## How it works
 
 ```text
-src/          Web 产品 UI
-server/       Python Server（API / Agent / Crawler / Browser）
-src-tauri/    桌面壳（起停 Server、OS 能力、外部 CLI Agent）
-public/       品牌资源与产品截图
+用户一句话
+    → Codex / Claude / OpenCode
+    → dingda-mcp：search / product / compare / preview
+    → Crawler（闲鱼 / 1688 / 小红书）
+         ├─ 步骤直播截图 → 界面
+         ├─ 风控 → 自动滑块 / 有头人工 → Cookie 回写
+         └─ DOM 失效 → 指纹重定位 / AI 修选择器 → 热加载
+    → 结构化结果（价格 · 货源 · 利润对照）
 ```
 
----
+## Repository
 
-<p align="center">
-  <sub>叮答 —— 让选品与调研，从「翻网页」变成「说一句话」。</sub>
-</p>
+```text
+src/          Web UI（React）
+server/       Python Server（API / Agent / Crawler / Browser / MCP）
+src-tauri/    桌面壳（起停 Server、OS 能力、外部 CLI）
+public/       品牌资源与截图
+```
+
+更多目录说明见 [`AGENTS.md`](AGENTS.md) 与 `server/src/README.md`。
