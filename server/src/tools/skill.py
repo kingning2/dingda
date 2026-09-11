@@ -27,6 +27,7 @@ _RUNTIME_SKILL_DIRS = (
     Path(".codex") / "skills",
     Path(".config") / "opencode" / "skills",
     Path(".claude") / "skills",
+    Path(".codebuddy") / "skills",  # WorkBuddy / CodeBuddy Code
 )
 
 _DESCRIPTION = (

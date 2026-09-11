@@ -3,7 +3,7 @@
 职责：
     按 runtime id 取出插头（[base.py](base.py) 的 ``CliRuntime``），并解析各 CLI 的
     可执行文件路径。
-    已实现：codex / claude / opencode。
+    已实现：codex / claude / opencode / workbuddy。
 
 设计说明：
     - 插头放 ``runtimes/<id>.py``；参数 / MCP 模式 / 流格式的差异只在插头里
@@ -21,13 +21,19 @@ from src.cli.base import CliRuntime
 from src.cli.runtimes.claude import ClaudeRuntime
 from src.cli.runtimes.codex import CodexRuntime
 from src.cli.runtimes.opencode import OpenCodeRuntime
+from src.cli.runtimes.workbuddy import WorkBuddyRuntime
 
 logger = logging.getLogger("dingda.cli")
 
 
 _RUNTIMES: dict[str, CliRuntime] = {
     runtime.id: runtime
-    for runtime in (CodexRuntime(), ClaudeRuntime(), OpenCodeRuntime())
+    for runtime in (
+        CodexRuntime(),
+        ClaudeRuntime(),
+        OpenCodeRuntime(),
+        WorkBuddyRuntime(),
+    )
 }
 
 

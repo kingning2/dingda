@@ -12,6 +12,10 @@ CLI 插头：每个外部 CLI 一个文件，实现 [../base.py](../base.py) 的
   注意 `stdin_format = "claude-stream-json"`：它收的是**一条 JSON 消息**，不是纯文本，
   灌纯文本会报 `Error parsing streaming input line`
 - `opencode.py` — `OpenCodeRuntime`：`opencode run --format json --auto --thinking`
+- `workbuddy.py` — `WorkBuddyRuntime`：WorkBuddy（CodeBuddy Code）的
+  `node <install>/resources/app.asar.unpacked/cli/dist/codebuddy.js -p --output-format stream-json`。
+  入口是 node 脚本，故 `binary = "node"`、脚本路径由 `build_args` 补在最前；
+  `mcp_mode = "none"`，工具走 skill（见下）。
 
 ## 子目录
 
@@ -19,31 +23,32 @@ CLI 插头：每个外部 CLI 一个文件，实现 [../base.py](../base.py) 的
 
 ---
 
-## 现状：谁真能拿到 MCP 工具（实测）
+## 工具注入：skill（当前唯一的取证路径）
 
-| runtime | 注入方式 | 模型看到的工具名 | 能用吗 |
-|---|---|---|---|
-| **opencode** | `OPENCODE_CONFIG_CONTENT` 设 `mcp.<name>` | `dingda_search` / `dingda_product` / `dingda_compare`… | ✅（默认 agent，程序里跑得通） |
-| **claude** | cwd 写 `.mcp.json` | `mcp__dingda__search` 等 | ✅ |
-| **codex** | `-c mcp_servers.<n>.*`（逐键点分） | —— | ❌ codex 0.152 只出它自带 bundled 插件的工具；`context7`/`codegraph`/`dingda` 都不出（server 会被 spawn、`mcp list` 认成 enabled、`doctor` 报正常，但工具进不了模型工具表；对应 openai/codex issue #26810） |
+**不再往各 CLI 注入 MCP。** 工具由 [`../../tools/skill.py`](../../tools/skill.py) 渲染成一份
+`SKILL.md`，装到各 runtime 的 skills 目录，agent 自己读、自己 `shell` 调 CLI：
 
-**注意工具名按 runtime 不同**：opencode 是 `dingda_<tool>`（下划线），claude 是 `mcp__dingda__<tool>`。
-前端 `steps.normalize_tool_name` 已经会剥 `dingda_` / `goofish_` 前缀，所以 opencode 的命名是一直被支持的。
-
-opencode 的 MCP 配置形状（据本地 `@opencode-ai/sdk` 的 `McpLocalConfig` 类型）：
-
-```json
-{ "mcp": { "dingda": {
-    "type": "local",
-    "command": ["uv", "run", "--directory", "<server>", "dingda-mcp"],
-    "environment": { "DINGDA_SERVER_DIR": "..." },
-    "enabled": true
-} } }
+```
+python -m src.tools.skill --install
 ```
 
-`command` 就是 **「命令 + 参数」整个数组**，没有单独的 `args` 字段；缺 `type` 会被
-`Ignoring MCP config entry without type` 丢掉。
+写入位置（相对用户主目录）：
 
-codex 那边：`-c` 的值必须是**单个 TOML 值**，整张内联表会被当字符串（`invalid type: string`），
-所以 `inject/mcp.py` 用逐键点分。要让 codex 有工具，目前只能走「prompt 里给 CLI 命令 + shell 调用」
-那条退路（见 `cli/repair/README.md`）。
+| runtime | skills 目录 |
+|---|---|
+| codex | `.codex/skills/dingda-crawl/SKILL.md` |
+| opencode | `.config/opencode/skills/dingda-crawl/SKILL.md` |
+| claude | `.claude/skills/dingda-crawl/SKILL.md` |
+| **workbuddy** | `.codebuddy/skills/dingda-crawl/SKILL.md` |
+
+命令形态是 `"<python>" -m src.tools.cli <tool> --flags`，stdout 纯 JSON。
+渲染时按 `list_tools()` 自动生成工具清单，加工具不用改文档。
+
+**会话角色也不同了**（见 [../roles/README.md](../roles/README.md)）：
+子 agent 的 `mcp_mode()` 直接返回 `"none"` —— 工具就是 prompt 里写死的那一条
+`python -m src.tools.validate_cli`；比 MCP 白名单更窄，也不会带上别的工具。
+
+> 历史：`inject/mcp.py` 的 `codex-mcp` / `claude-mcp-json` / `opencode-env-content`
+> 分支保留但已不在主链路上（`base.py` 仍会调 `apply_mcp_inject`，`mcp_mode="none"` 时直接返回）。
+> 真机上 codex 那条本来也出不来工具（见下表），skill 路径是唯一全线可用的。
+
