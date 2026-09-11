@@ -32,8 +32,10 @@ logger = logging.getLogger("dingda.channel.xianyu.risk_recovery")
 
 _MANUAL_TIMEOUT_S = float(os.getenv("DINGDA_MANUAL_SLIDER_TIMEOUT_S", "180") or "180")
 _MANUAL_POLL_S = 1.2
-# 风控 UI 消失后还要稳定保持这么久，才认定人工真的过了
-_MANUAL_CLEAR_HOLD_S = 3.0
+# 风控 UI 消失后还要稳定保持这么久，才认定人工真的过了。
+# 取 5s 是因为 punish 页常在正文渲染后 3s 左右才弹出来（见 risk recovery 日志），
+# 保持窗口短于这个延迟就会在弹窗前判过。
+_MANUAL_CLEAR_HOLD_S = 5.0
 # 目标正文至少要渲出这么多字符；风控页未渲染 / 空白页都到不了这个量
 _MANUAL_MIN_CONTENT_CHARS = 120
 _BODY_JS = "() => (document.body && document.body.innerText || '')"

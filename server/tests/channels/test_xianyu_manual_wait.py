@@ -105,7 +105,7 @@ class _FakeManager:
 class _Clock:
     """按次推进的假时钟：绕开 30s 超时下限，测试不真等。"""
 
-    def __init__(self, step: float = 5.0) -> None:
+    def __init__(self, step: float = 6.0) -> None:
         self._now = 0.0
         self._step = step
 

@@ -11,7 +11,7 @@ IM:   token.py → ws.py → message.py
 发品: media.py + category.py + location.py → item.py
 续期: refresh.py（HTTP ping / 快速进入）; renew.py（滑块/有头）
 写保护: limiter.py + guard.py 包住 delete/publish/send/upload
-风控: risk.py（判定）+ slider.py（自动过滑块）
+风控: risk.py（判定）+ slider.py（自动过滑块）+ risk_recovery.py（自动失败后有头等人）
 ```
 
 ## 本目录文件
@@ -71,8 +71,14 @@ IM 用的 `accessToken`：`mtop.taobao.idlemessage.pc.login.token`。按 unb 缓
 
 ### `slider.py`
 
-闲鱼 Baxia / NoCaptcha 自动过滑块：`try_solve_slider`、`clear_risk_cookies`、`auto_slider_enabled`。
+闲鱼 Baxia / NoCaptcha 自动过滑块：`try_solve_slider`、`clear_risk_cookies`、`auto_slider_enabled`、`page_is_risk_block`（逐 frame 判定是否仍卡风控页）。
 `renew.py` 与 `crawler/sources/xianyu` 在 punish / 验证码时调用。不属于 Browser 层。
+
+### `risk_recovery.py`
+
+`XianyuRiskRecovery`：爬虫步骤级风控恢复。先自动过滑块，失败则开有头窗口阻塞等用户手过，
+判过要求风控 UI 消失 + 正文渲染 + 稳定保持（只看"没看到滑块"会在页面渲染前误判），
+过完把窗口里的新 Cookie 写回原 page 再让调用方重试。
 
 ### `ws.py`
 

@@ -39,7 +39,6 @@ server/src/             Python Server
   infrastructure/db/     产品 SQLite（Python 拥有）
   mcp/                   把能力暴露给外部 CLI（MCP stdio）
   domains/               现存应用服务（骨架 + 账号等）
-plugins/crawlers-codex/ Codex 用 MCP 插件
 ```
 
 ---

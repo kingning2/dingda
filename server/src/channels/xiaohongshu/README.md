@@ -22,6 +22,11 @@
 
 `to_browser_cookies`：账号 cookie 注入 `.xiaohongshu.com`。给 Crawler / Tool 会话用。
 
+### `risk_recovery.py`
+
+`XiaohongshuRiskRecovery`：爬虫步骤级风控恢复。暂无稳定自动解法，直接开有头窗口阻塞等用户过验证；
+判过要求验证 UI 消失 + 正文渲染 + 稳定保持，过完把窗口里的新 Cookie 写回原 page 再让调用方重试。
+
 ### `__init__.py`
 
 包标记。
