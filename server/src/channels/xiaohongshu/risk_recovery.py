@@ -27,8 +27,9 @@ logger = logging.getLogger("dingda.channel.xiaohongshu.risk_recovery")
 
 _MANUAL_TIMEOUT_S = float(os.getenv("DINGDA_MANUAL_SLIDER_TIMEOUT_S", "180") or "180")
 _MANUAL_POLL_S = 1.2
-# 验证 UI 消失后还要稳定保持这么久，才认定人工真的过了
-_MANUAL_CLEAR_HOLD_S = 3.0
+# 验证 UI 消失后还要稳定保持这么久，才认定人工真的过了；
+# 保持窗口要长于"正文先渲染、验证页随后弹出"的延迟，否则会在弹窗前判过
+_MANUAL_CLEAR_HOLD_S = 5.0
 # 目标正文至少要渲出这么多字符；验证页未渲染 / 空白页都到不了这个量
 _MANUAL_MIN_CONTENT_CHARS = 120
 _RISK_TEXT = ("安全验证", "请完成验证", "拖动下方滑块")
