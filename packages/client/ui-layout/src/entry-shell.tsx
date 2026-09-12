@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AnimatedOutlet } from "@web/routes/animated-outlet";
+import { AnimatedOutlet } from "./animated-outlet";
 import { PageHeader } from "./page-header";
 import { EntryNavRail } from "./entry-nav-rail";
 import {

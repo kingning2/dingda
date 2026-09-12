@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "lucide-react": "^1.38.0",
+    "motion": "^13.1.1",
     "react-router-dom": "^7.18.3",
     "@v2/routes": "workspace:*",
     "@v2/runtime": "workspace:*",
