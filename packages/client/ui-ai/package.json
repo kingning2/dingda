@@ -1,0 +1,26 @@
+{
+  "name": "@v2/ui-ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI 消息渲染：消息块、Markdown、思考过程",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.14.11",
+    "lucide-react": "^1.38.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "@v2/contracts": "workspace:*",
+    "@v2/runtime": "workspace:*",
+    "@v2/ui-agent": "workspace:*",
+    "@v2/ui-composer": "workspace:*",
+    "@v2/ui-crawler": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

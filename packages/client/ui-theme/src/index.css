@@ -13,7 +13,7 @@
  * 新增一级包目录时回来补一行 —— 漏了不报错，只会悄悄不生成那些类。
  */
 @source "../../../../packages";
-@source "../../../../src";
+@source "../../../../apps";
 
 @custom-variant dark (&:is(.dark *));
 

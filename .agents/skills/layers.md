@@ -23,11 +23,26 @@
 
 ## 本仓库真实布局
 
-没有 `apps/`、没有 `packages/`。不要按旧 OpenDesk / 旧 monorepo 路径写代码。
+前端是 **pnpm 工作区**（`packages/` + `apps/`），Rust 是 **Cargo 工作区**（`packages-rs/`）。
+禁止沿用旧 OpenDesk 的路径（`packages/shared`、`packages/ui`、`apps/wework`、`src-tauri`）。
 
 ```text
-src/                     React（Web 产品）
-src/contracts/           前端 DTO（产品 API + CLI Runtime）
+apps/web/                Web 应用装配（Vite 根：index.html / 路由表 / 页面）
+packages/                前端 pnpm 工作区
+  contracts/             与 Python 的线协议类型（纯类型，零运行时）
+  client/
+    routes/              路由契约（路径常量与解析）
+    runtime/             HTTP 传输 / 能力开关 / 启动预载 / 错误上报
+    ui-theme/            设计令牌与全局样式
+    ui-primitives/       无业务的原子组件 + cn()
+    ui-layout/           窗口骨架：外壳 / 标题栏 / 导航栏
+    ui-feedback/         错误边界与告警宿主
+    ui-ai/               AI 消息渲染
+    ui-composer/         输入区
+    ui-account/          账号域
+    ui-agent/            Agent 域
+    ui-crawler/          采集域
+    ui-home/             首页域
 packages-rs/             Rust Cargo workspace（工作区根在仓库根 Cargo.toml）
   client/                Tauri 客户端（壳；唯一可执行体）
     src/commands/        壳 IPC（invoke）
@@ -141,9 +156,10 @@ Camoufox Adapter
 
 ---
 
-## 前端拆分（不要 packages/）
+## 前端拆分（packages/ + apps/）
 
-主开发在 **Web**（`src/` + Vite）。不要为了桌面再拆 `apps/` / `packages/` monorepo。
+应用装配在 `apps/web`（Vite 根，含 `index.html` / 路由表 / 页面）；可复用能力按业务域放 `packages/client/ui-*`。
+没有 `src/` 了 —— 不要再往仓库根写前端代码。
 
 参考 dsh 的是 **能力注入**，不是 Cordis 全家桶：
 
@@ -163,9 +179,10 @@ Desktop 壳注入（仅客户端）
 | 浏览器 | 连本机 `VITE_API_BASE_URL` 或 `http://127.0.0.1:8787` | **不支持** |
 | Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`packages-rs/runtime/src/`） |
 
-实现入口：`src/lib/capabilities.ts`。UI / 扫描 / Composer 用 `supportsExternalAgents()`，不要散落 `isTauri()` 冒充业务开关。
+实现入口：`packages/client/runtime/src/capabilities.ts`。UI / 扫描 / Composer 用 `supportsExternalAgents()`，不要散落 `isTauri()` 冒充业务开关。
 
-桌面适配器继续放在 `src/lib/`（`server.ts`、`window.ts`、`agent-runtime*.ts`）。**不要**新建 `packages/ui`、`packages/shared`。
+桌面适配器在 `packages/client/runtime/src/`（`server.ts`、`window.ts`、`capabilities.ts`）。
+**禁止**新建 `packages/ui`、`packages/shared` 这类大杂烩包 —— 包名必须对应一个业务域（`ui-agent`）或一层机制（`runtime`）。
 
 ---
 
@@ -194,7 +211,7 @@ invoke("get_server_status") → apiBaseUrl
 fetch(`${apiBaseUrl}/v1/...`)
 ```
 
-参考：`src/lib/capabilities.ts`、`src/lib/server.ts`、`src/lib/account-store.ts`。
+参考：`packages/client/runtime/src/capabilities.ts`、`runtime/src/server.ts`、`ui-account/src/account-store.ts`。
 
 ### 现有 Tauri command：留在 Rust，不要搬去 Python
 
@@ -345,8 +362,8 @@ server/src/browser/               # manager / session / context / adapters
 
 | 面 | 契约位置 |
 |----|----------|
-| 产品 HTTP | `server/src/contracts/` ↔ `src/contracts/` |
-| CLI Agent 事件 | Python SSE ↔ `src/contracts/agent-event.ts`（壳探测不推事件） |
+| 产品 HTTP | `server/src/contracts/` ↔ `packages/contracts/src/` |
+| CLI Agent 事件 | Python SSE ↔ `packages/contracts/src/agent-event.ts`（壳探测不推事件） |
 | Tool | `server/src/tools/`（产品 Agent 与 MCP 共用；每工具一文件 + registry） |
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。

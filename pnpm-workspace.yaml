@@ -8,3 +8,5 @@ packages:
   - "packages/*"
   # 二级：前端域内的功能包（packages/client/ui-* 等）
   - "packages/*/*"
+  # 应用装配层（web 端）
+  - "apps/*"

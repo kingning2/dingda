@@ -1,0 +1,24 @@
+{
+  "name": "@v2/ui-crawler",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "采集域：采集台、结果展示、实时发现",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-opener": "^2",
+    "lucide-react": "^1.38.0",
+    "zustand": "^5.0.15",
+    "@v2/contracts": "workspace:*",
+    "@v2/runtime": "workspace:*",
+    "@v2/ui-account": "workspace:*",
+    "@v2/ui-agent": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

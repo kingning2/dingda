@@ -1,0 +1,10 @@
+{
+  "name": "@v2/routes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "路由契约：路径常量与解析（无 React）",
+  "exports": {
+    "./*": "./src/*"
+  }
+}

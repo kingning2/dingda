@@ -1,0 +1,21 @@
+{
+  "name": "@v2/ui-layout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "窗口骨架：应用外壳、标题栏、导航栏、主区域布局",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "lucide-react": "^1.38.0",
+    "react-router-dom": "^7.18.3",
+    "@v2/routes": "workspace:*",
+    "@v2/runtime": "workspace:*",
+    "@v2/ui-home": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}
