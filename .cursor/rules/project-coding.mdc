@@ -11,13 +11,19 @@ alwaysApply: true
 
 | 目录 | 职责 |
 |------|------|
-| `src/` | Web 产品 UI（主开发） |
+| `apps/web/` | Web 应用装配 + 启动编排（Vite 根：路由表 / 页面 / `boot/`） |
+| `packages/` | 前端 pnpm 工作区：`contracts/`（线协议）+ `client/*`（业务域与机制包） |
+| `packages-rs/` | Rust Cargo 工作区；`client/` 是唯一可执行体（Tauri 壳） |
 | `server/` | Python Server（产品 API / Agent / Crawler / Browser） |
-| `packages-rs/client/` | Tauri 壳（起停 Server、OS 能力、外部 CLI Agent） |
 
-`server/src/` 目录树以 [`server/src/README.md`](../../server/src/README.md) 为准；Tauri 壳以 [`packages-rs/client/src/README.md`](../../packages-rs/client/src/README.md) 为准（上层 README 只链接下层，本层每个源文件写清职责）。
+`server/src/` 目录树以 [`server/src/README.md`](../../server/src/README.md) 为准；
+前端包成员与依赖方向以 [`packages/README.md`](../../packages/README.md) 为准；
+Tauri 壳以 [`packages-rs/client/src/README.md`](../../packages-rs/client/src/README.md) 为准
+（上层 README 只链接下层，本层每个源文件写清职责）。
 
-禁止新建 `apps/`、`packages/`、第二套 Skill、产品用 Rust IPC crate。
+**前端已无仓库根 `src/`**（内容拆入 `apps/web` 与 `packages/`）。
+禁止新建第二套 Skill、产品用 Rust IPC crate；也禁止在 `packages/` 下建
+`ui` / `shared` / `utils` 这类大杂烩包 —— 包名必须对应一个业务域或一层机制。
 
 ## 核心规则（Browser / Crawler，原文必遵）
 
@@ -33,9 +39,9 @@ alwaysApply: true
 ## 怎么写功能
 
 1. **产品能力**（账号、爬虫、产品 Agent、调研）：`server/src/` + HTTP/SSE；前端 `fetch(apiBaseUrl + '/v1/...')`。
-2. **壳能力**（对话框、窗口、起停 Server、Codex/Claude 等外部 Agent）：现有 `packages-rs/client/src/commands/`，前端经 `src/lib/` 适配器。
+2. **壳能力**（对话框、窗口、起停 Server、Codex/Claude 等外部 Agent）：现有 `packages-rs/client/src/commands/`，前端经 `@v2/runtime/` 下的适配器（`window.ts` / `server.ts` / `capabilities.ts`）。
 3. **Web 联调**：默认 `http://127.0.0.1:8787`（或 `VITE_API_BASE_URL`）；不要用 `isTauri()` 挡住产品 HTTP。
-4. **外部 CLI Agent**：仅桌面；用 `supportsExternalAgents()`（`src/lib/capabilities.ts`）。浏览器禁止 mock Codex/Claude。
+4. **外部 CLI Agent**：仅桌面；用 `supportsExternalAgents()`（`@v2/runtime/capabilities`）。浏览器禁止 mock Codex/Claude。
 
 ## 分层（跨层 import = 错）
 
@@ -52,8 +58,8 @@ Agent → Tool → Crawler → BrowserPort → Adapter
 
 ## 契约与改动顺序
 
-- 产品 API：`server/src/contracts/` ↔ `src/contracts/` → Python → React（不必改 Rust）
-- CLI Agent 事件：Python SSE ↔ `src/contracts/agent-event.ts`（壳只做探测/下载）
+- 产品 API：`server/src/contracts/` ↔ `packages/contracts/src/` → Python → React（不必改 Rust）
+- CLI Agent 事件：Python SSE ↔ `packages/contracts/src/agent-event.ts`（壳只做探测/下载）
 - 跨模块必须有明确 Input/Output Schema
 
 ## 语言规范（写代码时自动带上）

@@ -1,32 +1,56 @@
 ---
 name: frontend-architecture
-description: 约束叮答前端 web-first 与桌面能力注入。开发 React UI、拆分目录、判断是否需要 packages、外部 CLI Agent 显隐、账号/爬虫 Web 联调时使用。浏览器不支持外部 Agent；客户端才注入。
+description: 约束叮答前端 pnpm 工作区结构与桌面能力注入。开发 React UI、新增/移动包、判断能力显隐、账号/爬虫 Web 联调时使用。浏览器不支持外部 Agent；客户端才注入。
 ---
 
 # 前端架构开发规范
 
-先读 [layers.md](../layers.md)。
+先读 [layers.md](../layers.md) 与 [`packages/README.md`](../../packages/README.md)。
 
 ## 结论
 
-**不要引入 `packages/` / `apps/` monorepo。** 一个 Vite `src/` 足够。
+前端是 **pnpm 工作区**：应用装配在 `apps/web`，可复用能力按业务域拆进 `packages/client/ui-*`。
+没有 `src/` 了 —— 不要再往仓库根写前端代码。
 
-参考 sibling `deepseek-harness` 的是「宿主注入能力」，不是把它的 Cordis 插件树搬过来。
+参考 sibling `deepseek-harness` 的是 **宿主能力注入**（和它的 `packages/<域>/<包>` 分层思路），
+不是把它的 Cordis 插件树搬过来。
 
-## 拆分方式
+## 结构
 
 ```text
-src/                 产品 UI（主开发）
-  components/        功能界面（尽量不 import @tauri-apps）
-  contracts/         DTO
-  lib/
-    capabilities.ts  宿主能力（boot facts）
-    server.ts        Server 连接（Web 默认本机；桌面由壳注入）
-    window.ts        窗口铬（桌面）
-    agent-runtime*   外部 CLI Agent（桌面）
-  providers/         React context
-packages-rs/client/           壳：注入能力 + 起停 Server + CLI Runtime
+apps/web/            应用装配 + 启动编排（Vite 根：index.html / 路由表 / 页面 / boot/）
+packages/
+  contracts/         与 Python 的线协议类型（纯类型）
+  client/
+    routes/          路由契约（路径常量与解析）
+    app-state/       跨域共享 UI 状态（只依赖 contracts 的叶子包）
+    runtime/         宿主能力（boot facts）+ HTTP 传输 + Server 状态
+    ui-theme/        设计令牌与全局样式
+    ui-primitives/   无业务的原子组件 + cn()
+    ui-layout/       窗口骨架：外壳 / 标题栏 / 导航栏
+    ui-feedback/     错误边界与告警宿主
+    ui-ai/            AI 消息渲染
+    ui-composer/     输入区
+    ui-account/      账号域
+    ui-agent/        Agent 域（含运行时发现）
+    ui-crawler/      采集域
+    ui-home/         首页域
+packages-rs/client/  壳：注入能力 + 起停 Server + CLI Runtime
 ```
+
+**包名 = 一个业务域（`ui-agent`）或一层机制（`runtime`）。**
+禁止 `packages/ui`、`packages/shared`、`packages/utils` 这类大杂烩包。
+
+## 依赖方向（硬约束）
+
+```text
+apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme
+叶子：app-state · runtime · routes · contracts
+```
+
+1. **叶子包不许引业务包。** 启动编排要组合多个域时放 `apps/web/src/boot/`。
+2. **不留「兼容旧 import」的转发壳** —— 转发文件会把环藏起来。直接改调用方。
+3. **跨域状态放 `app-state`**，不要寄居在业务包下。
 
 ## 能力表
 
@@ -36,12 +60,18 @@ packages-rs/client/           壳：注入能力 + 起停 Server + CLI Runtime
 | `externalAgents` | ❌ | ✅ |
 | `windowChrome` / 文件对话框 | ❌ | ✅ |
 
-用 `supportsExternalAgents()` / `getHostCapabilities()`，禁止业务组件继续堆 `isTauri()`。
+用 `supportsExternalAgents()` / `getHostCapabilities()`（`@v2/runtime/capabilities`），
+禁止业务组件继续堆 `isTauri()`。
+
+路由只存在于 `apps/web` 与 `ui-layout`。业务包需要跳转时不要引 `react-router-dom`，
+走注入式回调（如 `@v2/runtime/app-alert` 的 `setAppAlertNavigator`）。
 
 ## 反例
 
 ```text
-❌ packages/ui + packages/shared「以后给桌面用」
+❌ 新建 packages/ui + packages/shared 当「大杂烩」
+❌ 业务包 import react-router-dom 自己跳转
+❌ runtime / app-state 引 @v2/ui-*（叶子包反向依赖业务包）
 ❌ 浏览器 mock 已安装 Codex/Claude
 ❌ 账号页强制 isTauri() 才打 HTTP
 ❌ 为外部 Agent 再开一套产品 IPC
@@ -51,4 +81,5 @@ packages-rs/client/           壳：注入能力 + 起停 Server + CLI Runtime
 ✅ 浏览器 pnpm dev 直接联调 Server
 ✅ 客户端注入 externalAgents 后才扫描 CLI
 ✅ 资产页 Web 只显示账号
+✅ 需要跨域编排 → apps/web/src/boot/
 ```

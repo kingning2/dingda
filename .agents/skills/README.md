@@ -13,7 +13,7 @@
 | [crawler-architecture](crawler-architecture/SKILL.md) | 抓取、平台 Source、快照、去重 |
 | [browser-architecture](browser-architecture/SKILL.md) | 浏览器生命周期与 adapter |
 | [tool-architecture](tool-architecture/SKILL.md) | Tool 契约、MCP、registry |
-| [frontend-architecture](frontend-architecture/SKILL.md) | Web-first、桌面能力注入、不要 packages |
+| [frontend-architecture](frontend-architecture/SKILL.md) | pnpm 工作区结构、桌面能力注入、包依赖方向 |
 | [python-coding](python-coding/SKILL.md) | Python **照抄示例**：注释、插座、命名、日志 |
 | [rust-coding](rust-coding/SKILL.md) | Rust **照抄示例**：注释、插座、命名、日志 |
 
@@ -24,5 +24,7 @@
 - 壳能力留在现有 `packages-rs/client/src/commands/`（生命周期、对话框、CLI Agent Runtime）。
 - 新业务目录：`server/src/{agent,crawler,browser,tools}/`。
 - 禁止 Agent → Playwright / SQLite / 闲鱼。
-- 前端主开发在浏览器；外部 CLI Agent 仅桌面注入（`src/lib/capabilities.ts`）。
+- 前端是 pnpm 工作区：应用装配在 `apps/web`，业务域在 `packages/client/ui-*`（没有仓库根 `src/`）。
+- 前端主开发在浏览器；外部 CLI Agent 仅桌面注入（`@v2/runtime/capabilities`）。
+- 前端包依赖单向无环，叶子包（`app-state` / `runtime` / `routes` / `contracts`）不许引业务包。
 - 写 Python / Rust 时必须按 `python-coding` / `rust-coding` Skill 里的示例形状落笔。

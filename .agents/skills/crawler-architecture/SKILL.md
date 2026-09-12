@@ -67,7 +67,7 @@ sources/xiaohongshu/crawler.py
 
 现存 `server/src/domains/crawler/service.py` 是空骨架。**新代码不要往这里堆。**  
 
-前端手动搜品走 `POST /v1/crawler/...`（见 `src/contracts/crawler.ts`），**不经产品 Agent**。Agent 搜品必须走同名 Crawler Tool，最后仍进同一套 `crawler/`。MCP（`dingda-mcp`）同样只能打到这套 Core，禁止再包一层 goofish 特例。
+前端手动搜品走 `POST /v1/crawler/...`（见 `packages/contracts/src/crawler.ts`），**不经产品 Agent**。Agent 搜品必须走同名 Crawler Tool，最后仍进同一套 `crawler/`。MCP（`dingda-mcp`）同样只能打到这套 Core，禁止再包一层 goofish 特例。
 
 ## sources
 
@@ -199,7 +199,7 @@ browser/
 5. 在 Source registry 注册
 6. 需要登录时 **复用** `channels/` 已有 session，不要复制扫码
 7. 加 `server/tests/crawler/sources/<id>/`
-8. 更新契约里的 platform 枚举（Python + `src/contracts/crawler.ts`）
+8. 更新契约里的 platform 枚举（Python + `packages/contracts/src/crawler.ts`）
 9. **不改** Agent Core；Tool 若已有 `platform` 字段则不必改 Tool
 
 ## 错误 / 正确

@@ -40,18 +40,19 @@ docs: 补充工具清单字段说明
 
 | 模块 | 典型路径 / 范围 | 推荐 scope |
 |------|-----------------|------------|
-| 构建与依赖 | `package.json`、`Cargo.toml`、`build.rs`、`scripts/`、`.github/` | `build` / `deps` |
-| 环境与示例配置 | `.env.example`、`.gitignore` | `env` / `chore` |
-| Rust 后端 | `packages-rs/client/src/` | `tauri` |
-| Python Sidecar | `channel_agent/`（仓库根目录） | `tauri` 或 `sidecar` |
-| 前端 IPC / 枚举 / 契约 | `packages/shared/src/tauri-bridge/`、`packages/shared/src/contracts/` | `frontend` |
-| 控制台 UI | `packages/ui/src/agent-console/`、`packages/ui/src/` 基础组件 | `ui` |
-| 应用壳 / 路由 | `apps/wework/` | `frontend` |
-| i18n | `packages-rs/client/resources/languages/` | `tauri` 或 `i18n` |
-| 文档 | `docs/`、`AGENTS.md` | `docs` |
-| 契约生成 | `scripts/generate-contracts.mjs` 及生成物 | `chore` / `build` |
+| 构建与依赖 | 根 `package.json`、`Cargo.toml`、`pnpm-workspace.yaml`、`tsconfig*.json`、`scripts/` | `build` / `deps` |
+| 环境与配置 | `.gitignore`、`.env.example`、`components.json` | `env` / `chore` |
+| Rust 侧 | `packages-rs/*/src/`（Cargo workspace，成员见根 `Cargo.toml`） | `rust` |
+| Python Server | `server/src/` | `server` |
+| 前端线协议 | `packages/contracts/src/` | `contracts` |
+| 前端基座 | `packages/client/{app-state,runtime,routes}/src/` | `frontend` |
+| 前端 UI 包 | `packages/client/ui-*/src/` | `ui` |
+| 应用装配 | `apps/web/src/`（含 `boot/` 启动编排） | `web` |
+| 规则与文档 | `AGENTS.md`、`README.md`、`packages/**/README.md`、`.agents/`、`.cursor/` | `docs` |
 
-跨模块功能（如「频道 Sidecar」）应拆成例如：`feat(tauri)` 后端与 sidecar → `feat(frontend)` IPC → `feat(ui)` 控制台页面 → `docs` 说明 → `chore(env)` 示例环境变量，**而不是**一条 `feat(tauri): 全部搞定`。
+跨模块功能应拆成例如：`feat(server)` 后端与契约 → `feat(contracts)` 线协议 → `feat(ui)` 组件 → `feat(web)` 装配 → `docs` 说明，**而不是**一条 `feat: 全部搞定`。
+
+注意：**前端拆包后没有仓库根 `src/`**。见到 `src/contracts/`、`src/lib/`、`src/components/` 这类路径一律是旧 OpenDesk 残留，应改写为 `packages/contracts/src/`、`packages/client/runtime/src/`、`packages/client/ui-*/src/`。
 
 ### 拆分原则
 

@@ -79,12 +79,15 @@ pnpm dev
 ## Repository
 
 ```text
-src/                Web UI（React）
-server/             Python Server（API / Agent / Crawler / Browser / MCP）
+apps/web/           Web 应用装配（React + Vite 根）
+packages/           前端 pnpm 工作区（见 packages/README.md）
+  ├─ contracts/     与 Python 的线协议类型
+  └─ client/        业务域包（ui-agent / ui-account / ui-ai / …）与机制包（runtime / app-state / routes）
 packages-rs/        Rust workspace（成员包，见 packages-rs/README.md）
   └─ client/        Tauri 客户端（起停 Server、OS 能力、外部 CLI）
+server/             Python Server（API / Agent / Crawler / Browser / MCP）
 public/             品牌资源与截图
 ```
 
-更多目录说明见 [`AGENTS.md`](AGENTS.md)、[`packages-rs/README.md`](packages-rs/README.md)
-与 `server/src/README.md`。
+更多目录说明见 [`AGENTS.md`](AGENTS.md)、[`packages/README.md`](packages/README.md)、
+[`packages-rs/README.md`](packages-rs/README.md) 与 `server/src/README.md`。

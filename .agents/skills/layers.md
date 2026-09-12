@@ -344,7 +344,7 @@ server/src/browser/               # manager / session / context / adapters
 ```text
 ❌ utils/ helpers/ common/ misc/ services/
 ❌ runtime/all_services.py
-❌ 继续膨胀 src/lib/utils.ts（前端 cn() 除外）
+❌ 继续膨胀 packages/client/ui-primitives/src/utils.ts（前端 cn() 的唯一去处）
 ❌ 继续膨胀 server/src/shared/（仅 AppError）
 ❌ 继续膨胀 server/src/core/（仅 config/logging/lifespan/exceptions）
 ```
