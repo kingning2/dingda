@@ -11,6 +11,7 @@ import { ACCOUNT_PLATFORMS, useDiscoveryStore } from "@v2/app-state";
 import { getApiBaseUrl } from "@v2/runtime/http-client";
 
 import { listStoredAccounts } from "./account-store";
+import { notifyNewlyExpiredAccounts } from "./account-auth-alert";
 
 /** 拉取全部平台账号，合并写入 store。 */
 export async function refreshAccountsForPlatforms(): Promise<void> {
@@ -18,6 +19,8 @@ export async function refreshAccountsForPlatforms(): Promise<void> {
 
   const { setAccountsLoading, setAccountsError, setAccountsSnapshot } =
     useDiscoveryStore.getState();
+  // 刷新前的快照：用来判断哪些账号是「本次才过期」，避免每次轮询都弹提醒。
+  const previous = useDiscoveryStore.getState().accounts;
 
   setAccountsLoading(true);
   try {
@@ -48,6 +51,7 @@ export async function refreshAccountsForPlatforms(): Promise<void> {
 
     setAccountsSnapshot(accounts, autoConnectIds);
     setAccountsError(firstError);
+    notifyNewlyExpiredAccounts(previous, accounts);
   } catch (error) {
     setAccountsError(error instanceof Error ? error.message : "加载账号失败");
   } finally {
@@ -63,13 +67,16 @@ export async function refreshAccountsForPlatform(
 
   const result = await listStoredAccounts(platform);
   const state = useDiscoveryStore.getState();
-  const others = state.accounts.filter((item) => item.platform !== platform);
+  const previous = state.accounts;
+  const others = previous.filter((item) => item.platform !== platform);
   const keptAuto = state.autoConnectIds.filter((id) =>
     others.some((account) => account.account_id === id),
   );
 
+  const next = [...result.accounts, ...others];
   state.setAccountsSnapshot(
-    [...result.accounts, ...others],
+    next,
     [...new Set([...result.autoConnectIds, ...keptAuto])],
   );
+  notifyNewlyExpiredAccounts(previous, next);
 }

@@ -22,6 +22,10 @@ function isAuthExpired(account: AccountListItem): boolean {
 /**
  * 对比刷新前后账号列表：新出现的登录过期账号弹出提示。
  * 已恢复的账号清除冷却，便于下次再次过期时提醒。
+ *
+ * 调用方在 `./account-discovery`（每次账号刷新后各调一次）。
+ * 提示里的「去登录」按钮依赖 `pushAppAlert` 的 `action` 支持；
+ * 跳转由应用层注入的 navigator 完成（见 @v2/runtime/app-alert）。
  */
 export function notifyNewlyExpiredAccounts(
   previous: AccountListItem[],

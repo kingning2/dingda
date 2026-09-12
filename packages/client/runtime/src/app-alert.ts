@@ -2,12 +2,41 @@
 
 export type AppAlertVariant = "default" | "destructive";
 
+/** 告警上的操作按钮。`href` 是应用内路由路径（如 `/accounts?platform=xianyu`）。 */
+export interface AppAlertAction {
+  label: string;
+  href: string;
+}
+
 export interface AppAlertItem {
   id: string;
   title: string;
   description?: string;
   variant: AppAlertVariant;
+  /** 带操作按钮的告警不自动消失，见 pushAppAlert。 */
+  action?: AppAlertAction;
   createdAt: number;
+}
+
+/**
+ * 应用内跳转。由装配层注入（`apps/web`），套路同 http-client 的 `setApiBaseUrl`：
+ * 基座包与 UI 包都不该依赖 react-router，路由实例属于应用层。
+ */
+type AppAlertNavigator = (href: string) => void;
+
+let appAlertNavigator: AppAlertNavigator | null = null;
+
+export function setAppAlertNavigator(navigator: AppAlertNavigator | null): void {
+  appAlertNavigator = navigator;
+}
+
+/** 供告警宿主调用。未注入时回退整页跳转，避免按钮点了没反应。 */
+export function navigateFromAppAlert(href: string): void {
+  if (appAlertNavigator) {
+    appAlertNavigator(href);
+    return;
+  }
+  window.location.assign(href);
 }
 
 type Listener = (items: AppAlertItem[]) => void;
@@ -54,6 +83,7 @@ export function pushAppAlert(input: {
   title: string;
   description?: string;
   variant?: AppAlertVariant;
+  action?: AppAlertAction;
 }): string {
   const id = `alert-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const next: AppAlertItem = {
@@ -61,10 +91,13 @@ export function pushAppAlert(input: {
     title: input.title.trim() || "提示",
     description: input.description?.trim() || undefined,
     variant: input.variant ?? "default",
+    action: input.action,
     createdAt: Date.now(),
   };
   items = [next, ...items].slice(0, MAX_VISIBLE);
-  scheduleDismiss(id);
+  // 带操作按钮的告警不自动消失：6 秒内来不及看清再点击，等于没提醒。
+  // 数量上限仍由 MAX_VISIBLE 兜住，用户可点按钮或手动关闭。
+  if (!next.action) scheduleDismiss(id);
   emit();
   return id;
 }
