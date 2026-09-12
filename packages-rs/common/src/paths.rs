@@ -6,7 +6,7 @@
 //! 设计说明：
 //!     - 有两个基准目录，均由壳在启动时注入：
 //!       `set_app_root()` = 壳包目录（`packages-rs/client`），`resources/runtime` 用它；
-//!       `set_repo_root()` = 仓库根，`server/` 用它
+//!       `set_repo_root()` = 仓库根，Python uv workspace 根（`pyproject.toml` / `uv.lock`）用它
 //!     - 不能自己算：本文件在 `packages-rs/common`，`env!("CARGO_MANIFEST_DIR")`
 //!       只会指向本包目录
 //!     - 国内镜像 / venv / Camoufox exe 属「Python 启动环境」，见 `python`
@@ -34,7 +34,7 @@ pub fn set_app_root(root: PathBuf) {
 
 /// 由壳在 `run()` 最开始注入「仓库根」。
 ///
-/// 开发态 `server/` 以它为基准（`<repo>/server`）。
+/// 开发态 Python uv workspace 根以它为基准（`<repo>/pyproject.toml`）。
 pub fn set_repo_root(root: PathBuf) {
     let _ = REPO_ROOT.set(root);
 }
@@ -69,14 +69,17 @@ fn dirs_home() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// 开发态：仓库 `server/`；可用 `DINGDA_SERVER_DIR` 覆盖。
+/// 开发态：仓库根（Python uv workspace 根）；可用 `DINGDA_SERVER_DIR` 覆盖。
+///
+/// 目录里要有根 `pyproject.toml`（`[tool.uv.workspace]`）、`uv.lock` 与
+/// `packages-py/`；壳在该目录跑 `uv sync --frozen` 后 `uv run python -m api`。
 pub fn resolve_server_dir() -> PathBuf {
     if let Ok(path) = std::env::var("DINGDA_SERVER_DIR") {
         if !path.trim().is_empty() {
             return PathBuf::from(path);
         }
     }
-    repo_root().join("server")
+    repo_root()
 }
 
 /// 安装包 resource 根（Tauri 解压出的 resources）。
@@ -149,7 +152,7 @@ pub fn resolve_uv_bin(app: &AppHandle) -> PathBuf {
     PathBuf::from(uv_bin_name())
 }
 
-/// 可写的 Server 工作副本：仅安装包从 resource 同步；开发态用仓库 `server/`。
+/// 可写的 Server 工作副本：仅安装包从 resource 同步；开发态用仓库根。
 pub fn ensure_server_workdir(app: &AppHandle) -> PathBuf {
     if let Ok(path) = std::env::var("DINGDA_SERVER_DIR") {
         if !path.trim().is_empty() {
@@ -196,7 +199,7 @@ fn sync_dir_if_needed(src: &Path, dst: &Path) -> Result<(), String> {
 
     if marker.is_file() {
         if let Ok(old) = fs::read_to_string(&marker) {
-            if old.trim() == stamp && dst.join("src").is_dir() {
+            if old.trim() == stamp && dst.join("packages-py").is_dir() {
                 return Ok(());
             }
         }

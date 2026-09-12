@@ -147,8 +147,9 @@ fn stop_python_server(app: &AppHandle) {
 
 /// 由壳包目录（`packages-rs/client`）反推仓库根。
 ///
-/// 壳固定落在 `packages-rs/<pkg>`，故仓库根就是它的上两级；`server/` 以仓库根
-/// 为基准（见 `common::paths::resolve_server_dir`）。
+/// 壳固定落在 `packages-rs/<pkg>`，故仓库根就是它的上两级；Python uv workspace
+/// 根（`pyproject.toml` / `uv.lock`）以仓库根为基准
+/// （见 `common::paths::resolve_server_dir`）。
 ///
 /// 之所以抽成独立函数而不是内联：这段推导没有任何类型保护，目录层级一旦变动
 /// （例如壳被挪到 `packages-rs/<scope>/client`），`resolve_server_dir()` 会静默
@@ -168,7 +169,7 @@ mod tests {
     /// 壳包目录 → 仓库根 的两级上溯必须落到真实仓库根上。
     ///
     /// 这是本次 Rust workspace 拆分里最容易静默失败的一环，故断言到「推导结果
-    /// 下确实存在 server/ 与 packages-rs/」为止，而不只比较字符串。
+    /// 下确实存在 Python uv workspace 根与 packages-rs/」为止，而不只比较字符串。
     #[test]
     fn repo_root_from_manifest_dir_points_at_real_repo() {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -187,8 +188,9 @@ mod tests {
             manifest_dir.display()
         );
         assert!(
-            repo_root.join("server").join("src").is_dir(),
-            "推导出的仓库根下没有 server/src：{}",
+            repo_root.join("pyproject.toml").is_file()
+                && repo_root.join("packages-py").is_dir(),
+            "推导出的仓库根下没有 Python uv workspace（pyproject.toml + packages-py/）：{}",
             repo_root.display()
         );
         assert!(

@@ -17,6 +17,8 @@ use tokio::sync::Mutex;
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8787;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+/// Python 入口模块：仓库根跑 `python -m api`（`packages-py/api/src/api/__main__.py`）。
+const SERVER_MODULE: &str = "api";
 
 #[derive(Debug, Error)]
 pub enum PythonLifecycleError {
@@ -188,7 +190,7 @@ impl PythonLifecycle {
         let mut command = if self.config.use_uv {
             let mut cmd = Command::new(&uv);
             cmd.args([
-                "run", "python", "-m", "src", "--host", &host, "--port", &port,
+                "run", "python", "-m", SERVER_MODULE, "--host", &host, "--port", &port,
             ]);
             cmd
         } else if let Some(python) = self
@@ -199,11 +201,11 @@ impl PythonLifecycle {
             .map(|(_, v)| v.clone())
         {
             let mut cmd = Command::new(python);
-            cmd.args(["-m", "src", "--host", &host, "--port", &port]);
+            cmd.args(["-m", SERVER_MODULE, "--host", &host, "--port", &port]);
             cmd
         } else {
             let mut cmd = Command::new("python");
-            cmd.args(["-m", "src", "--host", &host, "--port", &port]);
+            cmd.args(["-m", SERVER_MODULE, "--host", &host, "--port", &port]);
             cmd
         };
 
@@ -358,9 +360,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resolves_server_dir_relative_to_manifest() {
+    fn resolves_server_dir_to_repo_workspace_root() {
         let config = PythonConfig::from_env();
-        assert!(config.server_dir.ends_with("server"));
         assert_eq!(config.server_dir, resolve_server_dir());
+        assert!(config.server_dir.join("pyproject.toml").is_file());
+        assert!(config.server_dir.join("packages-py").is_dir());
     }
 }

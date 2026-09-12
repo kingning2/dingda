@@ -1,7 +1,7 @@
 # agent
 
 面向 **设置页 / IPC** 的薄层：把 `runtime` 的探测结果收成前端列表形状。  
-不是 Python 产品 Agent（那个在 `server/src/agent/`）。不要在这里 spawn CLI。
+不是 Python 产品 Agent（那个在 `packages-py/agent/src/agent/`）。不要在这里 spawn CLI。
 
 ```text
 commands/agent_runtime.rs
