@@ -4,6 +4,24 @@ Web 应用装配：入口、路由表、页面（Vite 根）。
 
 包名 `@v2/app-web`。
 
+## 脚本
+
+本包是 **Vite 根**，构建脚本归本包所有；仓库根的 `pnpm dev` / `pnpm build` / `pnpm preview`
+只是转发过来（Tauri 的 `beforeDevCommand: pnpm dev` 走的也是这条链）。
+
+```bash
+pnpm dev       # vite        （devUrl http://localhost:1420）
+pnpm build     # vite build  （产物 apps/web/dist）
+pnpm preview   # vite preview
+```
+
+类型检查不在本包：根 `pnpm build` 是 `tsc && pnpm --filter @v2/app-web build`，
+`tsc` 在仓库根跑全量（`apps` + `packages`），所以 `typescript` 声明在根。
+
+构建工具（`vite` / `@vitejs/plugin-react` / `@tailwindcss/vite`）声明在**本包**的
+`devDependencies` —— 谁用谁声明。`tailwindcss` 本身不用声明：`@tailwindcss/vite`
+已把它作为直接依赖带上。
+
 ## 文件
 
 - `src/App.css`
