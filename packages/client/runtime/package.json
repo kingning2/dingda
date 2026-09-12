@@ -1,0 +1,16 @@
+{
+  "name": "@v2/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "运行时基座：HTTP 传输、能力开关、错误上报、Server 状态",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

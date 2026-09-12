@@ -1,0 +1,21 @@
+[project]
+name = "browser"
+version = "0.1.0"
+description = "DingDa 浏览器能力层：生命周期 / Context / Page / 导航 / Cookie。唯一允许 import Camoufox/Playwright 的包。禁止出现平台业务。"
+requires-python = ">=3.13"
+dependencies = [
+  "camoufox[geoip]>=0.4",
+  "contracts",
+  "core",
+]
+
+[tool.uv.sources]
+contracts = { workspace = true }
+core = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

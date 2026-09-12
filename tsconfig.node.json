@@ -7,5 +7,5 @@
     "moduleResolution": "bundler",
     "composite": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["apps/web/vite.config.ts"]
 }

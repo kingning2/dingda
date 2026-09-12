@@ -1,0 +1,9 @@
+[package]
+name = "common"
+version = "0.1.0"
+edition = "2021"
+description = "叮答桌面壳共享基础：日志出口、路径解析、平台标签"
+
+[dependencies]
+tauri = "2"
+chrono = "0.4"

@@ -1,0 +1,7 @@
+interface:
+  display_name: "叮答爬虫"
+  short_description: "用真实浏览器完成闲鱼、小红书和 1688 选品取证"
+  default_prompt: "Use $dingda-crawl to collect real product evidence from Xianyu, Xiaohongshu, or 1688."
+
+policy:
+  allow_implicit_invocation: true

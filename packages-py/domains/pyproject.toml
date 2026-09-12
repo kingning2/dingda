@@ -1,0 +1,24 @@
+[project]
+name = "domains"
+version = "0.1.0"
+description = "DingDa 应用服务层骨架：账号 / 渠道编排 / 运行时快照 / 知识库。"
+requires-python = ">=3.13"
+dependencies = [
+  "channels",
+  "contracts",
+  "core",
+  "infrastructure",
+]
+
+[tool.uv.sources]
+channels = { workspace = true }
+contracts = { workspace = true }
+core = { workspace = true }
+infrastructure = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

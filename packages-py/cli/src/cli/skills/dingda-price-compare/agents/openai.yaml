@@ -1,0 +1,7 @@
+interface:
+  display_name: "多轮 1688 比价"
+  short_description: "用至少三轮独立检索完成来源商品到 1688 的比价"
+  default_prompt: "Use $dingda-price-compare to run a multi-round 1688 comparison for this product."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,6 +1,6 @@
 ---
 name: tool-architecture
-description: 约束叮答 Tool 契约与实现边界。编写 crawler.search_products、browser.open/click/extract、snapshot.save、MCP 工具、Agent 可调用能力，或改 tool registry 时使用。每个 Tool 必须有名称、输入/输出 Schema、错误模型、timeout 与 cancellation；禁止隐式修改 Agent State。
+description: 约束叮答 Tool 契约与实现边界。编写 crawler.search_products、browser.open/click/extract、snapshot.save、Agent 可调用能力，或改 tool registry 时使用。每个 Tool 必须有名称、输入/输出 Schema、错误模型、timeout 与 cancellation；禁止隐式修改 Agent State。
 ---
 
 # Tool 架构开发规范
@@ -9,30 +9,30 @@ description: 约束叮答 Tool 契约与实现边界。编写 crawler.search_pro
 
 ## 核心规则（本层相关）
 
-- Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+- Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
 - Crawler 禁止直接依赖 Playwright / Camoufox，必须依赖 Browser Interface。
 - 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
 ## 何时必须遵守
 
 - 给产品 Agent 加能力
-- 写 MCP tool（`server/src/mcp/`、`dingda-mcp`）
+- 写 CLI skill 注入的工具（`packages-py/cli/src/cli/skills/`，经 `tools.cli` 暴露）
 - 把 Crawler / Browser / Snapshot 暴露给 Agent 或外部 CLI
 - 改工具名、参数、错误码、超时
 
 ## 目标目录
 
 ```text
-server/src/tools/
+packages-py/tools/src/tools/
 ├── registry.py
 ├── search.py      # 契约 + run_search
 ├── product.py     # 契约 + run_product
 └── …
 ```
 
-按现有包习惯放在 `server/src/tools/`，不要新建顶层 `tools/`，也不要在 `agent/tools/` 再写一套实现。
+按现有包习惯放在 `packages-py/tools/src/tools/`，不要新建顶层 `tools/`，也不要在 `agent/tools/` 再写一套实现。
 
-MCP 不是第二套能力模型：新 Tool 先在 `tools/<name>.py` 落地（Schema + `run_*`），再挂 `registry.py`；MCP 与产品 Agent **共用**同一 Executor。
+CLI skill 不是第二套能力模型：新 Tool 先在 `tools/<name>.py` 落地（Schema + `run_*`），再挂 `registry.py`；CLI skill 与产品 Agent **共用**同一 Executor（`tools.cli` 只是入口）。
 
 ## 契约流
 
@@ -69,7 +69,7 @@ product
 | 层 | 放什么 | 谁依赖 |
 |----|--------|--------|
 | `tools/<name>.py` | 名字、描述、Input/Output、超时、`run_*` | registry、测试 |
-| `registry.py` | 按名查找、执行 | Agent Executor、MCP |
+| `registry.py` | 按名查找、执行 | Agent Executor、`tools.cli` |
 
 Agent Core 只经 `registry.call_tool`。禁止直接 import Crawler Source / Playwright。
 
@@ -86,10 +86,10 @@ Agent Core 只经 `registry.call_tool`。禁止直接 import Crawler Source / Pl
 | 调用方 | 路径 |
 |--------|------|
 | 产品 Agent | `registry.call` |
-| 外部 CLI（Codex 等） | MCP stdio → 同一 `registry.call` |
+| 外部 CLI（Codex 等） | Skill 注入的 `tools.cli` → 同一 `registry.call` |
 | 前端手动爬虫 | **可以不经 Tool**，HTTP → Crawler 应用服务 → 同一 Crawler Core |
 
-不要为 MCP 单独再写一个 `XianyuSearch` 而产品 Agent 用另一套参数。
+不要为 CLI 单独再写一个 `XianyuSearch` 而产品 Agent 用另一套参数。
 
 ## 依赖
 
@@ -104,7 +104,7 @@ Workflow → Agent → Tool Contract → Tool Implementation → Crawler / Brows
 ❌ Agent → Playwright
 ❌ Agent → SQLite
 ❌ Workflow → Camoufox
-❌ MCP handler 里直接 import 平台 vendor 再抄一份业务
+❌ CLI skill / `tools.cli` 入口里直接 import 平台 vendor 再抄一份业务
 ```
 
 ## 错误 / 正确
@@ -126,10 +126,10 @@ async def run_search(inp: SearchInput) -> SearchOutput:
 
 ## 新增 Tool 清单
 
-1. 在 `server/src/tools/<name>.py` 写名字 + Input + Output + `run_*`
+1. 在 `packages-py/tools/src/tools/<name>.py` 写名字 + Input + Output + `run_*`
 2. `run_*` 只调 Crawler/Browser Port，不调平台私有包细节之外的捷径
 3. 注册到 `registry.py`
-4. 需要给 CLI 用时，MCP 用同一 registry 注册
+4. 需要给 CLI 用时，`tools.cli` 用同一 registry 注册
 5. 加超时/取消/事件
 6. 单测只测 Schema 与假 Port，不启动浏览器
 7. 不改 Agent Core（除非 Planner 的允许列表要加名字）
@@ -140,5 +140,5 @@ async def run_search(inp: SearchInput) -> SearchOutput:
 - [ ] 有 timeout 与 cancellation
 - [ ] 不修改 Agent State
 - [ ] 实现不 import 平台 Source 或 Playwright 实现类
-- [ ] MCP 与产品 Agent 未分叉业务
+- [ ] CLI skill 与产品 Agent 未分叉业务
 - [ ] 未把该能力做成 Tauri command

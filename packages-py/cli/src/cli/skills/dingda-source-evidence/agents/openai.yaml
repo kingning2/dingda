@@ -1,0 +1,7 @@
+interface:
+  display_name: "来源商品证据"
+  short_description: "在比价前锁定来源商品规格、价格口径、硬约束和未知项"
+  default_prompt: "Use $dingda-source-evidence to normalize this source product before comparison."
+
+policy:
+  allow_implicit_invocation: true

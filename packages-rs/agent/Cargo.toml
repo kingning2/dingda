@@ -1,0 +1,12 @@
+[package]
+name = "agent"
+version = "0.1.0"
+edition = "2021"
+description = "外部 CLI Agent 目录与探测（设置页 IPC 形状）"
+
+[dependencies]
+common = { path = "../common" }
+runtime = { path = "../runtime" }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "time", "sync"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

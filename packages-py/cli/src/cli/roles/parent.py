@@ -1,0 +1,52 @@
+"""选品父 agent 角色。
+
+职责：
+    父 agent 带工具、带人设：拼 ``system.md`` 选品前言 + 平台提示。
+    Skills 由宿主读取后直接注入 prompt，并复制到工作目录 ``.dingda-skills/``；
+    不再注入 MCP；工作目录用调用方给的（默认进程 cwd）。
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from cli.prompts import compose_agent_prompt
+from cli.roles.base import AgentRole
+
+
+class ParentRole(AgentRole):
+    """父 agent：选品调研，可调 search / product / compare / login / preview。"""
+
+    id = "parent"
+    name = "父 agent"
+
+    def compose_prompt(
+        self,
+        prompt: str,
+        *,
+        platform_hint: str | None = None,
+        resume: bool = False,
+        workdir: Path | None = None,
+        context_messages: list[dict[str, Any]] | None = None,
+    ) -> str:
+        """系统前言 + 平台提示 + 用户原文；续聊只发原文。"""
+        return compose_agent_prompt(
+            prompt,
+            platform_hint=platform_hint,
+            resume=resume,
+            workdir=workdir,
+            context_messages=context_messages,
+        )
+
+    def mcp_mode(self, runtime_mode: str) -> str:
+        """工具统一走 skill：不给任何 runtime 注入 MCP。
+
+        ``runtime_mode`` 仍旧接住（接口形状不变），但恒返回 ``"none"``——
+        与 ``ChildRole`` 一致，工具只从宿主注入的 Skills 得到。
+        """
+        return "none"
+
+    def workdir(self, cwd: str | None) -> Path:
+        """调用方给的目录；没给就用进程 cwd。"""
+        return Path(cwd).resolve() if cwd and cwd.strip() else Path.cwd()

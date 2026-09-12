@@ -5,11 +5,11 @@ description: 约束叮答产品 Agent 的目录、职责和依赖。开发或修
 
 # Agent 架构开发规范
 
-先读 [layers.md](../layers.md)（含**核心规则**原文）。本 Skill 只管**产品 Agent**（`server/src/agent/`），不管 `src-tauri` 里的 CLI Agent Runtime。
+先读 [layers.md](../layers.md)（含**核心规则**原文）。本 Skill 只管**产品 Agent**（`packages-py/agent/src/agent/`），不管 `packages-rs/client` 里的 CLI Agent Runtime。
 
 ## 核心规则（本层相关）
 
-- Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+- Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
 - Crawler 禁止直接依赖 Playwright / Camoufox，必须依赖 Browser Interface。
 - Browser 禁止出现 Xianyu、1688、商品、价格等平台业务逻辑。
 - 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
@@ -19,26 +19,26 @@ description: 约束叮答产品 Agent 的目录、职责和依赖。开发或修
 - 实现或修改产品 Agent / planning / execution loop
 - 新增 Workflow（Research、PriceCompare、ProductDiscovery）
 - 让 Agent 调用搜索、爬取、浏览器、快照
-- Review 涉及 `domains/agent`、未来的 `server/src/agent/`
+- Review 涉及 `domains/agent`、未来的 `packages-py/agent/src/agent/`
 
 ## 目标目录
 
 ```text
-server/src/agent/
+packages-py/agent/src/agent/
 ├── core/
 └── workflows/
-server/src/tools/          # 能力边界在这里，不要在 agent/ 下再实现 Playwright/Crawler
+packages-py/tools/src/tools/          # 能力边界在这里，不要在 agent/ 下再实现 Playwright/Crawler
 ```
 
 | 目录 | 放什么 |
 |------|--------|
 | `core/` | Agent、Context、State、Planner、Executor、execution loop、tool selection |
 | `workflows/` | Research、PriceCompare、ProductDiscovery 等业务流程 |
-| `server/src/tools/` | Agent 可调用能力的 Definition / Schema / Executor |
+| `packages-py/tools/src/tools/` | Agent 可调用能力的 Definition / Schema / Executor |
 
-不要建 `server/src/agent/tools/` 第二套实现。Agent 只通过 Tool Registry 选工具。
+不要建 `packages-py/agent/src/agent/tools/` 第二套实现。Agent 只通过 Tool Registry 选工具。
 
-现存空骨架在 ``server/src/agent/``。**新代码写这里**，不要再往 ``domains/`` 堆 Agent。`api/agent.py` 应调用 `src.agent`。
+现存空骨架在 ``packages-py/agent/src/agent/``。**新代码写这里**，不要再往 ``domains/`` 堆 Agent。`api/agent.py` 应调用 `src.agent`。
 
 ## Agent Core
 
@@ -75,7 +75,7 @@ ProductDiscovery
 
 Workflow 可以组合 Agent、Tool，但不能直接绕过 Tool 调用底层 Browser/Crawler。
 
-`server/src/domains/research/` 是未来 Workflow 的候选落点之一；新调研编排放到 `server/src/agent/workflows/research.py`（或同级包），由 API 调用 Workflow，而不是让 ResearchService 自己 import Camoufox。
+`packages-py/domains/src/domains/research/` 是未来 Workflow 的候选落点之一；新调研编排放到 `packages-py/agent/src/agent/workflows/research.py`（或同级包），由 API 调用 Workflow，而不是让 ResearchService 自己 import Camoufox。
 
 ## 依赖
 
@@ -160,9 +160,9 @@ self.state.apply_tool_result("crawler.search_products", result)
 
 ## 检查清单
 
-- [ ] 文件在 `server/src/agent/core` 或 `workflows`，不是 `utils/` / `domains/agent/service.py` 上帝类
+- [ ] 文件在 `packages-py/agent/src/agent/core` 或 `workflows`，不是 `utils/` / `domains/agent/service.py` 上帝类
 - [ ] 无 Playwright / Camoufox / sqlite3 / 平台包 import
 - [ ] 外部世界只经 Tool
 - [ ] Workflow 未直呼 Crawler/Browser 类
 - [ ] 未新增 Tauri command 来跑产品 Agent（产品 Agent 走 Python HTTP/SSE）
-- [ ] 未把代码写进 `src-tauri/src/runtime/`
+- [ ] 未把代码写进 `packages-rs/runtime/src/`

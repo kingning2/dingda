@@ -1,0 +1,10 @@
+{
+  "name": "@v2/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "前端与 Python Server 之间的线协议类型（纯类型，无运行时）",
+  "exports": {
+    "./*": "./src/*"
+  }
+}

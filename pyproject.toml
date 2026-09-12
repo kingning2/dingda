@@ -1,0 +1,5 @@
+# uv 工作区根（virtual root，无 [project]）。
+# 成员 = packages-py/*（能力包 + api 应用装配）。锁文件在仓库根 uv.lock。
+# 不要把前端 packages/ 或 Rust packages-rs/ 写进 members —— 它们不是 Python。
+[tool.uv.workspace]
+members = ["packages-py/*"]

@@ -1,15 +1,23 @@
 # scripts
 
+## `agent-rollback-check.mjs`
+
+用 Vite SSR 加载真实前端 reducer，验证“编辑历史用户消息后，从该处重发并丢弃后续对话”的行为。它不复制前端逻辑。
+
+```bash
+node scripts/agent-rollback-check.mjs
+```
+
 ## `prepare-desktop-runtime.mjs`
 
 给 **GitHub Actions / 任意 CI** 用的跨平台准备脚本（也可用本机 `pnpm prepare:desktop-runtime`）。
 
-产出 `src-tauri/resources/runtime/`：
+产出 `packages-rs/client/resources/runtime/`：
 
 | 路径 | 说明 |
 |------|------|
 | `bin/uv(.exe)` | 打进安装包的 uv |
-| `server/` | 源码 + `uv.lock` + 国内镜像 `uv.toml` |
+| `server/` | uv workspace 根（`packages-py/` + `pyproject.toml` + `uv.lock`）+ 国内镜像 `uv.toml` |
 | `camoufox/camoufox-{tag}.zip` | 当前平台浏览器包 |
 
 环境变量：

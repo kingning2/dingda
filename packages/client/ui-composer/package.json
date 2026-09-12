@@ -1,0 +1,21 @@
+{
+  "name": "@v2/ui-composer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "输入区：Prompt 编辑器、附件、Agent 选择",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "lucide-react": "^1.38.0",
+    "@v2/app-state": "workspace:*",
+    "@v2/contracts": "workspace:*",
+    "@v2/ui-agent": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

@@ -1,0 +1,38 @@
+import { HomeHero } from "./home-hero";
+import { RecentProjectsStrip } from "./recent-projects-strip";
+import type { Project } from "./mock-data";
+import type { HomeTypeChipId } from "./mock-data";
+import type { ComposerSubmitPayload } from "@v2/contracts/composer";
+import { cn } from "@v2/ui-primitives/utils";
+
+interface HomeViewProps {
+  projects: Project[];
+  onSubmit?: (payload: ComposerSubmitPayload, chipId: HomeTypeChipId) => void;
+  onOpenProject?: (id: string) => void;
+  onViewAllProjects?: () => void;
+}
+
+export function HomeView({
+  projects,
+  onSubmit,
+  onOpenProject,
+  onViewAllProjects,
+}: HomeViewProps) {
+  const centered = projects.length === 0;
+
+  return (
+    <div
+      className={cn(
+        "relative isolate flex flex-col gap-3",
+        centered && "min-h-full justify-center",
+      )}
+    >
+      <HomeHero onSubmit={onSubmit} />
+      <RecentProjectsStrip
+        projects={projects}
+        onOpenProject={onOpenProject}
+        onViewAll={onViewAllProjects}
+      />
+    </div>
+  );
+}

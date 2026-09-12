@@ -1,0 +1,13 @@
+[package]
+name = "python"
+version = "0.1.0"
+edition = "2021"
+description = "Python Server 子进程生命周期与启动环境"
+
+[dependencies]
+common = { path = "../common" }
+camoufox = { path = "../camoufox" }
+tauri = "2"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "process", "time", "sync"] }
+thiserror = "2"

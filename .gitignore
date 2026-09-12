@@ -5,13 +5,13 @@ __pycache__/
 .venv/
 .ruff_cache/
 .pytest_cache/
-# Keep server lock for CI `uv sync --frozen` / GitHub desktop builds
-uv.lock
-!server/uv.lock
-server/tmp/
+# 根 uv.lock 是 uv workspace 全量锁，CI `uv sync --frozen` / 桌面构建都靠它
+!uv.lock
+.dingda-skills/
+.tmp/
 
 # Desktop bundled runtime（prepare-desktop-runtime 产出；Camoufox zip 很大）
-src-tauri/resources/runtime/
+packages-rs/client/resources/runtime/
 
 # Rust
 target/
@@ -29,6 +29,9 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# pnpm 中断时可能留下的锁文件临时文件（0 字节，形如 _tmp_<pid>_<hash>）
+_tmp_*
 
 .vscode/*
 !.vscode/extensions.json

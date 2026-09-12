@@ -1,17 +1,17 @@
 ---
 name: rust-coding
-description: 叮答 Rust 编码范例。编写或修改 src-tauri/ 下 Rust 时必须遵循本 Skill 中的示例：文件头、函数注释、多实现插座、命名、生命周期日志。少写边界分支。
+description: 叮答 Rust 编码范例。编写或修改 packages-rs/client/ 下 Rust 时必须遵循本 Skill 中的示例：文件头、函数注释、多实现插座、命名、生命周期日志。少写边界分支。
 ---
 
 # Rust 编码范例（照抄结构）
 
-写 `src-tauri/**/*.rs` 时**按下面示例的形状写**，不要自创风格。壳边界见 [layers.md](../layers.md)。
+写 `packages-rs/**/*.rs` 时**按下面示例的形状写**，不要自创风格。壳边界见 [layers.md](../layers.md)。
 
 ---
 
 ## 示例 A：文件头 + 函数注释 + 日志
 
-目标路径：`src-tauri/src/python/lifecycle.rs`（目录已是 `python`，文件不要叫 `python_lifecycle_manager.rs`）
+目标路径：`packages-rs/python/src/lifecycle.rs`（目录已是 `python`，文件不要叫 `python_lifecycle_manager.rs`）
 
 ```rust
 //! 拉起 / 停止 Python Server，并向前端发出就绪事件。
@@ -120,7 +120,7 @@ match runtime_id.as_str() {
 
 ## 示例 C：探测流程日志
 
-目标路径：`src-tauri/src/agent/probe.rs`
+目标路径：`packages-rs/agent/src/probe.rs`
 
 ```rust
 //! 按 Agent id 探测本机安装与鉴权状态。
@@ -155,7 +155,7 @@ pub async fn probe_agent_by_id(agent_id: &str) -> Result<AgentRuntimeProbeResult
 
 每个**有 `.rs` 的文件夹**必须有 `README.md`。`target/`、`gen/`、`icons/` 不要写。
 
-形状照抄 `src-tauri/src/README.md`：
+形状照抄 `packages-rs/client/src/README.md`：
 
 1. 一行总述本目录职责
 2. **本目录文件**：每个 `.rs` 单独一小节，写清干什么、关键类型/函数、谁调用。`lib.rs` 必须写透

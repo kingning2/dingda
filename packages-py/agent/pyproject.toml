@@ -1,0 +1,23 @@
+[project]
+name = "agent"
+version = "0.1.0"
+description = "DingDa 产品 Agent：planning / tool 调用 / workflow。只经 tools 与 contracts，禁止 import browser/crawler/playwright/sqlite。"
+requires-python = ">=3.13"
+dependencies = [
+  "contracts",
+  "core",
+  "openai>=2.54.0",
+  "tools",
+]
+
+[tool.uv.sources]
+contracts = { workspace = true }
+core = { workspace = true }
+tools = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

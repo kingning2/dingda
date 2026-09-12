@@ -12,4 +12,4 @@ description: 约束叮答 Browser 基础设施与适配器。开发或修改浏�
 1. `.agents/skills/layers.md`
 2. `.agents/skills/browser-architecture/SKILL.md`
 
-新浏览器只加 `server/src/browser/adapters/`。不要让 Agent 直接 import Playwright。
+新浏览器只加 `packages-py/browser/src/browser/adapters/`。不要让 Agent 直接 import Playwright。

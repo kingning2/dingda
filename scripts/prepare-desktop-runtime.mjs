@@ -21,18 +21,35 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, basename, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const runtime = join(root, "src-tauri", "resources", "runtime");
+const runtime = join(root, "packages-rs", "client", "resources", "runtime");
 const binDir = join(runtime, "bin");
 const serverOut = join(runtime, "server");
-const serverSrc = join(root, "server");
 const foxDir = join(runtime, "camoufox");
+
+// Python uv workspace 根一起进包：壳在 serverOut 里跑
+// `uv sync --frozen` → `uv run python -m api`（见 packages-rs/python/src/lifecycle.rs）。
+const serverEntries = ["packages-py", "pyproject.toml", "uv.lock"];
+const excludedDirs = new Set([
+  "__pycache__",
+  ".pytest_cache",
+  ".venv",
+  ".mypy_cache",
+  ".ruff_cache",
+]);
+
+function copyFilter(src) {
+  const name = basename(src);
+  if (excludedDirs.has(name)) return false;
+  if (name.endsWith(".egg-info")) return false;
+  return true;
+}
 
 function log(msg) {
   console.log(`[prepare-desktop-runtime] ${msg}`);
@@ -137,14 +154,16 @@ async function main() {
     log(`uv -> ${dest}`);
   }
 
-  for (const name of ["src", "pyproject.toml", "uv.lock"]) {
-    const src = join(serverSrc, name);
+  for (const name of serverEntries) {
+    const src = join(root, name);
     if (!existsSync(src)) {
-      throw new Error(`missing ${src} (commit server/uv.lock for CI --frozen)`);
+      throw new Error(
+        `missing ${src} (root uv workspace needs pyproject.toml + uv.lock + packages-py/)`,
+      );
     }
     const dst = join(serverOut, name);
     rmSync(dst, { recursive: true, force: true });
-    cpSync(src, dst, { recursive: true });
+    cpSync(src, dst, { recursive: true, filter: copyFilter });
     log(`copied ${name}`);
   }
 
@@ -194,7 +213,7 @@ async function main() {
       "# desktop runtime",
       "",
       "- bin/uv(.exe)",
-      "- server/ (src + uv.lock + China uv.toml)",
+      "- server/ (packages-py + pyproject.toml + uv.lock + China uv.toml)",
       "- camoufox/camoufox-{platform}.zip",
       "",
       "Prepared on GitHub Actions; shell extracts zip with the `zip` crate.",

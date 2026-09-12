@@ -1,0 +1,10 @@
+[package]
+name = "camoufox"
+version = "0.1.0"
+edition = "2021"
+description = "Camoufox 运行时定位与解压"
+
+[dependencies]
+common = { path = "../common" }
+tauri = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }

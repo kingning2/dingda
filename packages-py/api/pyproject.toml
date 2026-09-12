@@ -1,0 +1,53 @@
+[project]
+name = "dingda-v2"
+version = "0.1.0"
+description = "DingDa v2 — FastAPI 应用装配层：api 路由编排 / boot 启动编排。唯一可 import 全部 packages-py 成员的地方。"
+requires-python = ">=3.13"
+dependencies = [
+  "agent",
+  "browser",
+  "channels",
+  "cli",
+  "contracts",
+  "core",
+  "crawler",
+  "domains",
+  "fastapi>=0.115",
+  "infrastructure",
+  "pydantic>=2.0",
+  "tools",
+  "uvicorn[standard]>=0.32",
+]
+
+[tool.uv.sources]
+agent = { workspace = true }
+browser = { workspace = true }
+channels = { workspace = true }
+cli = { workspace = true }
+contracts = { workspace = true }
+core = { workspace = true }
+crawler = { workspace = true }
+domains = { workspace = true }
+infrastructure = { workspace = true }
+tools = { workspace = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=8.0",
+  "httpx>=0.28",
+]
+
+[project.scripts]
+dingda-v2 = "api.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+  "integration: 需要本机浏览器与网络的集成测试",
+]

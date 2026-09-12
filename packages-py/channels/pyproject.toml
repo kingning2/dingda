@@ -1,0 +1,34 @@
+[project]
+name = "channels"
+version = "0.1.0"
+description = "DingDa 平台登录 / Cookie / 扫码 / IM WSS。搜索与解析不写这里。"
+requires-python = ">=3.13"
+dependencies = [
+  "browser",
+  "contracts",
+  "core",
+  "infrastructure",
+  "numpy>=2.0",
+  "opencv-python-headless>=5.0.0.93",
+  "pillow>=10.0",
+  "pyexecjs>=1.5.1",
+  "qrcode>=7.4",
+  "requests>=2.34.2",
+  "websockets>=17.1",
+]
+
+[tool.uv.sources]
+browser = { workspace = true }
+contracts = { workspace = true }
+core = { workspace = true }
+infrastructure = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"channels.xianyu" = ["static/*.js"]

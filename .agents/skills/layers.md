@@ -14,32 +14,61 @@
 4. Browser 禁止出现 Xianyu、1688、商品、价格等平台业务逻辑。
 5. 平台新增只修改 `crawler/sources/<platform>/`，浏览器新增只修改 `browser/adapters/<browser>/`。
 6. 登录/账号语义属于 `channels/<platform>/`，Browser 只负责通用 Session/Cookie 能力。
-7. Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+7. Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
 8. 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
-路径均在 `server/src/` 下（如 `server/src/crawler/sources/xianyu/`）。Python 目录树见 [`server/src/README.md`](../../server/src/README.md)；Tauri 壳见 [`src-tauri/src/README.md`](../../src-tauri/src/README.md)。上层 README 只引用下层。产品 SQLite 继续留在 Python `infrastructure/db`，不要为 Browser/Crawler 新开 Rust DB。
+路径均在 `packages-py/<pkg>/src/<pkg>/` 下（如 `packages-py/crawler/src/crawler/sources/xianyu/`）。Python 分层即本文件；成员清单见根 `pyproject.toml` 的 `[tool.uv.workspace]`。Tauri 壳见 [`packages-rs/client/src/README.md`](../../packages-rs/client/src/README.md)。上层 README 只引用下层。产品 SQLite 继续留在 Python `packages-py/infrastructure/src/infrastructure/db`，不要为 Browser/Crawler 新开 Rust DB。
 
 ---
 
 ## 本仓库真实布局
 
-没有 `apps/`、没有 `packages/`。不要按旧 OpenDesk / 旧 monorepo 路径写代码。
+前端是 **pnpm 工作区**（`packages/` + `apps/`），Rust 是 **Cargo 工作区**（`packages-rs/`），Python 是 **uv 工作区**（`packages-py/`，单一 `uv.lock`）。
+禁止沿用旧 OpenDesk 的路径（`packages/shared`、`packages/ui`、`apps/wework`、`src-tauri`）。
 
 ```text
-src/                     React（Web 产品）
-src/contracts/           前端 DTO（产品 API + CLI Runtime）
-src-tauri/               Tauri 壳
-  commands/              壳 IPC（invoke）
-  python/                拉起/停止 Python
-  agent/ + runtime/      外部 CLI Agent Runtime（Codex/Claude/…）
-server/src/             Python Server
-  api/                   HTTP
-  contracts/             Pydantic DTO
-  channels/              登录 / cookie / 扫码（不是爬虫 Source）
-  infrastructure/db/     产品 SQLite（Python 拥有）
-  mcp/                   把能力暴露给外部 CLI（MCP stdio）
-  domains/               现存应用服务（骨架 + 账号等）
+apps/web/                Web 应用装配（Vite 根：index.html / 路由表 / 页面 / 启动编排）
+packages/                前端 pnpm 工作区
+  contracts/             与 Python 的线协议类型（纯类型，零运行时）
+  client/
+    routes/              路由契约（路径常量与解析）
+    app-state/           跨域共享 UI 状态（Agent 运行时 / 账号 / 最近会话）
+    runtime/             HTTP 传输 / 能力开关 / Server 状态 / 错误上报
+    ui-theme/            设计令牌与全局样式
+    ui-primitives/       无业务的原子组件 + cn()
+    ui-layout/           窗口骨架：外壳 / 标题栏 / 导航栏
+    ui-feedback/         错误边界与告警宿主
+    ui-ai/               AI 消息渲染
+    ui-composer/         输入区
+    ui-account/          账号域
+    ui-agent/            Agent 域
+    ui-crawler/          采集域
+    ui-home/             首页域
+packages-rs/             Rust Cargo workspace（工作区根在仓库根 Cargo.toml）
+  client/                Tauri 客户端（壳；唯一可执行体）
+    src/commands/        壳 IPC（invoke）
+  common/                日志出口 + 路径解析 + 平台标签
+  camoufox/              Camoufox 定位与解压
+  python/                Python 子进程起停与启动环境
+  runtime/               CLI Runtime 定义 / 探测 / 托管下载
+  agent/                 CLI Agent 目录与探测（IPC DTO）
+packages-py/             Python uv workspace（成员见根 pyproject.toml）
+  contracts/             零依赖线协议 DTO 与端口（叶子）
+  core/                  config / logging / errors / compress
+  infrastructure/        SQLite + EventBus（产品数据 Python 拥有）
+  browser/               唯一可 import Camoufox / Playwright 的包
+  channels/              登录 / cookie / 扫码 / IM WSS（不是爬虫 Source）
+  crawler/               平台采集（经 contracts 的 BrowserPort 用浏览器）
+  tools/                 Agent 可调用工具（search / product / compare / preview）
+  domains/               应用服务（account / channel / knowledge / runtime）
+  agent/                 产品 Agent（planning / tool 调用 / workflow）
+  cli/                   外部 CLI runtime（spawn + SSE + skill 注入）
+  api/                   FastAPI 装配与入口（唯一可 import 全部）
+  # 每包形如 packages-py/<pkg>/src/<pkg>/
 ```
+
+包依赖单向无环：`common ← camoufox ← python ← client`、`common ← runtime ← agent ← client`。
+成员包边界见 [`packages-rs/README.md`](../../packages-rs/README.md)。
 
 ---
 
@@ -47,12 +76,12 @@ server/src/             Python Server
 
 | 名称 | 路径 | 职责 |
 |------|------|------|
-| 产品 Agent | 目标：`server/src/agent/` | planning / tool 调用 / workflow |
-| CLI Agent Runtime | 探测/下载：`src-tauri/src/runtime/` + `agent/`；**启动**：`server/src/cli/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
+| 产品 Agent | 目标：`packages-py/agent/src/agent/` | planning / tool 调用 / workflow |
+| CLI Agent Runtime | 探测/下载：`packages-rs/runtime/src/` + `agent/`；**启动**：`packages-py/cli/src/cli/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
 
-- 产品 Agent 的代码不要写进 `src-tauri/src/agent/` 或 `src-tauri/src/runtime/`。
-- CLI **探测/下载**在 Tauri；**spawn/SSE**在 `server/src/cli/`，不要再写回 Tauri command。
-- `server/src/domains/runtime/` 只是 Python 进程快照，不是垃圾桶，也不是 CLI Runtime。
+- 产品 Agent 的代码不要写进 `packages-rs/agent/src/` 或 `packages-rs/runtime/src/`。
+- CLI **探测/下载**在 Tauri；**spawn/SSE**在 `packages-py/cli/src/cli/`，不要再写回 Tauri command。
+- `packages-py/domains/src/domains/runtime/` 只是 Python 进程快照，不是垃圾桶，也不是 CLI Runtime。
 
 ---
 
@@ -134,9 +163,10 @@ Camoufox Adapter
 
 ---
 
-## 前端拆分（不要 packages/）
+## 前端拆分（packages/ + apps/）
 
-主开发在 **Web**（`src/` + Vite）。不要为了桌面再拆 `apps/` / `packages/` monorepo。
+应用装配在 `apps/web`（Vite 根，含 `index.html` / 路由表 / 页面）；可复用能力按业务域放 `packages/client/ui-*`。
+没有 `src/` 了 —— 不要再往仓库根写前端代码。
 
 参考 dsh 的是 **能力注入**，不是 Cordis 全家桶：
 
@@ -154,11 +184,28 @@ Desktop 壳注入（仅客户端）
 | 环境 | 产品 API | 外部 CLI Agent |
 |------|----------|----------------|
 | 浏览器 | 连本机 `VITE_API_BASE_URL` 或 `http://127.0.0.1:8787` | **不支持** |
-| Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`src-tauri/src/runtime/`） |
+| Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`packages-rs/runtime/src/`） |
 
-实现入口：`src/lib/capabilities.ts`。UI / 扫描 / Composer 用 `supportsExternalAgents()`，不要散落 `isTauri()` 冒充业务开关。
+实现入口：`packages/client/runtime/src/capabilities.ts`。UI / 扫描 / Composer 用 `supportsExternalAgents()`，不要散落 `isTauri()` 冒充业务开关。
 
-桌面适配器继续放在 `src/lib/`（`server.ts`、`window.ts`、`agent-runtime*.ts`）。**不要**新建 `packages/ui`、`packages/shared`。
+桌面适配器在 `packages/client/runtime/src/`（`server.ts`、`window.ts`、`capabilities.ts`）。
+**禁止**新建 `packages/ui`、`packages/shared` 这类大杂烩包 —— 包名必须对应一个业务域（`ui-agent`）或一层机制（`runtime`）。
+
+### 前端包依赖纪律（拆包后才看得见的三件事）
+
+依赖必须单向：`apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme`，
+叶子是 `app-state` / `runtime` / `routes` / `contracts`。
+
+1. **叶子包不许引业务包。** `runtime` 曾经 `import "@v2/ui-crawler/discovery-scan"`，
+   方向就反了。启动编排要组合多个域时，把它放到 `apps/web/src/boot/`。
+2. **不要留「兼容旧 import」的转发壳。** 转发文件会让依赖图看起来多一条边
+   （`ui-agent → ui-crawler`），把环藏起来。直接改调用方，删掉转发。
+3. **跨域共享的 UI 状态放 `app-state`，不要寄居在某个业务包下。** 一旦寄居，
+   那个包就被迫认识其它域。谁写状态谁留在自己域里（`ui-agent/agent-runtime-scan`、
+   `ui-account/account-discovery`）。
+
+新增包时**三处必须同时改**（根 `package.json` 依赖、根 `tsconfig.json` 的 `paths` 两条、
+跑一次 `pnpm install`），详见 [`packages/README.md`](../../packages/README.md)。
 
 ---
 
@@ -172,8 +219,8 @@ Tauri 只是套壳。主要开发在 Web + Python。
 
 | 通道 | 写在哪 | 干什么 |
 |------|--------|--------|
-| 产品 API | Python `server/src/api/` + `server/src/contracts/` | 账号、扫码、爬虫、产品 Agent、调研、MCP catalog、进度事件 |
-| 壳 IPC | 现有 `src-tauri/src/commands/` | 只有浏览器/Python 做不了的事 |
+| 产品 API | Python `packages-py/api/src/api/` + `packages-py/contracts/src/contracts/` | 账号、扫码、爬虫、产品 Agent、调研、进度事件 |
+| 壳 IPC | 现有 `packages-rs/client/src/commands/` | 只有浏览器/Python 做不了的事 |
 
 React 产品调用形态：
 
@@ -187,7 +234,7 @@ invoke("get_server_status") → apiBaseUrl
 fetch(`${apiBaseUrl}/v1/...`)
 ```
 
-参考：`src/lib/capabilities.ts`、`src/lib/server.ts`、`src/lib/account-store.ts`。
+参考：`packages/client/runtime/src/capabilities.ts`、`runtime/src/server.ts`、`ui-account/src/account-store.ts`。
 
 ### 现有 Tauri command：留在 Rust，不要搬去 Python
 
@@ -198,7 +245,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 | `list_agent_runtimes_command` / `probe_agent_runtime` / `login_agent_runtime` / `download_agent_runtime` | 读 PATH、探测登录、托管下载（不 spawn） |
 | `log_frontend_error` | Python 未就绪时仍要落到壳日志 |
 
-新增同类能力：加在 `src-tauri/src/commands/`，不要新开仓库或 `src-tauri/src/ipc/` 平行体系。
+新增同类能力：加在 `packages-rs/client/src/commands/`，不要新开仓库或 `packages-rs/client/src/ipc/` 平行体系。
 
 ### 新产品能力：写 Python，不要写成 Tauri command
 
@@ -208,7 +255,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 ❌ invoke("search_products")
 ❌ invoke("agent_run")          // 产品 Agent
 ❌ invoke("save_snapshot")
-❌ src-tauri 里再做一套 SQLite Repository 给爬虫/账号用
+❌ packages-rs/client 里再做一套 SQLite Repository 给爬虫/账号用
 ❌ Rust 把 HTTP 再包一层当网关
 ```
 
@@ -227,7 +274,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 
 通用分层常写「Rust 负责 SQLite」。**本仓库不采用。**
 
-当前事实：`server/src/infrastructure/db/` → `~/.dingda/v2/dingda.db`。产品数据跟 Python 走，壳才像壳。
+当前事实：`packages-py/infrastructure/src/infrastructure/db/` → `~/.dingda/v2/dingda.db`。产品数据跟 Python 走，壳才像壳。
 
 仍必须遵守：
 
@@ -263,23 +310,23 @@ fetch(`${apiBaseUrl}/v1/...`)
 ## 目标目录（新代码写这里）
 
 ```text
-server/src/agent/core/
-server/src/agent/workflows/
-server/src/tools/                 # Tool 边界（不要再做一套 agent/tools 实现）
-server/src/crawler/core/
-server/src/crawler/sources/<platform>/
-server/src/crawler/extraction/
-server/src/crawler/snapshot/
-server/src/crawler/dedup/
-server/src/browser/               # manager / session / context / adapters
+packages-py/agent/src/agent/core/
+packages-py/agent/src/agent/workflows/
+packages-py/tools/src/tools/                 # Tool 边界（不要再做一套 agent/tools 实现）
+packages-py/crawler/src/crawler/core/
+packages-py/crawler/src/crawler/sources/<platform>/
+packages-py/crawler/src/crawler/extraction/
+packages-py/crawler/src/crawler/snapshot/
+packages-py/crawler/src/crawler/dedup/
+packages-py/browser/src/browser/               # manager / session / context / adapters
 ```
 
 这些目录是新产品能力落点：
 
-- `server/src/agent/`（勿再堆 `domains/agent`）
-- `server/src/crawler/`（勿再堆 `domains/crawler`）
-- `server/src/browser/`
-- `server/src/tools/`（待建 Tool 契约）
+- `packages-py/agent/src/agent/`（勿再堆 `domains/agent`）
+- `packages-py/crawler/src/crawler/`（勿再堆 `domains/crawler`）
+- `packages-py/browser/src/browser/`
+- `packages-py/tools/src/tools/`（待建 Tool 契约）
 
 `api/` 只做 HTTP 校验与调用；`domains/account`、`domains/channel`、`channels/` 继续承担账号/登录/IM，不要改成 Crawler Source。
 
@@ -303,9 +350,9 @@ server/src/browser/               # manager / session / context / adapters
 ```text
 ❌ utils/ helpers/ common/ misc/ services/
 ❌ runtime/all_services.py
-❌ 继续膨胀 src/lib/utils.ts（前端 cn() 除外）
-❌ 继续膨胀 server/src/shared/（仅 AppError）
-❌ 继续膨胀 server/src/core/（仅 config/logging/lifespan/exceptions）
+❌ 继续膨胀 packages/client/ui-primitives/src/utils.ts（前端 cn() 的唯一去处）
+❌ 重建 shared/ / common/（AppError 已在 packages-py/core/src/core/errors.py，别另开）
+❌ 继续膨胀 packages-py/core/src/core/（仅 config/logging/errors/compress；lifespan 在 api/boot）
 ```
 
 若确需 `utils`：只能放无业务、无 I/O、可单测的纯函数，并在模块文档写明边界。否则内联或放到真正的职责目录。
@@ -338,9 +385,9 @@ server/src/browser/               # manager / session / context / adapters
 
 | 面 | 契约位置 |
 |----|----------|
-| 产品 HTTP | `server/src/contracts/` ↔ `src/contracts/` |
-| CLI Agent 事件 | Python SSE ↔ `src/contracts/agent-event.ts`（壳探测不推事件） |
-| Tool | `server/src/tools/`（产品 Agent 与 MCP 共用；每工具一文件 + registry） |
+| 产品 HTTP | `packages-py/contracts/src/contracts/` ↔ `packages/contracts/src/` |
+| CLI Agent 事件 | Python SSE ↔ `packages/contracts/src/agent-event.ts`（壳探测不推事件） |
+| Tool | `packages-py/tools/src/tools/`（产品 Agent 与 CLI skill 共用；每工具一文件 + registry） |
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。
 
@@ -352,9 +399,9 @@ server/src/browser/               # manager / session / context / adapters
 
 | 模块 | 路径 | 做什么 |
 |------|------|--------|
-| Channel | `server/src/channels/` | 扫码、cookie、登录态、IM WSS |
-| Crawler Source | `server/src/crawler/sources/` | 搜品、详情、平台解析 |
-| Browser | `server/src/browser/` | Page/Cookie/导航/DOM |
+| Channel | `packages-py/channels/src/channels/` | 扫码、cookie、登录态、IM WSS |
+| Crawler Source | `packages-py/crawler/src/crawler/sources/` | 搜品、详情、平台解析 |
+| Browser | `packages-py/browser/src/browser/` | Page/Cookie/导航/DOM |
 
 闲鱼搜索逻辑不要写进 `channels/xianyu/`。扫码不要写进 `crawler/sources/xianyu/`。
 
@@ -371,8 +418,8 @@ server/src/browser/               # manager / session / context / adapters
 ```
 
 ```text
-✅ server/src/agent/core/…
-✅ server/src/crawler/sources/xianyu/crawler.py
-✅ server/src/browser/adapters/camoufox.py
-✅ server/src/tools/search.py
+✅ packages-py/agent/src/agent/core/…
+✅ packages-py/crawler/src/crawler/sources/xianyu/crawler.py
+✅ packages-py/browser/src/browser/adapters/camoufox.py
+✅ packages-py/tools/src/tools/search.py
 ```

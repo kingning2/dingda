@@ -1,0 +1,39 @@
+{
+  "name": "@v2/app-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Web 应用装配：入口、路由表、页面（Vite 根）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "lucide-react": "^1.38.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.18.3",
+    "@v2/app-state": "workspace:*",
+    "@v2/contracts": "workspace:*",
+    "@v2/routes": "workspace:*",
+    "@v2/runtime": "workspace:*",
+    "@v2/ui-account": "workspace:*",
+    "@v2/ui-agent": "workspace:*",
+    "@v2/ui-ai": "workspace:*",
+    "@v2/ui-crawler": "workspace:*",
+    "@v2/ui-feedback": "workspace:*",
+    "@v2/ui-home": "workspace:*",
+    "@v2/ui-layout": "workspace:*",
+    "@v2/ui-primitives": "workspace:*",
+    "@v2/ui-theme": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^4.6.0",
+    "vite": "^7.0.4"
+  }
+}

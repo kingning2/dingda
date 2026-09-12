@@ -1,0 +1,19 @@
+{
+  "name": "@v2/ui-home",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "首页域：首屏、项目条、类型入口",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "lucide-react": "^1.38.0",
+    "@v2/contracts": "workspace:*",
+    "@v2/ui-composer": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

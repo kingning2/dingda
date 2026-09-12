@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -17,9 +21,112 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@v2/contracts": [
+        "./packages/contracts/src/index.ts"
+      ],
+      "@v2/contracts/*": [
+        "./packages/contracts/src/*"
+      ],
+      "@v2/app-state": [
+        "./packages/client/app-state/src/index.ts"
+      ],
+      "@v2/app-state/*": [
+        "./packages/client/app-state/src/*"
+      ],
+      "@v2/routes": [
+        "./packages/client/routes/src/index.ts"
+      ],
+      "@v2/routes/*": [
+        "./packages/client/routes/src/*"
+      ],
+      "@v2/runtime": [
+        "./packages/client/runtime/src/index.ts"
+      ],
+      "@v2/runtime/*": [
+        "./packages/client/runtime/src/*"
+      ],
+      "@v2/ui-theme": [
+        "./packages/client/ui-theme/src/index.ts"
+      ],
+      "@v2/ui-theme/*": [
+        "./packages/client/ui-theme/src/*"
+      ],
+      "@v2/ui-primitives": [
+        "./packages/client/ui-primitives/src/index.ts"
+      ],
+      "@v2/ui-primitives/*": [
+        "./packages/client/ui-primitives/src/*"
+      ],
+      "@v2/ui-layout": [
+        "./packages/client/ui-layout/src/index.ts"
+      ],
+      "@v2/ui-layout/*": [
+        "./packages/client/ui-layout/src/*"
+      ],
+      "@v2/ui-feedback": [
+        "./packages/client/ui-feedback/src/index.ts"
+      ],
+      "@v2/ui-feedback/*": [
+        "./packages/client/ui-feedback/src/*"
+      ],
+      "@v2/ui-ai": [
+        "./packages/client/ui-ai/src/index.ts"
+      ],
+      "@v2/ui-ai/*": [
+        "./packages/client/ui-ai/src/*"
+      ],
+      "@v2/ui-composer": [
+        "./packages/client/ui-composer/src/index.ts"
+      ],
+      "@v2/ui-composer/*": [
+        "./packages/client/ui-composer/src/*"
+      ],
+      "@v2/ui-account": [
+        "./packages/client/ui-account/src/index.ts"
+      ],
+      "@v2/ui-account/*": [
+        "./packages/client/ui-account/src/*"
+      ],
+      "@v2/ui-agent": [
+        "./packages/client/ui-agent/src/index.ts"
+      ],
+      "@v2/ui-agent/*": [
+        "./packages/client/ui-agent/src/*"
+      ],
+      "@v2/ui-crawler": [
+        "./packages/client/ui-crawler/src/index.ts"
+      ],
+      "@v2/ui-crawler/*": [
+        "./packages/client/ui-crawler/src/*"
+      ],
+      "@v2/ui-home": [
+        "./packages/client/ui-home/src/index.ts"
+      ],
+      "@v2/ui-home/*": [
+        "./packages/client/ui-home/src/*"
+      ],
+      "@v2/app-web": [
+        "./apps/web/src/index.ts"
+      ],
+      "@v2/app-web/*": [
+        "./apps/web/src/*"
+      ],
+      "@web/*": [
+        "./apps/web/src/*"
+      ]
     }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": [
+    "apps",
+    "packages"
+  ],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
+  ],
+  "exclude": [
+    "**/vite.config.ts",
+    "**/node_modules"
+  ]
 }

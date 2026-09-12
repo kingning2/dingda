@@ -27,8 +27,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Require server/uv.lock
-        run: test -f server/uv.lock
+      - name: Require uv.lock
+        run: test -f uv.lock
 
       - name: Compute next patch tag
         id: next
@@ -88,7 +88,6 @@ jobs:
         include:
           - platform: windows-latest
           - platform: macos-latest
-          - platform: ubuntu-22.04
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -123,14 +122,14 @@ jobs:
           node -e "
           const fs = require('fs');
           const v = process.env.VERSION;
-          for (const f of ['package.json', 'src-tauri/tauri.conf.json']) {
+          for (const f of ['package.json', 'packages-rs/client/tauri.conf.json']) {
             const j = JSON.parse(fs.readFileSync(f, 'utf8'));
             j.version = v;
             fs.writeFileSync(f, JSON.stringify(j, null, 2) + '\n');
           }
-          const cargo = fs.readFileSync('src-tauri/Cargo.toml', 'utf8')
+          const cargo = fs.readFileSync('packages-rs/client/Cargo.toml', 'utf8')
             .replace(/^version = \".*\"/m, 'version = \"' + v + '\"');
-          fs.writeFileSync('src-tauri/Cargo.toml', cargo);
+          fs.writeFileSync('packages-rs/client/Cargo.toml', cargo);
           console.log('version set to', v);
           "
 
