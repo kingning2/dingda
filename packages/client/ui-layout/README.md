@@ -6,11 +6,13 @@
 
 ## 文件
 
-- `src/README.md`
+- `src/README.md` —— 装配链、各文件职责、新增入口页的步骤
 - `src/app-shell.tsx`
+- `src/animated-outlet.tsx`
 - `src/entry-nav-rail.tsx`
 - `src/entry-shell.tsx`
 - `src/page-header.tsx`
+- `src/route-transition.ts`
 - `src/title-bar.tsx`
 - `src/workspace-shell.tsx`
 - `src/workspace-tabs-bar.tsx`
@@ -18,7 +20,7 @@
 ## 依赖
 
 - 工作区：@v2/routes / @v2/runtime / @v2/ui-home / @v2/ui-primitives
-- 外部：lucide-react / react-router-dom
+- 外部：lucide-react / motion / react-router-dom
 - peer：react
 
 ## 边界

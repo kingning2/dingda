@@ -15,7 +15,8 @@ pnpm build     # vite build  （产物 apps/web/dist）
 pnpm preview   # vite preview
 ```
 
-类型检查不在本包：根 `pnpm build` 是 `tsc && pnpm --filter @v2/app-web build`，
+类型检查不在本包：根 `pnpm build` 是
+`check-workspace-deps → tsc → pnpm --filter @v2/app-web build`，
 `tsc` 在仓库根跑全量（`apps` + `packages`），所以 `typescript` 声明在根。
 
 构建工具（`vite` / `@vitejs/plugin-react` / `@tailwindcss/vite`）声明在**本包**的
@@ -55,16 +56,21 @@ src/
   routes/
     router.tsx           createHashRouter 路由表
     route-handle.ts      路由 handle 类型与标题解析
-    route-transition.ts
-    animated-outlet.tsx
     layouts/             app-layout / entry-layout / workspace-layout
     pages/               home-route / projects-route / status-routes / work-route
 ```
 
+`route-transition.ts` 与 `animated-outlet.tsx` **不在本包**：它们是 `EntryShell`
+内容区的渲染实现，已归入 [`@v2/ui-layout`](../../packages/client/ui-layout/README.md)。
+它们原先在这里，导致 `ui-layout` 反过来 import `@web/routes/animated-outlet` ——
+包依赖应用，方向是反的。
+
+本包的 `routes/` 只放**装配**（路由表、布局接线、handle 解析），不放可复用的渲染件。
+
 ## 依赖
 
 - 工作区：@v2/app-state / @v2/contracts / @v2/routes / @v2/runtime / @v2/ui-account / @v2/ui-agent / @v2/ui-ai / @v2/ui-crawler / @v2/ui-feedback / @v2/ui-home / @v2/ui-layout / @v2/ui-primitives / @v2/ui-theme
-- dependencies：lucide-react / motion / react / react-dom / react-router-dom
+- dependencies：lucide-react / react / react-dom / react-router-dom
 - devDependencies：@tailwindcss/vite / @vitejs/plugin-react / vite
 
 本包是**应用**不是库，所以 `react` / `react-dom` 是 `dependencies` 而非 `peerDependencies`

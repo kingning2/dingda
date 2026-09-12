@@ -33,7 +33,7 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
 | [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、Server 状态、错误上报 | 连不上 Server / 判断是否桌面端 |
 | [client/ui-theme/](client/ui-theme/README.md) | 设计令牌与全局样式 | 改颜色、圆角、字体 |
 | [client/ui-primitives/](client/ui-primitives/README.md) | 无业务的原子组件 + `cn()` | 按钮/输入框长什么样 |
-| [client/ui-layout/](client/ui-layout/README.md) | 外壳、标题栏、导航栏、主区域 | 窗口骨架、侧栏 |
+| [client/ui-layout/](client/ui-layout/README.md) | 外壳、标题栏、导航栏、主区域、路由出口 | 窗口骨架、侧栏、页面切换动效 |
 | [client/ui-feedback/](client/ui-feedback/README.md) | 错误边界与告警宿主 | 报错怎么展示 |
 | [client/ui-ai/](client/ui-ai/README.md) | AI 消息渲染、Markdown、思考过程 | 消息气泡、代码块 |
 | [client/ui-composer/](client/ui-composer/README.md) | 输入区、附件、Agent 选择 | 打字框 |
@@ -58,6 +58,36 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
    谁都来读。它一旦挂在某个业务包下（原先是 `ui-crawler`），那个包就被迫认识
    `ui-agent`、`ui-account`，环和反向依赖同时出现。状态本身不依赖业务逻辑，
    就该待在 `app-state` 这种只依赖 `contracts` 的叶子位置。
+3. **包不许 import 应用源码。** `ui-layout` 曾经 `import { AnimatedOutlet }
+   from "@web/routes/animated-outlet"` —— `@web/*` 是应用内部别名，这一行等于
+   「包依赖应用」。依赖方向只能是应用 → 包，所以实现要挪进包
+   （`AnimatedOutlet` 已归 `ui-layout`），或改为由应用注入（`setApiBaseUrl` /
+   `setAppAlertNavigator` 那套）。这类越界靠人眼很难发现，因为**运行时完全正常**。
+
+## 依赖卫生检查
+
+上面三条纪律都有对应的自动检查，别靠自觉：
+
+```bash
+pnpm check:deps      # node scripts/check-workspace-deps.mjs
+```
+
+它扫 `src/**` 的 `.ts` / `.tsx` / `.css` 加包根 `*.config.*`，报五类问题：
+
+| 类别 | 判定 | 后果 |
+|------|------|------|
+| 环 | `@v2/*` 之间成环 | 硬失败 |
+| 跨层引用 | 包 import 了 `apps/**`（经 tsconfig `paths` 别名解析） | 硬失败 |
+| 用了没声明 | 引了但 `package.json` 没写 | 硬失败 |
+| 声明没用 | 写了但源码找不到（`peerDependencies` 豁免） | 警告 |
+| 自依赖 | 包引自己 | 硬失败 |
+
+已接进 `pnpm dev` 与 `pnpm build` 的**前置**，所以违规会在开发启动时就拦下来
+（整轮约 0.3 秒）。退出码 0 = 通过，1 = 有硬失败项。
+
+之所以必须自动化：这类违规的代价是**静默的**。靠根级 hoisting 兜着，本地能跑、
+CI 能过，直到换个安装方式或挪个目录才炸。`ui-theme` 就是例子 —— 它的 `index.css`
+`@import` 了四个外部包，包清单里却一个依赖都没写。
 
 ## 工程机制
 
@@ -66,8 +96,9 @@ Vite 构建。这样既有 pnpm 的真实包边界（依赖显式声明、越界
 编排的成本。
 
 ```bash
-pnpm dev      # → pnpm --filter @v2/app-web dev
-pnpm build    # → tsc（全仓库类型检查）+ vite build
+pnpm dev         # → check:deps + pnpm --filter @v2/app-web dev
+pnpm build       # → check:deps + tsc（全仓库类型检查）+ vite build
+pnpm check:deps  # → node scripts/check-workspace-deps.mjs
 ```
 
 ## 新增一个包
@@ -79,6 +110,7 @@ pnpm build    # → tsc（全仓库类型检查）+ vite build
    - 根 `tsconfig.json` 的 `paths` 加 `"@v2/ui-<域>"` 与 `"@v2/ui-<域>/*"` 两条
    - 跑一次 `pnpm install` 让 pnpm 建软链
 4. 在本文件「成员包」表加一行
+5. 跑 `pnpm check:deps` 确认没引入环 / 跨层引用 / 漏声明的依赖
 
 ## 改结构时的坑
 
