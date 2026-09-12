@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ProjectsPage } from "@web/pages/projects-page";
 import { workSummariesToProjects } from "@v2/ui-home/work-projects";
 import { paths } from "@v2/routes/paths";
-import { useDiscoveryStore } from "@v2/ui-crawler/discovery-store";
+import { useDiscoveryStore } from "@v2/app-state";
 
 export function ProjectsRoute() {
   const navigate = useNavigate();

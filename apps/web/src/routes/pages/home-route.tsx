@@ -6,7 +6,7 @@ import { HomeView } from "@v2/ui-home/home-view";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { workSummariesToProjects } from "@v2/ui-home/work-projects";
 import { createWorkId, paths } from "@v2/routes/paths";
-import { useDiscoveryStore } from "@v2/ui-crawler/discovery-store";
+import { useDiscoveryStore } from "@v2/app-state";
 
 export function HomeRoute() {
   const navigate = useNavigate();

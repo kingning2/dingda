@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 
-import { finishBootSplash, preloadAppHome } from "./app-preload";
 import {
   fetchServerStatus,
   getInitialServerStatus,
@@ -22,9 +21,15 @@ export function useServer(): ServerStatus {
   return useContext(ServerContext);
 }
 
+/**
+ * 只做一件事：订阅 Server 状态、把 baseUrl 注入传输层、向下提供 useServer。
+ *
+ * 启动预载（拉首页数据、卸启动屏）刻意不在这里。那套编排要调 ui-agent /
+ * ui-account 的发现逻辑，属于应用装配层（apps/web/src/boot）；放在基座包里
+ * 会让 @v2/runtime 反向依赖业务包，依赖方向就反了。
+ */
 export function ServerProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<ServerStatus>(getInitialServerStatus);
-  const [homeReady, setHomeReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,37 +53,9 @@ export function ServerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setApiBaseUrl(status.apiBaseUrl);
-
-    // Server 起不来也卸启动屏，避免一直卡在 splash
-    if (status.phase === "error") {
-      setHomeReady(true);
-      finishBootSplash();
-      return;
-    }
-
-    if (!status.ready || !status.apiBaseUrl) return;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        await preloadAppHome();
-      } catch {
-        // 预热失败也进页，首页可再刷
-      }
-      if (cancelled) return;
-      setHomeReady(true);
-      finishBootSplash();
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [status.ready, status.apiBaseUrl, status.phase]);
+  }, [status.apiBaseUrl]);
 
   const value = useMemo(() => status, [status]);
-
-  // 预加载完成前不挂路由，启动屏继续挡着
-  if (!homeReady) return null;
 
   return <ServerContext.Provider value={value}>{children}</ServerContext.Provider>;
 }

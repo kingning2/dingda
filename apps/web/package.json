@@ -11,6 +11,7 @@
     "lucide-react": "^1.38.0",
     "motion": "^13.1.1",
     "react-router-dom": "^7.18.3",
+    "@v2/app-state": "workspace:*",
     "@v2/contracts": "workspace:*",
     "@v2/routes": "workspace:*",
     "@v2/runtime": "workspace:*",
@@ -21,7 +22,8 @@
     "@v2/ui-feedback": "workspace:*",
     "@v2/ui-home": "workspace:*",
     "@v2/ui-layout": "workspace:*",
-    "@v2/ui-primitives": "workspace:*"
+    "@v2/ui-primitives": "workspace:*",
+    "@v2/ui-theme": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.1.0",

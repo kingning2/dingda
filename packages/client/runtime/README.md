@@ -1,6 +1,6 @@
 # packages/client/runtime
 
-运行时基座：HTTP 传输、能力开关、启动预载、错误上报、Server 状态。
+运行时基座：HTTP 传输、能力开关、Server 状态、错误上报。
 
 包名 `@v2/runtime`。
 
@@ -8,7 +8,6 @@
 
 - `src/api-error.ts`
 - `src/app-alert.ts`
-- `src/app-preload.ts`
 - `src/capabilities.ts`
 - `src/dismiss-boot-splash.ts`
 - `src/error-reporting.ts`
@@ -19,9 +18,13 @@
 
 ## 依赖
 
-- 工作区：@v2/ui-crawler
-- 外部：@tauri-apps/api
-- peer：react
+- 工作区：**无**（叶子包）
+- 外部：`@tauri-apps/api`
+- peer：`react`
+
+**这是叶子包，不许引任何 `@v2/ui-*`。** `app-preload.ts` 曾住在这里并 import
+`@v2/ui-crawler/*`，形成「基座依赖业务包」的方向反转。启动预载已迁到
+`apps/web/src/boot/`，`ServerProvider` 只负责 Server 状态。
 
 ## 边界
 

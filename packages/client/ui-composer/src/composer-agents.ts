@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { ComposerAgentOption } from "@v2/contracts/composer";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
-import { useDiscoveryStore } from "@v2/ui-crawler/discovery-store";
+import { useDiscoveryStore } from "@v2/app-state";
 
 /** 自研产品 Agent 未开放前，不出现在输入框/设置里。 */
 const HIDDEN_PRODUCT_AGENT_IDS = new Set(["dingda", "product"]);

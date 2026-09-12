@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
+import { useDiscoveryStore } from "@v2/app-state";
+import { useServer } from "@v2/runtime/server-provider";
+import { Button } from "@v2/ui-primitives/button";
+import { probeSingleAgent, rescanAgentRuntimes } from "./agent-runtime-scan";
 import {
   applyAgentPreferences,
   downloadAgentRuntime,
   loginAgentRuntime,
 } from "./agent-runtime";
 import { putDefaultAgentId, putDefaultModelId } from "./agent-api";
-import { probeSingleAgent, rescanAgentRuntimes } from "@v2/ui-crawler/discovery-scan";
-import { useDiscoveryStore } from "@v2/ui-crawler/discovery-store";
-import { useServer } from "@v2/runtime/server-provider";
-import { Button } from "@v2/ui-primitives/button";
 import { AgentRuntimeCard } from "./agent-runtime-card";
 
 export function AgentRuntimesPanel() {

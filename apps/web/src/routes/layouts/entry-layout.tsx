@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { useMatches } from "react-router-dom";
 
 import { EntryShell } from "@v2/ui-layout/entry-shell";
-import { ensureDiscoveryScanned } from "@v2/ui-crawler/discovery-scan";
 import { resolveRouteTitle, type EntryRouteHandle } from "@web/routes/route-handle";
+import { ensureDiscoveryScanned } from "@web/boot/preload";
 
 export function EntryLayout() {
   const [railOpen, setRailOpen] = useState(true);

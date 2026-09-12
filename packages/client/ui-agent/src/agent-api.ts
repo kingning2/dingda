@@ -9,7 +9,7 @@ import type {
   AgentRuntimeItem,
   AgentRuntimesCatalogView,
 } from "@v2/contracts/agent-runtime";
-import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
+import type { AgentWorkDetailView, AgentWorkSummary } from "@v2/contracts/ai-work";
 import { api } from "@v2/runtime/http-client";
 
 interface AgentWorkDetailResponse {
@@ -112,14 +112,6 @@ export async function fetchAgentWorkDetail(
   if (response.status === 404) return null;
   if (!data?.detail?.work_id) return null;
   return data.detail;
-}
-
-export interface AgentWorkSummary {
-  work_id: string;
-  title: string;
-  updated_at: number;
-  status_label?: string | null;
-  status_state?: string | null;
 }
 
 interface AgentWorkListResponse {

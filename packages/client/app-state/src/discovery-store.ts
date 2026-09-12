@@ -1,14 +1,19 @@
 /**
  * 启动探测结果（Agent CLI + 平台账号 + 最近会话）的全局状态。
  * 预热写这里，首页 / 项目页只订阅下发。
+ *
+ * 为什么单独成包、且放在最底层：
+ * 这份状态天然跨域 —— Agent 域写 agents、账号域写 accounts、首页域读 recentWorks。
+ * 早先它挂在 ui-crawler 里，于是「谁都要引 ui-crawler」和「ui-crawler 要引 ui-agent」
+ * 同时成立，直接把依赖图拧成了环。状态本身不依赖任何业务逻辑，只依赖线协议类型，
+ * 所以让它下沉为叶子包，各域各自向上依赖它即可。
  */
 
 import { create } from "zustand";
 
 import type { AccountListItem, AccountPlatform } from "@v2/contracts/account";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
-import type { AgentWorkSummary } from "@v2/ui-agent/agent-api";
-import { supportsExternalAgents } from "@v2/runtime/capabilities";
+import type { AgentWorkSummary } from "@v2/contracts/ai-work";
 
 export const ACCOUNT_PLATFORMS: AccountPlatform[] = [
   "xianyu",
@@ -16,7 +21,7 @@ export const ACCOUNT_PLATFORMS: AccountPlatform[] = [
   "xiaohongshu",
 ];
 
-type DiscoveryState = {
+export type DiscoveryState = {
   agents: AgentRuntimeItem[];
   agentsScanning: boolean;
 
@@ -49,7 +54,7 @@ type DiscoveryState = {
 };
 
 export const useDiscoveryStore = create<DiscoveryState>((set) => ({
-  agents: supportsExternalAgents() ? [] : [],
+  agents: [],
   agentsScanning: false,
 
   accounts: [],

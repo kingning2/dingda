@@ -15,4 +15,4 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   </React.StrictMode>,
 );
 
-// 启动屏由 ServerProvider 在首页数据预加载完成后 dismiss
+// 启动屏由 BootGate 在首页数据预加载完成后 dismiss

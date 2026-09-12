@@ -10,10 +10,10 @@
   },
   "dependencies": {
     "lucide-react": "^1.38.0",
+    "@v2/app-state": "workspace:*",
     "@v2/contracts": "workspace:*",
     "@v2/routes": "workspace:*",
     "@v2/runtime": "workspace:*",
-    "@v2/ui-crawler": "workspace:*",
     "@v2/ui-primitives": "workspace:*"
   },
   "peerDependencies": {

@@ -35,7 +35,7 @@ AI 消息渲染：消息块、Markdown、思考过程。
 
 ## 依赖
 
-- 工作区：@v2/contracts / @v2/runtime / @v2/ui-agent / @v2/ui-composer / @v2/ui-crawler / @v2/ui-primitives
+- 工作区：@v2/app-state / @v2/contracts / @v2/runtime / @v2/ui-agent / @v2/ui-composer / @v2/ui-crawler / @v2/ui-primitives
 - 外部：@tanstack/react-virtual / lucide-react / react-markdown / remark-gfm
 - peer：react
 

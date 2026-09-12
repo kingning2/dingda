@@ -5,13 +5,17 @@ import { TooltipProvider } from "@v2/ui-primitives/tooltip";
 import { ServerProvider } from "@v2/runtime/server-provider";
 import { router } from "@web/routes/router";
 
+import { BootGate } from "./boot/boot-gate";
+
 function App() {
   return (
     <ServerProvider>
-      <TooltipProvider>
-        <RouterProvider router={router} />
-        <AppAlertHost />
-      </TooltipProvider>
+      <BootGate>
+        <TooltipProvider>
+          <RouterProvider router={router} />
+          <AppAlertHost />
+        </TooltipProvider>
+      </BootGate>
     </ServerProvider>
   );
 }

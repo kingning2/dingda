@@ -10,7 +10,6 @@
   "dependencies": {
     "lucide-react": "^1.38.0",
     "@v2/contracts": "workspace:*",
-    "@v2/ui-agent": "workspace:*",
     "@v2/ui-composer": "workspace:*",
     "@v2/ui-primitives": "workspace:*"
   },

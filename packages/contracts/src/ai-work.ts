@@ -13,6 +13,21 @@ export interface AgentWorkStatusView {
   badge_class: string;
 }
 
+/**
+ * 最近工作列表项（首页 / 全部项目）。
+ *
+ * 之所以放在 contracts 而不是 ui-agent：这是 `/v1/agent/works` 的线协议 DTO，
+ * 且被跨域共享的 UI 状态（@v2/app-state）与首页域（@v2/ui-home）消费。
+ * 留在 ui-agent 会让状态包反向依赖业务包，形成环。
+ */
+export interface AgentWorkSummary {
+  work_id: string;
+  title: string;
+  updated_at: number;
+  status_label?: string | null;
+  status_state?: string | null;
+}
+
 /** 对话内嵌的「页面」快照（浏览器框 + 可选截图）。 */
 export interface AgentWorkStepPageView {
   url: string;

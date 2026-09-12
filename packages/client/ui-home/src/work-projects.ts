@@ -2,7 +2,7 @@
  * 把 Agent 工作摘要映射成首页「最近项目」卡片数据。
  */
 
-import type { AgentWorkSummary } from "@v2/ui-agent/agent-api";
+import type { AgentWorkSummary } from "@v2/contracts/ai-work";
 import type { Project } from "./mock-data";
 
 function formatUpdatedAt(ts: number): string {

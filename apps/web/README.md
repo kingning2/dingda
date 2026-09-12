@@ -8,6 +8,8 @@ Web 应用装配：入口、路由表、页面（Vite 根）。
 
 - `src/App.css`
 - `src/App.tsx`
+- `src/boot/boot-gate.tsx`
+- `src/boot/preload.ts`
 - `src/main.tsx`
 - `src/pages\accounts-page.tsx`
 - `src/pages\agents-page.tsx`
@@ -37,9 +39,18 @@ Web 应用装配：入口、路由表、页面（Vite 根）。
 
 ## 依赖
 
-- 工作区：@v2/contracts / @v2/routes / @v2/runtime / @v2/ui-account / @v2/ui-agent / @v2/ui-ai / @v2/ui-crawler / @v2/ui-feedback / @v2/ui-home / @v2/ui-layout / @v2/ui-primitives
+- 工作区：@v2/app-state / @v2/contracts / @v2/routes / @v2/runtime / @v2/ui-account / @v2/ui-agent / @v2/ui-ai / @v2/ui-crawler / @v2/ui-feedback / @v2/ui-home / @v2/ui-layout / @v2/ui-primitives / @v2/ui-theme
 - 外部：lucide-react / motion / react-router-dom
 - peer：react / react-dom
+
+## 启动编排（`src/boot/`）
+
+- `preload.ts` —— `preloadAppHome()`：Server 就绪后拉 Agent 目录 + 账号 + 最近会话；
+  `ensureDiscoveryScanned()`：进首页前的兜底。
+- `boot-gate.tsx` —— `<BootGate>`：预载完成前不挂路由（HTML 启动屏继续挡着）。
+
+**为什么在这里而不是 `@v2/runtime`**：这段编排要组合 Agent 域与账号域，两个域互不引用；
+放在基座包里等于让 `runtime` 反向依赖业务包。
 
 ## 边界
 

@@ -15,7 +15,7 @@
 
 ## 依赖
 
-- 工作区：@v2/contracts / @v2/ui-agent / @v2/ui-composer / @v2/ui-primitives
+- 工作区：@v2/contracts / @v2/ui-composer / @v2/ui-primitives
 - 外部：lucide-react
 - peer：react
 

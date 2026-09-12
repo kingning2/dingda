@@ -25,7 +25,7 @@ import {
 } from "@v2/ui-agent/agent-event-reducer";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
 import { startAgentRunWithEvents } from "@v2/ui-agent/agent-run";
-import { useDiscoveryStore } from "@v2/ui-crawler/discovery-store";
+import { useDiscoveryStore } from "@v2/app-state";
 import { PromptComposer } from "@v2/ui-composer";
 import { useComposerAgentOptions } from "@v2/ui-composer/composer-agents";
 import { UserBlock, ThinkingBlock, TextBlock, StepBlock } from "./blocks";

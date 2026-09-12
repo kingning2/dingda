@@ -7,16 +7,21 @@
 禁止 `packages/ui`、`packages/shared`、`packages/utils` 这类大杂烩命名。
 
 ```text
-apps/web ──────────────┐
-                       ↓
-ui-home / ui-ai / ui-composer / ui-account / ui-agent / ui-crawler
-                       ↓
-ui-layout / ui-feedback ──→ ui-primitives ──→ ui-theme
-                       ↓
-        runtime · routes · contracts
+apps/web ─────────────────────────────────────┐
+                                              ↓
+ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
+                                              ↓
+        ui-layout · ui-feedback ──→ ui-primitives ──→ ui-theme
+
+叶子（谁都能引，自己不引业务包）：
+  app-state   跨域共享 UI 状态（Agent 运行时 / 平台账号 / 最近会话）
+  runtime     传输、能力开关、Server 状态、错误上报
+  routes      路由契约（路径常量与解析）
+  contracts   与 Python 的线协议类型
 ```
 
 依赖单向：应用 → 业务域 → 骨架 → 底座 → 令牌/协议。任何一层都不反向依赖上层。
+**叶子包不许引业务包** —— `runtime` 曾经引 `ui-crawler`，就是拆包后才暴露的方向反转。
 
 ## 成员包
 
@@ -24,7 +29,8 @@ ui-layout / ui-feedback ──→ ui-primitives ──→ ui-theme
 |----|------|--------|
 | [contracts/](contracts/README.md) | 与 Python 的线协议类型（纯类型） | `server/` 改字段时同步 |
 | [client/routes/](client/routes/README.md) | 路由契约：路径常量与解析 | 加页面时改 `paths.ts` |
-| [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、启动预载、错误上报 | 连不上 Server / 判断是否桌面端 |
+| [client/app-state/](client/app-state/README.md) | 跨域共享 UI 状态（zustand） | 启动探测结果存哪 |
+| [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、Server 状态、错误上报 | 连不上 Server / 判断是否桌面端 |
 | [client/ui-theme/](client/ui-theme/README.md) | 设计令牌与全局样式 | 改颜色、圆角、字体 |
 | [client/ui-primitives/](client/ui-primitives/README.md) | 无业务的原子组件 + `cn()` | 按钮/输入框长什么样 |
 | [client/ui-layout/](client/ui-layout/README.md) | 外壳、标题栏、导航栏、主区域 | 窗口骨架、侧栏 |
@@ -33,10 +39,25 @@ ui-layout / ui-feedback ──→ ui-primitives ──→ ui-theme
 | [client/ui-composer/](client/ui-composer/README.md) | 输入区、附件、Agent 选择 | 打字框 |
 | [client/ui-account/](client/ui-account/README.md) | 账号、扫码登录、登录态告警 | 账号相关 |
 | [client/ui-agent/](client/ui-agent/README.md) | 外部 CLI Runtime 探测与运行态 | Agent 探测 |
-| [client/ui-crawler/](client/ui-crawler/README.md) | 采集台、结果展示、实时发现 | 采集相关 |
+| [client/ui-crawler/](client/ui-crawler/README.md) | 采集台、结果展示、商品预览 | 采集相关 |
 | [client/ui-home/](client/ui-home/README.md) | 首屏、项目条、类型入口 | 首页 |
 
-应用装配层在 [`apps/web/`](../apps/web/README.md)（Vite 根）。
+应用装配层在 [`apps/web/`](../apps/web/README.md)（Vite 根）。**启动编排**
+（拉首页数据、卸启动屏）也在那里：`apps/web/src/boot/`。它要组合 Agent 域与账号域，
+而两个域互不引用，所以只能待在装配层。
+
+## 拆包暴露出的两条结构纪律
+
+拆包之前这些问题是看不见的 —— 单棵源码树里「谁引谁」没有强制力。
+
+1. **转发壳会把环藏起来。** `ui-agent/agent-runtime-scan.ts` 曾经整篇是
+   `export { ... } from "@v2/ui-crawler/discovery-scan"`，于是依赖图看起来像
+   `ui-agent → ui-crawler → ui-agent`。转发壳删掉、实现归位后环才消失。
+   **不要为了「兼容旧 import」留转发文件**，直接改调用方。
+2. **跨域状态要下沉成叶子包。** Agent / 账号 / 最近会话三份状态写在同一份 store 里，
+   谁都来读。它一旦挂在某个业务包下（原先是 `ui-crawler`），那个包就被迫认识
+   `ui-agent`、`ui-account`，环和反向依赖同时出现。状态本身不依赖业务逻辑，
+   就该待在 `app-state` 这种只依赖 `contracts` 的叶子位置。
 
 ## 工程机制
 

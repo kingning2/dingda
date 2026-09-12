@@ -16,9 +16,9 @@ import {
   fetchAccountProfile,
   patchStoredAccount,
 } from "./account-store";
-import { refreshAccountsForPlatform } from "@v2/ui-crawler/discovery-scan";
-import { useDiscoveryStore } from "@v2/ui-crawler/discovery-store";
+import { useDiscoveryStore } from "@v2/app-state";
 import { useServer } from "@v2/runtime/server-provider";
+import { refreshAccountsForPlatform } from "./account-discovery";
 import { AccountQrDialog } from "./account-qr-dialog";
 import { Button } from "@v2/ui-primitives/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";

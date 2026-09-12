@@ -27,12 +27,13 @@
 禁止沿用旧 OpenDesk 的路径（`packages/shared`、`packages/ui`、`apps/wework`、`src-tauri`）。
 
 ```text
-apps/web/                Web 应用装配（Vite 根：index.html / 路由表 / 页面）
+apps/web/                Web 应用装配（Vite 根：index.html / 路由表 / 页面 / 启动编排）
 packages/                前端 pnpm 工作区
   contracts/             与 Python 的线协议类型（纯类型，零运行时）
   client/
     routes/              路由契约（路径常量与解析）
-    runtime/             HTTP 传输 / 能力开关 / 启动预载 / 错误上报
+    app-state/           跨域共享 UI 状态（Agent 运行时 / 账号 / 最近会话）
+    runtime/             HTTP 传输 / 能力开关 / Server 状态 / 错误上报
     ui-theme/            设计令牌与全局样式
     ui-primitives/       无业务的原子组件 + cn()
     ui-layout/           窗口骨架：外壳 / 标题栏 / 导航栏
@@ -183,6 +184,22 @@ Desktop 壳注入（仅客户端）
 
 桌面适配器在 `packages/client/runtime/src/`（`server.ts`、`window.ts`、`capabilities.ts`）。
 **禁止**新建 `packages/ui`、`packages/shared` 这类大杂烩包 —— 包名必须对应一个业务域（`ui-agent`）或一层机制（`runtime`）。
+
+### 前端包依赖纪律（拆包后才看得见的三件事）
+
+依赖必须单向：`apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme`，
+叶子是 `app-state` / `runtime` / `routes` / `contracts`。
+
+1. **叶子包不许引业务包。** `runtime` 曾经 `import "@v2/ui-crawler/discovery-scan"`，
+   方向就反了。启动编排要组合多个域时，把它放到 `apps/web/src/boot/`。
+2. **不要留「兼容旧 import」的转发壳。** 转发文件会让依赖图看起来多一条边
+   （`ui-agent → ui-crawler`），把环藏起来。直接改调用方，删掉转发。
+3. **跨域共享的 UI 状态放 `app-state`，不要寄居在某个业务包下。** 一旦寄居，
+   那个包就被迫认识其它域。谁写状态谁留在自己域里（`ui-agent/agent-runtime-scan`、
+   `ui-account/account-discovery`）。
+
+新增包时**三处必须同时改**（根 `package.json` 依赖、根 `tsconfig.json` 的 `paths` 两条、
+跑一次 `pnpm install`），详见 [`packages/README.md`](../../packages/README.md)。
 
 ---
 
