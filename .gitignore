@@ -5,11 +5,8 @@ __pycache__/
 .venv/
 .ruff_cache/
 .pytest_cache/
-# Keep server lock for CI `uv sync --frozen` / GitHub desktop builds
-uv.lock
-!server/uv.lock
-server/tmp/
-server/.tmp/
+# 根 uv.lock 是 uv workspace 全量锁，CI `uv sync --frozen` / 桌面构建都靠它
+!uv.lock
 .dingda-skills/
 .tmp/
 

@@ -1,0 +1,15 @@
+[project]
+name = "core"
+version = "0.1.0"
+description = "DingDa 底座：配置 / 日志 / 全局错误 / 上下文压缩。不认识任何业务域。"
+requires-python = ">=3.13"
+dependencies = [
+  "headroom-ai>=0.37.0",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

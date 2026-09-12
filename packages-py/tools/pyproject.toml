@@ -1,0 +1,26 @@
+[project]
+name = "tools"
+version = "0.1.0"
+description = "DingDa Tool 边界：Agent 可调用契约 + 实现（search/product/login/snapshot…）。插座在此落地为具体实现。"
+requires-python = ">=3.13"
+dependencies = [
+  "browser",
+  "contracts",
+  "core",
+  "crawler",
+  "httpx>=0.28",
+  "pydantic>=2.0",
+]
+
+[tool.uv.sources]
+browser = { workspace = true }
+contracts = { workspace = true }
+core = { workspace = true }
+crawler = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

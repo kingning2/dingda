@@ -1,0 +1,31 @@
+[project]
+name = "cli"
+version = "0.1.0"
+description = "DingDa 外部 CLI Runtime 插座：spawn / 流式解析 / 角色 / Skill 渲染注入。"
+requires-python = ">=3.13"
+dependencies = [
+  "core",
+  "crawler",
+  "headroom-ai>=0.37.0",
+]
+
+[tool.uv.sources]
+core = { workspace = true }
+crawler = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cli*"]
+
+[tool.setuptools.package-data]
+"cli" = [
+  "skills/*/SKILL.md",
+  "skills/*/agents/*.yaml",
+  "skills/*/assets/*",
+  "skills/*/references/*.md",
+  "skills/*/scripts/*.py",
+]
