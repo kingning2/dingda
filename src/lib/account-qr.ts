@@ -2,7 +2,7 @@ import type {
   AccountPlatform,
   AccountQrCheckResponse,
   AccountQrStartResponse,
-} from "@/contracts/account";
+} from "@v2/contracts/account";
 import { api } from "@/lib/http-client";
 
 const QR_START_TIMEOUT_MS = 90_000;

@@ -5,7 +5,7 @@
  * 保留 ThinkingOrb 名称是为了兼容现有调用。
  */
 
-import { cn } from "@/lib/utils";
+import { cn } from "@v2/ui-primitives/utils";
 
 export function CodexActivityIndicator({ className }: { className?: string }) {
   return (

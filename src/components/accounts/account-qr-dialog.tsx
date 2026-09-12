@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
-import type { AccountQrCheckResponse } from "@/contracts/account";
+import type { AccountQrCheckResponse } from "@v2/contracts/account";
 import type { AccountPanelConfig } from "./types";
 import { checkAccountQrLogin, cancelAccountQrLogin, startAccountQrLogin } from "@/lib/account-qr";
 import { getHostCapabilities } from "@/lib/capabilities";
 import { useServer } from "@/providers/server-provider";
-import { Button } from "@/components/ui/button";
+import { Button } from "@v2/ui-primitives/button";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@v2/ui-primitives/dialog";
 
 interface AccountQrDialogProps {
   open: boolean;

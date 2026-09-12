@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import { Download, ExternalLink, KeyRound, Loader2, LogIn, Star } from "lucide-react";
-import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import { getAgentGuideUrl, supportsAgentLogin } from "@/lib/agent-runtime";
 import { AgentIcon } from "@/components/agent/agent-icon";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@v2/ui-primitives/badge";
+import { Button, buttonVariants } from "@v2/ui-primitives/button";
+import { Card, CardContent } from "@v2/ui-primitives/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from "@v2/ui-primitives/select";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface AgentRuntimeCardProps {
   agent: AgentRuntimeItem;

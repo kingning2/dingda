@@ -1,8 +1,8 @@
 import { Check, Plug } from "lucide-react";
-import type { ComposerAgentOption } from "@/contracts/composer";
+import type { ComposerAgentOption } from "@v2/contracts/composer";
 import { AgentIcon } from "@/components/agent/agent-icon";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { buttonVariants } from "@v2/ui-primitives/button";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface SettingsProps {
   agents: ComposerAgentOption[];

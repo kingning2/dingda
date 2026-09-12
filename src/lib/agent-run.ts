@@ -2,7 +2,7 @@
  * Agent 运行：统一走 Python Server SSE（当前仅外部 CLI）。
  */
 
-import type { AgentEvent } from "@/contracts/agent-event";
+import type { AgentEvent } from "@v2/contracts/agent-event";
 import { getApiBaseUrl } from "@/lib/http-client";
 
 export interface LaunchAgentRunRequest {

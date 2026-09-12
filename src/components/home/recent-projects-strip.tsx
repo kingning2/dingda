@@ -1,9 +1,9 @@
 import { Layout, MoreHorizontal } from "lucide-react";
 import type { Project } from "@/lib/mock-data";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardFooter, CardHeader } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Badge } from "@v2/ui-primitives/badge";
+import { Button } from "@v2/ui-primitives/button";
+import { Card, CardFooter, CardHeader } from "@v2/ui-primitives/card";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface RecentProjectsStripProps {
   projects: Project[];

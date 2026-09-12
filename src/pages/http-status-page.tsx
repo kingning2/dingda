@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@v2/ui-primitives/button";
 
 type HttpStatusPageProps = {
   code: number;

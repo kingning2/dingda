@@ -4,8 +4,8 @@
  * OCR 不在此处预热。
  */
 
-import type { AccountListItem, AccountPlatform } from "@/contracts/account";
-import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import type { AccountListItem, AccountPlatform } from "@v2/contracts/account";
+import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import { AGENT_CATALOG } from "@/components/agent/agent-catalog";
 import {
   applyAgentPreferences,

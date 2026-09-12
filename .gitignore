@@ -33,6 +33,9 @@ dist
 dist-ssr
 *.local
 
+# pnpm 中断时可能留下的锁文件临时文件（0 字节，形如 _tmp_<pid>_<hash>）
+_tmp_*
+
 .vscode/*
 !.vscode/extensions.json
 .idea

@@ -8,8 +8,8 @@ import type {
   AgentPreferencesView,
   AgentRuntimeItem,
   AgentRuntimesCatalogView,
-} from "@/contracts/agent-runtime";
-import type { AgentWorkDetailView } from "@/contracts/ai-work";
+} from "@v2/contracts/agent-runtime";
+import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
 import { api } from "@/lib/http-client";
 
 interface AgentWorkDetailResponse {

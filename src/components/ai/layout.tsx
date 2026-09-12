@@ -4,15 +4,15 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Loader2, Package, Settings2 } from "lucide-react";
-import type { ComposerSubmitPayload } from "@/contracts/composer";
-import type { AgentWorkDetailView, AgentWorkStepView } from "@/contracts/ai-work";
+import type { ComposerSubmitPayload } from "@v2/contracts/composer";
+import type { AgentWorkDetailView, AgentWorkStepView } from "@v2/contracts/ai-work";
 import { putAgentWorkDetail } from "@/lib/agent-api";
 import type { AgentRunPhase } from "@/lib/agent-run-phase";
 import { useServer } from "@/providers/server-provider";
 import { useComposerAgentOptions } from "@/components/composer/composer-agents";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Button } from "@v2/ui-primitives/button";
+import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
+import { cn } from "@v2/ui-primitives/utils";
 import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "./session";
 import { ChatPane, send, type SendHandle } from "./scheduler";
 import { Products } from "./Products";

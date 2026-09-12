@@ -4,7 +4,7 @@ import type {
   AccountAuthProbeResponse,
   AccountQrCheckResponse,
   AccountSessionView,
-} from "@/contracts/account";
+} from "@v2/contracts/account";
 import type { AccountPanelConfig, AccountsTab } from "./types";
 
 /** 模拟 Python 返回的会话态（仅供 UI 开发占位）。 */

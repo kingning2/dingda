@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Paperclip, Square } from "lucide-react";
-import type { ComposerAgentOption, ComposerAttachmentView, ComposerSubmitPayload } from "@/contracts/composer";
+import type { ComposerAgentOption, ComposerAttachmentView, ComposerSubmitPayload } from "@v2/contracts/composer";
 import { ComposerAgentPicker } from "./composer-agent-picker";
 import { ComposerAttachments } from "./composer-attachments";
 import {
@@ -9,9 +9,9 @@ import {
   revokeComposerAttachmentUrls,
 } from "./attachment-utils";
 import { resolveComposerSelection } from "./composer-agents";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Button } from "@v2/ui-primitives/button";
+import { Textarea } from "@v2/ui-primitives/textarea";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface PromptComposerProps {
   agents: ComposerAgentOption[];

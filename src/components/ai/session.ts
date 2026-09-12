@@ -6,8 +6,8 @@
  * 真相源仍是 SQLite（/v1/agent/works）
  */
 
-import type { AgentWorkDetailView, AgentWorkStatusView } from "@/contracts/ai-work";
-import type { ComposerSubmitPayload } from "@/contracts/composer";
+import type { AgentWorkDetailView, AgentWorkStatusView } from "@v2/contracts/ai-work";
+import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import {
   getComposerAgentOptions,
   resolveDefaultAgentId,

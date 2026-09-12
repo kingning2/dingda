@@ -18,17 +18,17 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { NAV_ITEMS } from "@/lib/mock-data";
 import { supportsExternalAgents } from "@/lib/capabilities";
 import { entryPath, entryViewFromPathname } from "@/routes/paths";
-import { Button } from "@/components/ui/button";
-import { Kbd } from "@/components/ui/kbd";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@v2/ui-primitives/button";
+import { Kbd } from "@v2/ui-primitives/kbd";
+import { Avatar, AvatarFallback } from "@v2/ui-primitives/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from "@v2/ui-primitives/dropdown-menu";
+import { cn } from "@v2/ui-primitives/utils";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   home: Home,

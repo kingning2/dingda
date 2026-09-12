@@ -11,8 +11,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { HOME_TYPE_CHIPS, type HomeTypeChipId } from "@/lib/mock-data";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@v2/ui-primitives/button";
+import { cn } from "@v2/ui-primitives/utils";
 
 const CHIP_ICONS: Record<string, LucideIcon> = {
   layout: Layout,

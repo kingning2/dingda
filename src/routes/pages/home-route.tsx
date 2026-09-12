@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { stashWorkDraft } from "@/components/ai/session";
 import { HomeView } from "@/components/home/home-view";
-import type { ComposerSubmitPayload } from "@/contracts/composer";
+import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { workSummariesToProjects } from "@/lib/work-projects";
 import { createWorkId, paths } from "@/routes/paths";
 import { useDiscoveryStore } from "@/stores/discovery-store";

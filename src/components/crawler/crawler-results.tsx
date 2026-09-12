@@ -1,8 +1,8 @@
 import { ExternalLink, Loader2 } from "lucide-react";
-import type { CrawlProductItem } from "@/contracts/crawler";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import type { CrawlProductItem } from "@v2/contracts/crawler";
+import { Button } from "@v2/ui-primitives/button";
+import { Card, CardContent } from "@v2/ui-primitives/card";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface CrawlerResultsProps {
   items: CrawlProductItem[];

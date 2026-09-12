@@ -7,9 +7,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+} from "@v2/ui-primitives/dialog";
+import { Input } from "@v2/ui-primitives/input";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface EntryShellProps {
   railOpen: boolean;

@@ -1,7 +1,7 @@
 import { Check, ChevronDown, Plug } from "lucide-react";
-import type { ComposerAgentOption } from "@/contracts/composer";
+import type { ComposerAgentOption } from "@v2/contracts/composer";
 import { AgentIcon } from "@/components/agent/agent-icon";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@v2/ui-primitives/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,8 +10,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from "@v2/ui-primitives/dropdown-menu";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface ComposerAgentPickerProps {
   agents: ComposerAgentOption[];

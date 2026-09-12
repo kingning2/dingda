@@ -5,7 +5,7 @@ import type {
   CrawlProductResponse,
   CrawlSearchRequest,
   CrawlSearchResponse,
-} from "@/contracts/crawler";
+} from "@v2/contracts/crawler";
 import { api, getApiBaseUrl } from "@/lib/http-client";
 
 /** 调用 Python Crawler 搜品（POST /v1/crawler/search）。 */

@@ -5,8 +5,8 @@ import {
   AlertAction,
   AlertDescription,
   AlertTitle,
-} from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+} from "@v2/ui-primitives/alert";
+import { Button } from "@v2/ui-primitives/button";
 import {
   dismissAppAlert,
   subscribeAppAlerts,

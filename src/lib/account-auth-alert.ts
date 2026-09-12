@@ -1,6 +1,6 @@
 /** 账号同步发现登录过期时，弹出右上角提示（去扫码登录）。 */
 
-import type { AccountListItem } from "@/contracts/account";
+import type { AccountListItem } from "@v2/contracts/account";
 import { pushAppAlert } from "@/lib/app-alert";
 import { paths } from "@/routes/paths";
 

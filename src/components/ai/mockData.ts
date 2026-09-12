@@ -2,7 +2,7 @@ import type {
   AgentWorkDetailView,
   AgentWorkProductItem,
   AgentWorkStatusView,
-} from "@/contracts/ai-work";
+} from "@v2/contracts/ai-work";
 
 function status(
   state: string,

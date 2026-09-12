@@ -4,8 +4,8 @@
  */
 
 import { openUrl } from "@tauri-apps/plugin-opener";
-import type { AgentWorkProductItem } from "@/contracts/ai-work";
-import type { CrawlProductItem } from "@/contracts/crawler";
+import type { AgentWorkProductItem } from "@v2/contracts/ai-work";
+import type { CrawlProductItem } from "@v2/contracts/crawler";
 import { getHostCapabilities } from "@/lib/capabilities";
 
 export type ProductPreviewTarget = Pick<

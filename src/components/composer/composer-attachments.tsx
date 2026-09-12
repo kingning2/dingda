@@ -1,7 +1,7 @@
 import { X } from "lucide-react";
-import type { ComposerAttachmentView } from "@/contracts/composer";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import type { ComposerAttachmentView } from "@v2/contracts/composer";
+import { Button } from "@v2/ui-primitives/button";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface ComposerAttachmentsProps {
   items: ComposerAttachmentView[];

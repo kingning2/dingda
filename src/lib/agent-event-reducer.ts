@@ -4,13 +4,13 @@
  * timeline 按事件到达顺序交错（思考 ↔ 工具 ↔ 正文），与服务端日志一致。
  */
 
-import type { AgentEvent } from "@/contracts/agent-event";
+import type { AgentEvent } from "@v2/contracts/agent-event";
 import type {
   AgentWorkDetailView,
   AgentWorkMessageView,
   AgentWorkStepView,
   AgentWorkTimelineEntry,
-} from "@/contracts/ai-work";
+} from "@v2/contracts/ai-work";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@/lib/agent-run-phase";
 
 export interface AgentRunMessageState {

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import type { AccountPlatform } from "@/contracts/account";
+import type { AccountPlatform } from "@v2/contracts/account";
 import { ACCOUNT_TABS } from "./mock-data";
 import { AccountsPanel } from "./accounts-panel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@v2/ui-primitives/tabs";
 
 interface AccountsHubProps {
   initialTab?: AccountPlatform;

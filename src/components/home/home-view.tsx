@@ -2,8 +2,8 @@ import { HomeHero } from "./home-hero";
 import { RecentProjectsStrip } from "./recent-projects-strip";
 import type { Project } from "@/lib/mock-data";
 import type { HomeTypeChipId } from "@/lib/mock-data";
-import type { ComposerSubmitPayload } from "@/contracts/composer";
-import { cn } from "@/lib/utils";
+import type { ComposerSubmitPayload } from "@v2/contracts/composer";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface HomeViewProps {
   projects: Project[];

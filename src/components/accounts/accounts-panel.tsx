@@ -8,7 +8,7 @@ import {
   mockAccountAfterDisconnect,
   mockAccountWhileConnecting,
 } from "./mock-data";
-import type { AccountProfileView, AccountQrCheckResponse } from "@/contracts/account";
+import type { AccountProfileView, AccountQrCheckResponse } from "@v2/contracts/account";
 import {
   connectStoredAccount,
   deleteStoredAccount,
@@ -20,18 +20,18 @@ import { refreshAccountsForPlatform } from "@/lib/discovery-scan";
 import { useDiscoveryStore } from "@/stores/discovery-store";
 import { useServer } from "@/providers/server-provider";
 import { AccountQrDialog } from "./account-qr-dialog";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@v2/ui-primitives/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
+import { Input } from "@v2/ui-primitives/input";
+import { Card, CardContent } from "@v2/ui-primitives/card";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+} from "@v2/ui-primitives/dialog";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface AccountsPanelProps {
   config: AccountPanelConfig;

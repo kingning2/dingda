@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@v2/ui-primitives/button";
 
 function CrashOnRender(): ReactNode {
   throw new Error("React 渲染错误测试");

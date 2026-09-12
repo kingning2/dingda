@@ -10,10 +10,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+} from "@v2/ui-primitives/dialog";
+import { Button } from "@v2/ui-primitives/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
+import { Badge } from "@v2/ui-primitives/badge";
 import { fetchCrawlerProduct } from "@/lib/crawler-api";
 import {
   openProductInBrowserTab,

@@ -1,4 +1,4 @@
-import type { ComposerAttachmentView } from "@/contracts/composer";
+import type { ComposerAttachmentView } from "@v2/contracts/composer";
 
 const MAX_ATTACHMENTS = 8;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;

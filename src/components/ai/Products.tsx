@@ -10,11 +10,11 @@ import type {
   AgentWorkComparisonView,
   AgentWorkProductItem,
   AgentWorkProductsView,
-} from "@/contracts/ai-work";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+} from "@v2/contracts/ai-work";
+import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
+import { Badge } from "@v2/ui-primitives/badge";
+import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
+import { cn } from "@v2/ui-primitives/utils";
 import { openProductPreview } from "@/lib/product-preview";
 import { ComparisonResults } from "./ComparisonResults";
 

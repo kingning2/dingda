@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useLocation, useOutlet } from "react-router-dom";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@v2/ui-primitives/utils";
 import { routePageVariants, routePageVariantsReduced } from "@/routes/route-transition";
 
 interface AnimatedOutletProps {

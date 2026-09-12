@@ -1,7 +1,7 @@
 import type { HTMLAttributes, MouseEvent, ReactNode } from "react";
 import type { DesktopPlatform } from "@/lib/window";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Button } from "@v2/ui-primitives/button";
+import { cn } from "@v2/ui-primitives/utils";
 
 const APP_TITLE = "叮答";
 

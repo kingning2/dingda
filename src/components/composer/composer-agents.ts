@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import type { ComposerAgentOption } from "@/contracts/composer";
-import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import type { ComposerAgentOption } from "@v2/contracts/composer";
+import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import { useDiscoveryStore } from "@/stores/discovery-store";
 
 /** 自研产品 Agent 未开放前，不出现在输入框/设置里。 */

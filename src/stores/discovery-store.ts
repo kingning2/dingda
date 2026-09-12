@@ -5,8 +5,8 @@
 
 import { create } from "zustand";
 
-import type { AccountListItem, AccountPlatform } from "@/contracts/account";
-import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import type { AccountListItem, AccountPlatform } from "@v2/contracts/account";
+import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import type { AgentWorkSummary } from "@/lib/agent-api";
 import { supportsExternalAgents } from "@/lib/capabilities";
 

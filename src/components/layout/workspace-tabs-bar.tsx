@@ -1,7 +1,7 @@
 import { Home, PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { Button } from "@v2/ui-primitives/button";
+import { Separator } from "@v2/ui-primitives/separator";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface WorkspaceTabsBarProps {
   railOpen: boolean;

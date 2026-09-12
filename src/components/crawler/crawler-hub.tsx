@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import { Search } from "lucide-react";
-import type { CrawlPlatform, CrawlSearchResponse } from "@/contracts/crawler";
+import type { CrawlPlatform, CrawlSearchResponse } from "@v2/contracts/crawler";
 import { CRAWL_PLATFORM_TABS } from "./mock-data";
 import { CrawlerResults, CrawlerStatusBanner } from "./crawler-results";
 import { searchCrawlerProductsLive } from "@/lib/crawler-api";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@v2/ui-primitives/tabs";
+import { Button } from "@v2/ui-primitives/button";
+import { Input } from "@v2/ui-primitives/input";
 
 interface CrawlerPanelProps {
   platform: CrawlPlatform;

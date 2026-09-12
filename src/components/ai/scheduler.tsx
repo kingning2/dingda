@@ -5,7 +5,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { ComposerAgentOption, ComposerSubmitPayload } from "@/contracts/composer";
+import type { ComposerAgentOption, ComposerSubmitPayload } from "@v2/contracts/composer";
 import type {
   AgentWorkComparisonItemView,
   AgentWorkComparisonView,
@@ -15,8 +15,8 @@ import type {
   AgentWorkProductsView,
   AgentWorkStepView,
   AgentWorkTimelineEntry,
-} from "@/contracts/ai-work";
-import type { CrawlProductItem } from "@/contracts/crawler";
+} from "@v2/contracts/ai-work";
+import type { CrawlProductItem } from "@v2/contracts/crawler";
 import {
   applyRunStateToDetail,
   createAgentRunMessageState,

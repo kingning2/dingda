@@ -1,5 +1,5 @@
 import { Puzzle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@v2/ui-primitives/card";
 
 export function PluginsPage() {
   return (

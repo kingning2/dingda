@@ -3,9 +3,9 @@
  */
 
 import { ExternalLink, Globe, Loader2, Lock, Radio } from "lucide-react";
-import type { AgentWorkProductItem, AgentWorkStepView } from "@/contracts/ai-work";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { AgentWorkProductItem, AgentWorkStepView } from "@v2/contracts/ai-work";
+import { Badge } from "@v2/ui-primitives/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
 import { openProductPreview } from "@/lib/product-preview";
 import { Collapse } from "../Collapse";
 import { CodexActivityIndicator } from "../ThinkingOrb";

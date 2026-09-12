@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
+import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import {
   applyAgentPreferences,
   downloadAgentRuntime,
@@ -10,7 +10,7 @@ import { putDefaultAgentId, putDefaultModelId } from "@/lib/agent-api";
 import { probeSingleAgent, rescanAgentRuntimes } from "@/lib/discovery-scan";
 import { useDiscoveryStore } from "@/stores/discovery-store";
 import { useServer } from "@/providers/server-provider";
-import { Button } from "@/components/ui/button";
+import { Button } from "@v2/ui-primitives/button";
 import { AgentRuntimeCard } from "./agent-runtime-card";
 
 export function AgentRuntimesPanel() {

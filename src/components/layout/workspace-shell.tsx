@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@v2/ui-primitives/utils";
 
 interface WorkspaceShellProps {
   children: ReactNode;

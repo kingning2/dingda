@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@v2/ui-primitives/utils";
 
 export function MarkdownTable({ className, ...props }: ComponentProps<"table">) {
   return (

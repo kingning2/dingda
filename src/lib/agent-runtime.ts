@@ -7,7 +7,7 @@ import type {
   AgentRuntimeLoginResult,
   AgentRuntimeProbeResult,
   AgentRuntimeStatusView,
-} from "@/contracts/agent-runtime";
+} from "@v2/contracts/agent-runtime";
 import { fetchAgentPreferences } from "@/lib/agent-api";
 
 let mockCodexAuthenticated = false;

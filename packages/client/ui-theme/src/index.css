@@ -5,6 +5,16 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/*
+ * Tailwind v4 默认从 Vite 项目根自动扫描源文件。本项目 Vite 根是仓库根，组件已移入
+ * packages/，故这里显式声明扫描范围，不依赖自动探测的启发式（它对 node_modules 与
+ * .gitignore 的处理会让 pnpm 软链进来的包时灵时不灵）。
+ * 路径相对于本文件（packages/client/ui-theme/src/），上溯四级到仓库根。
+ * 新增一级包目录时回来补一行 —— 漏了不报错，只会悄悄不生成那些类。
+ */
+@source "../../../../packages";
+@source "../../../../src";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme {

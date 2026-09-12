@@ -1,4 +1,4 @@
-import type { CrawlPlatform } from "@/contracts/crawler";
+import type { CrawlPlatform } from "@v2/contracts/crawler";
 
 export const CRAWL_PLATFORM_TABS: Array<{ id: CrawlPlatform; label: string }> = [
   { id: "xianyu", label: "闲鱼" },

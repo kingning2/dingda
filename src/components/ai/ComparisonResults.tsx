@@ -16,10 +16,10 @@ import type {
   AgentWorkComparisonItemView,
   AgentWorkComparisonSourceView,
   AgentWorkComparisonView,
-} from "@/contracts/ai-work";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+} from "@v2/contracts/ai-work";
+import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
+import { Badge } from "@v2/ui-primitives/badge";
+import { cn } from "@v2/ui-primitives/utils";
 import { openProductInBrowserTab } from "@/lib/product-preview";
 
 const PLATFORM_LABEL: Record<string, string> = {

@@ -1,4 +1,4 @@
-import type { AccountPlatform } from "@/contracts/account";
+import type { AccountPlatform } from "@v2/contracts/account";
 
 export interface AccountPanelConfig {
   platform: AccountPlatform;
@@ -16,4 +16,4 @@ export interface AccountsTab {
   config: AccountPanelConfig;
 }
 
-export type { AccountListItem, AccountSessionView, AccountActionsView } from "@/contracts/account";
+export type { AccountListItem, AccountSessionView, AccountActionsView } from "@v2/contracts/account";

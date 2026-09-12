@@ -5,7 +5,7 @@ import type {
   AccountProfileResponse,
   AccountProfileView,
   AccountSessionView,
-} from "@/contracts/account";
+} from "@v2/contracts/account";
 import { accountFromStorage } from "@/components/accounts/mock-data";
 import { api } from "@/lib/http-client";
 

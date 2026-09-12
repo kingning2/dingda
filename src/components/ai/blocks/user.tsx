@@ -4,10 +4,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
-import type { ComposerAttachmentView } from "@/contracts/composer";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import type { ComposerAttachmentView } from "@v2/contracts/composer";
+import { Button } from "@v2/ui-primitives/button";
+import { Textarea } from "@v2/ui-primitives/textarea";
+import { cn } from "@v2/ui-primitives/utils";
 
 export interface UserBlockProps {
   content: string;

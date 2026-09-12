@@ -1,0 +1,12 @@
+{
+  "name": "@v2/ui-theme",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "设计令牌与全局样式（Tailwind 入口、CSS 变量、滚动条）",
+  "exports": {
+    "./index.css": "./src/index.css",
+    "./tokens.css": "./src/tokens.css",
+    "./scrollbar.css": "./src/scrollbar.css"
+  }
+}

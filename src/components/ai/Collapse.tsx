@@ -13,7 +13,7 @@ import {
   type SyntheticEvent,
 } from "react";
 import { ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@v2/ui-primitives/utils";
 
 export interface CollapseProps {
   title: ReactNode;

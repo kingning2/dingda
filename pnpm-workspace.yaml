@@ -1,0 +1,10 @@
+# 前端多包工作区。
+#
+# 注意：这里只登记前端包。Rust 侧是独立的 Cargo workspace（见根 Cargo.toml
+# 的 members = ["packages-rs/*"]），两者互不干涉，不要把这个 glob 写成
+# "packages*"，否则 packages-rs 会被 pnpm 当成 JS 包扫描。
+packages:
+  # 一级：独立于前端域的包（当前只有 contracts，与 server/ 的线协议）
+  - "packages/*"
+  # 二级：前端域内的功能包（packages/client/ui-* 等）
+  - "packages/*/*"

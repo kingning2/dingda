@@ -17,9 +17,12 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@v2/contracts/*": ["./packages/contracts/src/*"],
+      "@v2/ui-theme/*": ["./packages/client/ui-theme/src/*"],
+      "@v2/ui-primitives/*": ["./packages/client/ui-primitives/src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "packages"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

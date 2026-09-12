@@ -1,6 +1,6 @@
 import { FolderOpen } from "lucide-react";
 import type { Project } from "@/lib/mock-data";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@v2/ui-primitives/card";
 
 interface ProjectsPageProps {
   projects: Project[];

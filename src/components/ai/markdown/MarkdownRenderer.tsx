@@ -2,7 +2,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@v2/ui-primitives/utils";
 import { MarkdownCode } from "./CodeBlock";
 import { MarkdownLink } from "./Link";
 import {

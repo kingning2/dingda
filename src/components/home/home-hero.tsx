@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { TypePillRow } from "./type-pill-row";
 import type { HomeTypeChipId } from "@/lib/mock-data";
-import type { ComposerSubmitPayload } from "@/contracts/composer";
+import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { PromptComposer, useComposerAgentOptions } from "@/components/composer";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent } from "@v2/ui-primitives/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
 
 interface HomeHeroProps {
   onSubmit?: (payload: ComposerSubmitPayload, chipId: HomeTypeChipId) => void;
