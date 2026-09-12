@@ -4,8 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @v2/app-web dev",
-    "build": "tsc && pnpm --filter @v2/app-web build",
+    "dev": "node scripts/check-workspace-deps.mjs && pnpm --filter @v2/app-web dev",
+    "build": "node scripts/check-workspace-deps.mjs && tsc && pnpm --filter @v2/app-web build",
+    "check:deps": "node scripts/check-workspace-deps.mjs",
     "preview": "pnpm --filter @v2/app-web preview",
     "prepare:server": "cd server && uv sync --frozen",
     "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",
