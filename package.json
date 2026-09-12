@@ -8,7 +8,7 @@
     "build": "node scripts/check-workspace-deps.mjs && tsc && pnpm --filter @v2/app-web build",
     "check:deps": "node scripts/check-workspace-deps.mjs",
     "preview": "pnpm --filter @v2/app-web preview",
-    "prepare:server": "cd server && uv sync --frozen",
+    "prepare:python": "uv sync --frozen",
     "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",
     "tauri": "node scripts/tauri.mjs"
   },

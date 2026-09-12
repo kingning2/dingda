@@ -17,7 +17,7 @@ node scripts/agent-rollback-check.mjs
 | 路径 | 说明 |
 |------|------|
 | `bin/uv(.exe)` | 打进安装包的 uv |
-| `server/` | 源码 + `uv.lock` + 国内镜像 `uv.toml` |
+| `server/` | uv workspace 根（`packages-py/` + `pyproject.toml` + `uv.lock`）+ 国内镜像 `uv.toml` |
 | `camoufox/camoufox-{tag}.zip` | 当前平台浏览器包 |
 
 环境变量：

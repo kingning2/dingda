@@ -27,8 +27,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Require server/uv.lock
-        run: test -f server/uv.lock
+      - name: Require uv.lock
+        run: test -f uv.lock
 
       - name: Compute next patch tag
         id: next
@@ -88,7 +88,6 @@ jobs:
         include:
           - platform: windows-latest
           - platform: macos-latest
-          - platform: ubuntu-22.04
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
