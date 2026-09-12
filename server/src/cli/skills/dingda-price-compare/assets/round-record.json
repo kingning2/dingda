@@ -1,0 +1,32 @@
+{
+  "source_card": {},
+  "rounds": [
+    {
+      "round": 1,
+      "strategy": "image",
+      "query": "",
+      "returned": 0,
+      "new_unique": 0,
+      "candidate_ids": [],
+      "notes": ""
+    },
+    {
+      "round": 2,
+      "strategy": "attribute-text",
+      "query": "",
+      "returned": 0,
+      "new_unique": 0,
+      "candidate_ids": [],
+      "notes": ""
+    },
+    {
+      "round": 3,
+      "strategy": "alias-scenario",
+      "query": "",
+      "returned": 0,
+      "new_unique": 0,
+      "candidate_ids": [],
+      "notes": ""
+    }
+  ]
+}

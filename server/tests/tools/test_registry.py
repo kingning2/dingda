@@ -128,7 +128,7 @@ def test_call_search_ali1688_mocked() -> None:
 
 
 def test_call_compare_mocked() -> None:
-    from src.crawler.sources.ali1688.compare import CompareResult
+    from src.crawler.sources.ali1688.compare import CompareResult, CompareSource
 
     fake = CompareResult(
         items=[
@@ -137,11 +137,31 @@ def test_call_compare_mocked() -> None:
                 title="A",
                 url="https://detail.1688.com/offer/1.html",
                 price="10",
-                raw={"_compare_label": "价格最低", "supplier": "S"},
+                raw={
+                    "_compare_label": "价格最低",
+                    "_compare_reasons": ["价格最低"],
+                    "_compare_score": 91.5,
+                    "_compare_round": 2,
+                    "supplier": "S",
+                    "merchant_rating": 4.8,
+                    "similarity_score": 0.96,
+                },
             )
         ],
+        source=CompareSource(
+            item_id="xy-1",
+            title="闲鱼露营椅",
+            platform="xianyu",
+            url="https://www.goofish.com/item?id=xy-1",
+            image_url="https://img.alicdn.com/x.jpg",
+            price="89",
+            seller="山系玩家",
+        ),
         source_image="https://img.alicdn.com/x.jpg",
+        source_url="https://www.goofish.com/item?id=xy-1",
         total_candidates=5,
+        rounds=2,
+        queries=["[image]", "露营椅"],
     )
 
     async def _run() -> None:
@@ -151,11 +171,31 @@ def test_call_compare_mocked() -> None:
         ):
             out = await call_tool(
                 "compare",
-                {"image": "https://img.alicdn.com/x.jpg", "limit": 3},
+                {
+                    "image": "https://img.alicdn.com/x.jpg",
+                    "source": {
+                        "item_id": "xy-1",
+                        "title": "闲鱼露营椅",
+                        "platform": "xianyu",
+                        "url": "https://www.goofish.com/item?id=xy-1",
+                        "price": "89",
+                    },
+                    "rounds": 2,
+                    "limit": 3,
+                },
             )
         assert isinstance(out, CompareOutput)
         assert out.ok is True
+        assert out.kind == "price_compare"
+        assert out.platform == "ali1688"
+        assert out.source.item_id == "xy-1"
+        assert out.rounds == 2
+        assert out.queries == ["[image]", "露营椅"]
         assert out.total_candidates == 5
         assert out.items[0].compare_label == "价格最低"
+        assert out.items[0].compare_reasons == ["价格最低"]
+        assert out.items[0].compare_score == 91.5
+        assert out.items[0].merchant_rating == 4.8
+        assert out.items[0].round == 2
 
     asyncio.run(_run())

@@ -5,10 +5,10 @@ use std::path::Path;
 use tokio::process::Command;
 
 use super::discover::discover_agent;
-use super::log::log_agent;
 use super::registry::find_agent;
+use crate::logging::{self, Scope};
 use crate::runtime::detection::detect_runtime;
-use crate::runtime::{RuntimeDefinition, types::RuntimeModel};
+use crate::runtime::{types::RuntimeModel, RuntimeDefinition};
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -31,12 +31,16 @@ pub struct AgentRuntimeLoginResult {
 
 /// 探测单个 Agent：可执行文件、版本、登录、模型列表。
 pub async fn probe_agent(definition: &RuntimeDefinition) -> AgentRuntimeProbeResult {
-    log_agent("开始探测 Agent", Some(definition.id));
+    logging::log(Scope::Agent, "开始探测 Agent", Some(definition.id));
     let detection = detect_runtime(definition).await;
 
     if !detection.available {
-        let err = detection.error.clone().unwrap_or_else(|| "未安装".to_string());
-        log_agent(
+        let err = detection
+            .error
+            .clone()
+            .unwrap_or_else(|| "未安装".to_string());
+        logging::log(
+            Scope::Agent,
             "探测完成：未安装",
             Some(&format!("{} {}", definition.id, err)),
         );
@@ -73,7 +77,8 @@ pub async fn probe_agent(definition: &RuntimeDefinition) -> AgentRuntimeProbeRes
     let model_count = models.as_ref().map(|items| items.len()).unwrap_or(0);
     let version = detection.version.as_deref().unwrap_or("-");
     let path = command.as_deref().unwrap_or("-");
-    log_agent(
+    logging::log(
+        Scope::Agent,
         "探测完成：已安装",
         Some(&format!(
             "{} path={} version={} {} 模型{}个",
@@ -97,30 +102,32 @@ pub async fn probe_agent_by_id(agent_id: &str) -> Result<AgentRuntimeProbeResult
     Ok(probe_agent(definition).await)
 }
 
+/// 按 `definition.auth.login_args` 拉起登录流程（不等待，浏览器授权在外部完成）。
 pub async fn login_agent_by_id(agent_id: &str) -> Result<AgentRuntimeLoginResult, String> {
     let definition = find_agent(agent_id).ok_or_else(|| format!("未知 Agent：{agent_id}"))?;
-    if !definition.capabilities.login_capable {
-        return Err(format!("暂不支持登录 Agent：{agent_id}"));
-    }
-    log_agent("开始登录 Agent", Some(agent_id));
-    login_codex().await
-}
+    let auth = definition
+        .auth
+        .filter(|auth| !auth.login_args.is_empty())
+        .ok_or_else(|| format!("暂不支持登录 Agent：{agent_id}"))?;
 
-pub async fn login_codex() -> Result<AgentRuntimeLoginResult, String> {
-    let definition = find_agent("codex").ok_or("未知 Agent：codex")?;
     let binary = discover_agent(definition)
-        .ok_or_else(|| "未找到 codex，请先按官方文档安装".to_string())?;
+        .ok_or_else(|| format!("未找到 {}，请先按官方文档安装", definition.binary))?;
 
+    logging::log(Scope::Agent, "开始登录 Agent", Some(agent_id));
     Command::new(&binary)
-        .args(["login"])
+        .args(auth.login_args)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .spawn()
-        .map_err(|error| format!("无法启动 codex login：{error}"))?;
+        .map_err(|error| format!("无法启动 {} login：{error}", definition.binary))?;
 
-    log_agent("已启动 Codex 登录", Some(&binary.display().to_string()));
+    logging::log(
+        Scope::Agent,
+        "已启动登录",
+        Some(&format!("{} {}", definition.id, binary.display())),
+    );
     Ok(AgentRuntimeLoginResult {
         started: true,
-        message: "已在浏览器中打开 Codex 登录页，完成后请点击「扫描 Agent」刷新状态。".to_string(),
+        message: auth.login_message.to_string(),
     })
 }

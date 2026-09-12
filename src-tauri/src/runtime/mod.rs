@@ -1,5 +1,6 @@
 pub mod defs;
 pub mod detection;
+pub mod install;
 pub mod model_discover;
 pub mod registry;
 pub mod resolution;

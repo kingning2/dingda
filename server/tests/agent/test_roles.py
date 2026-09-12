@@ -42,6 +42,8 @@ def test_parent_role_keeps_system_prompt_and_uses_skill_only(tmp_path: Path) -> 
     text = role.compose_prompt("搜露营椅", platform_hint="xianyu")
     assert "用户请求" in text  # system.md 前言拼进来了
     assert "搜露营椅" in text
+    assert "dingda-price-compare" in text
+    assert "至少执行 **3 轮成功返回**" in text
     # 注入方式已统一为 skill：父 agent 也不注入 MCP，
     # 工具由 runtime 读 dingda-crawl/SKILL.md 得到
     assert role.mcp_mode("codex-mcp") == "none"

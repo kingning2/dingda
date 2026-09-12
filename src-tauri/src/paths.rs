@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
 use crate::camoufox;
+use crate::logging::{self, Scope};
 
 const DEFAULT_INDEX: &str = "https://mirrors.aliyun.com/pypi/simple/";
 const PYTHON_INSTALL_MIRROR: &str =
@@ -117,8 +118,10 @@ pub fn ensure_server_workdir(app: &AppHandle) -> PathBuf {
 
     let work = data_dir().join("server-runtime");
     if let Err(error) = sync_dir_if_needed(&bundled_server, &work) {
-        eprintln!(
-            "[shell] server-runtime sync failed: {error}; fallback bundled read-only dir"
+        logging::log(
+            Scope::Shell,
+            &format!("server-runtime sync failed: {error}; fallback bundled read-only dir"),
+            None,
         );
         return bundled_server;
     }
@@ -132,9 +135,7 @@ fn sync_dir_if_needed(src: &Path, dst: &Path) -> Result<(), String> {
         format!(
             "{}:{}",
             src_lock.metadata().map(|m| m.len()).unwrap_or(0),
-            fs::read_to_string(&src_lock)
-                .unwrap_or_default()
-                .len()
+            fs::read_to_string(&src_lock).unwrap_or_default().len()
         )
     } else {
         "no-lock".into()
@@ -236,19 +237,24 @@ pub fn desktop_runtime_env(app: &AppHandle, server_dir: &Path) -> Vec<(String, S
         env.push(("DINGDA_UV".into(), uv.display().to_string()));
 
         let venv = data_dir().join("venvs").join("server");
-        env.push((
-            "UV_PROJECT_ENVIRONMENT".into(),
-            venv.display().to_string(),
-        ));
+        env.push(("UV_PROJECT_ENVIRONMENT".into(), venv.display().to_string()));
     }
 
     match camoufox::ensure_camoufox_exe(app) {
         Ok(exe) => {
-            eprintln!("[shell] camoufox exe={}", exe.display());
+            logging::log(
+                Scope::Shell,
+                &format!("camoufox exe={}", exe.display()),
+                None,
+            );
             env.push(("DINGDA_CAMOUFOX_EXE".into(), exe.display().to_string()));
         }
         Err(error) if is_packaged_install() => {
-            eprintln!("[shell] camoufox missing in install package: {error}");
+            logging::log(
+                Scope::Shell,
+                &format!("camoufox missing in install package: {error}"),
+                None,
+            );
         }
         Err(_) => {
             // tauri dev 无 zip 时用本机 camoufox 缓存，不刷屏

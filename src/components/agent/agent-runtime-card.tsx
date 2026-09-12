@@ -63,9 +63,10 @@ function nextStepText(phase: SetupPhase, agent: AgentRuntimeItem): string | null
       : "下一步：按文档安装 CLI，再点「扫描 Agent」";
   }
   if (phase === "needs_auth") {
-    return supportsAgentLogin(agent) || agent.auth?.can_login
-      ? "下一步：登录 CLI（或自行配置 API）"
-      : "下一步：在终端登录或配置 API Key";
+    if (supportsAgentLogin(agent) || agent.auth?.can_login) {
+      return "下一步：登录 CLI（或自行配置 API）";
+    }
+    return "下一步：在终端登录或配置 API Key";
   }
   return null;
 }
@@ -110,8 +111,7 @@ export function AgentRuntimeCard({
     phase === "needs_auth" &&
     (supportsAgentLogin(agent) || Boolean(agent.auth?.can_login)) &&
     Boolean(onLogin);
-  const showConfigure =
-    phase === "needs_auth" && !canLogin && Boolean(guideUrl);
+  const showConfigure = phase === "needs_auth" && !canLogin && Boolean(guideUrl);
   const showDownload = phase === "missing" && agent.can_download && Boolean(onDownload);
   const nextStep = nextStepText(phase, agent);
   const modelPlaceholder = probing ? "检测模型中…" : "暂无可用模型";

@@ -10,7 +10,7 @@
 | `extractor.py` | API 条目 → `CrawlItem` |
 | `image.py` | 本地图预处理 → JPEG / base64 路径 |
 | `link.py` | 商品链接解析 + 主图抽取 |
-| `compare.py` | 同款比价选品（销量/价格/严选） |
+| `compare.py` | 多轮同款比价选品（来源商品 + 销量/价格/严选/匹配度） |
 | `__init__.py` | 包标记 |
 
 登记在 [`../../registry.py`](../../registry.py) 的 `_API_SOURCES`。

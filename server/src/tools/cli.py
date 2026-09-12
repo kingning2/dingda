@@ -89,6 +89,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"ok": False, "error_code": "cli.failed", "message": str(exc)[:300]},
                          ensure_ascii=False))
         return 1
+    from src.agent.core.compress import compress_tool_payload
+
+    payload = compress_tool_payload(payload, tool_name=args.tool)
     print(json.dumps(payload, ensure_ascii=False, default=str))
     return 0 if payload.get("ok") is not False else 1
 

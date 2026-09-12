@@ -39,6 +39,7 @@ async def run_cli(
     executable: str | None = None,
     extra_allowed_dirs: list[str] | None = None,
     platform_hint: str | None = None,
+    context_messages: list[dict[str, Any]] | None = None,
     role: str | AgentRole | None = None,
     mcp_env: dict[str, str] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
@@ -46,6 +47,7 @@ async def run_cli(
 
     ``role``：``"parent"``（默认，选品父 agent）或 ``"child"``（单一职责子 agent）。
     ``mcp_env``：本次运行才有的 MCP 追加环境，叠在角色之上。
+    ``context_messages``：换 Agent 冷启动时由叮答注入的先前对话（有 session 时忽略）。
     """
     try:
         runtime = get_runtime(runtime_id)
@@ -67,6 +69,7 @@ async def run_cli(
         executable=executable,
         extra_allowed_dirs=extra_allowed_dirs,
         platform_hint=platform_hint,
+        context_messages=context_messages,
         role=role,
         mcp_env=mcp_env,
     ):

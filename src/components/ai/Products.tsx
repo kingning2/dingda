@@ -6,12 +6,17 @@
 import { useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ExternalLink } from "lucide-react";
-import type { AgentWorkProductItem, AgentWorkProductsView } from "@/contracts/ai-work";
+import type {
+  AgentWorkComparisonView,
+  AgentWorkProductItem,
+  AgentWorkProductsView,
+} from "@/contracts/ai-work";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { openProductPreview } from "@/lib/product-preview";
+import { ComparisonResults } from "./ComparisonResults";
 
 /** 单行预估高度（含间距）。 */
 const ROW_ESTIMATE_PX = 112;
@@ -19,6 +24,7 @@ const ROW_GAP_PX = 12;
 
 interface ProductsProps {
   products: AgentWorkProductsView;
+  comparison?: AgentWorkComparisonView | null;
   className?: string;
 }
 
@@ -111,8 +117,12 @@ function ProductVirtualList({
 }
 
 /** 右侧固定结果面板。 */
-export function Products({ products, className }: ProductsProps) {
+export function Products({ products, comparison, className }: ProductsProps) {
   const { items, total, status } = products;
+
+  if (comparison) {
+    return <ComparisonResults comparison={comparison} />;
+  }
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>

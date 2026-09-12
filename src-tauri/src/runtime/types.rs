@@ -15,14 +15,28 @@ pub struct RuntimeModel {
 }
 
 /// 模型发现函数（每个 Runtime 在 defs 中注册）。
-pub type DiscoverModelsFn = for<'a> fn(
-    &'a Path,
-) -> Pin<Box<dyn Future<Output = Vec<RuntimeModel>> + Send + 'a>>;
+pub type DiscoverModelsFn =
+    for<'a> fn(&'a Path) -> Pin<Box<dyn Future<Output = Vec<RuntimeModel>> + Send + 'a>>;
 
-/// 运行时能力声明（数据驱动，不含行为）。
-#[derive(Debug, Clone, Copy, Default)]
-pub struct RuntimeCapabilities {
-    pub login_capable: bool,
+/// 鉴权探针输出的解析方式。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AuthParse {
+    /// 退出码 0 即已登录（codex `login status`）。
+    ExitCode,
+    /// stdout 是 JSON，取 `loggedIn` 布尔（claude `auth status`）。
+    JsonLoggedIn,
+    /// 输出里 `N credentials`，N>0 即已登录（opencode `auth list`）。
+    CredentialCount,
+}
+
+/// 单个 Runtime 的鉴权契约：怎么探、怎么登、登完提示什么。
+#[derive(Debug, Clone, Copy)]
+pub struct RuntimeAuth {
+    pub probe_args: &'static [&'static str],
+    pub parse: AuthParse,
+    /// 空切片 = 不支持由平台触发登录。
+    pub login_args: &'static [&'static str],
+    pub login_message: &'static str,
 }
 
 /// 可执行文件解析来源。
@@ -78,15 +92,14 @@ pub struct RuntimeDefinition {
     /// 用户配置路径环境变量（如 `DINGDA_CODEX_PATH`）。
     pub path_env_var: &'static str,
     pub version_args: &'static [&'static str],
-    pub capabilities: RuntimeCapabilities,
+    /// 可选：本 Runtime 的鉴权探针与登录入口（无 CLI 登录时为 `None`）。
+    pub auth: Option<RuntimeAuth>,
     pub install_url: &'static str,
     pub docs_url: &'static str,
     pub external_mcp_injection: Option<&'static str>,
     pub is_default: bool,
     /// 可选：发现阶段额外校验。
     pub validate_executable: Option<fn(&Path) -> bool>,
-    /// 可选：认证探测参数（如 `["login", "status"]`）。
-    pub auth_probe_args: Option<&'static [&'static str]>,
     /// 探测可用模型列表。
     pub discover_models: DiscoverModelsFn,
     /// 可选：叮答托管一键下载规格（统一由 `defs/base` 执行）。
@@ -109,5 +122,10 @@ impl RuntimeDefinition {
         let mut names = vec![self.binary];
         names.extend(self.fallback_binaries);
         names
+    }
+
+    /// 是否能由平台触发登录（有 `auth` 且 `login_args` 非空）。
+    pub fn can_login(&self) -> bool {
+        self.auth.is_some_and(|auth| !auth.login_args.is_empty())
     }
 }

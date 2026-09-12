@@ -9,8 +9,8 @@ use crate::agent::probe::{
     login_agent_by_id, probe_agent_by_id, AgentRuntimeLoginResult, AgentRuntimeProbeResult,
 };
 use crate::agent::registry::AgentListResponse;
-use crate::runtime::defs::ManagedDownloadResult;
 use crate::runtime::find_runtime;
+use crate::runtime::install::ManagedDownloadResult;
 
 #[tauri::command]
 pub async fn list_agent_runtimes_command(_app: AppHandle) -> Result<AgentListResponse, String> {
@@ -36,7 +36,6 @@ pub async fn login_agent_runtime(agent_id: String) -> Result<AgentRuntimeLoginRe
 #[tauri::command]
 pub async fn download_agent_runtime(agent_id: String) -> Result<ManagedDownloadResult, String> {
     let agent_id = agent_id.trim().to_string();
-    let definition =
-        find_runtime(&agent_id).ok_or_else(|| format!("未知 Runtime：{agent_id}"))?;
+    let definition = find_runtime(&agent_id).ok_or_else(|| format!("未知 Runtime：{agent_id}"))?;
     definition.download_managed().await
 }

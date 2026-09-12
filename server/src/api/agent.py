@@ -77,6 +77,10 @@ class AgentRuntimeRunRequest(BaseModel):
         default=None,
         description="本轮优先平台：xianyu / xiaohongshu / ali1688",
     )
+    context_messages: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="换 Agent 冷启动时由叮答托管的先前对话 [{role, content}, ...]",
+    )
 
 
 class AgentLiveFrameRequest(BaseModel):
@@ -256,6 +260,7 @@ async def run_agent_runtime(
                 executable=body.executable,
                 extra_allowed_dirs=body.extra_allowed_dirs,
                 platform_hint=body.platform_hint,
+                context_messages=body.context_messages,
             ):
                 yield _sse(str(event.get("type") or "message"), {"runId": run_id, **event})
         except AppError as exc:

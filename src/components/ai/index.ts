@@ -9,10 +9,11 @@ export { ChatPane, send, scheduleDetail, scheduleMessage } from "./scheduler";
 export type { SendHandle, ScheduledBlock, ChatPaneProps } from "./scheduler";
 
 export { Collapse } from "./Collapse";
-export { ThinkingOrb } from "./ThinkingOrb";
+export { CodexActivityIndicator, ThinkingOrb } from "./ThinkingOrb";
 export { UserBlock, ThinkingBlock, TextBlock, StepBlock } from "./blocks";
 
 export { Products } from "./Products";
+export { ComparisonResults } from "./ComparisonResults";
 export { Settings } from "./Settings";
 
 export {

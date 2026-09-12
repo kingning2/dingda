@@ -12,10 +12,6 @@ CLI 插头：每个外部 CLI 一个文件，实现 [../base.py](../base.py) 的
   注意 `stdin_format = "claude-stream-json"`：它收的是**一条 JSON 消息**，不是纯文本，
   灌纯文本会报 `Error parsing streaming input line`
 - `opencode.py` — `OpenCodeRuntime`：`opencode run --format json --auto --thinking`
-- `workbuddy.py` — `WorkBuddyRuntime`：WorkBuddy（CodeBuddy Code）的
-  `node <install>/resources/app.asar.unpacked/cli/dist/codebuddy.js -p --output-format stream-json`。
-  入口是 node 脚本，故 `binary = "node"`、脚本路径由 `build_args` 补在最前；
-  `mcp_mode = "none"`，工具走 skill（见下）。
 
 ## 子目录
 
@@ -25,8 +21,10 @@ CLI 插头：每个外部 CLI 一个文件，实现 [../base.py](../base.py) 的
 
 ## 工具注入：skill（当前唯一的取证路径）
 
-**不再往各 CLI 注入 MCP。** 工具由 [`../../tools/skill.py`](../../tools/skill.py) 渲染成一份
-`SKILL.md`，装到各 runtime 的 skills 目录，agent 自己读、自己 `shell` 调 CLI：
+**不再往各 CLI 注入 MCP。** 工具由 [`../../tools/skill.py`](../../tools/skill.py) 渲染成
+四份 `SKILL.md`，宿主把正文直接拼进 prompt，并复制到工作目录 `.dingda-skills/`；
+同时仍装到各 runtime 的 skills 目录作为兼容 fallback：
+`dingda-crawl`、`dingda-source-evidence`、`dingda-price-compare`、`dingda-offer-verification`：
 
 ```
 python -m src.tools.skill --install
@@ -36,10 +34,9 @@ python -m src.tools.skill --install
 
 | runtime | skills 目录 |
 |---|---|
-| codex | `.codex/skills/dingda-crawl/SKILL.md` |
-| opencode | `.config/opencode/skills/dingda-crawl/SKILL.md` |
-| claude | `.claude/skills/dingda-crawl/SKILL.md` |
-| **workbuddy** | `.codebuddy/skills/dingda-crawl/SKILL.md` |
+| codex | `.codex/skills/<skill>/SKILL.md` |
+| opencode | `.config/opencode/skills/<skill>/SKILL.md` |
+| claude | `.claude/skills/<skill>/SKILL.md` |
 
 命令形态是 `"<python>" -m src.tools.cli <tool> --flags`，stdout 纯 JSON。
 渲染时按 `list_tools()` 自动生成工具清单，加工具不用改文档。

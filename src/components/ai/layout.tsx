@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, Package, Settings2 } from "lucide-react";
 import type { ComposerSubmitPayload } from "@/contracts/composer";
 import type { AgentWorkDetailView, AgentWorkStepView } from "@/contracts/ai-work";
 import { putAgentWorkDetail } from "@/lib/agent-api";
+import type { AgentRunPhase } from "@/lib/agent-run-phase";
 import { useServer } from "@/providers/server-provider";
 import { useComposerAgentOptions } from "@/components/composer/composer-agents";
 import { Button } from "@/components/ui/button";
@@ -41,15 +42,19 @@ export function Layout({ workId, onBack }: LayoutProps) {
   const [detail, setDetail] = useState<AgentWorkDetailView | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [runPhase, setRunPhase] = useState<AgentRunPhase | null>(null);
   const activeSendRef = useRef<SendHandle | null>(null);
   const [sideTab, setSideTab] = useState<SideTab | null>("results");
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const detailRef = useRef<AgentWorkDetailView | null>(null);
   const persistTimerRef = useRef<number | null>(null);
   const loadGenerationRef = useRef(0);
-  const applyRef = useRef<(next: AgentWorkDetailView, options?: { hydrate?: boolean }) => void>(
-    () => undefined,
-  );
+  const applyRef = useRef<
+    (
+      next: AgentWorkDetailView,
+      options?: { hydrate?: boolean; runPhase?: AgentRunPhase | null },
+    ) => void
+  >(() => undefined);
 
   const splitRef = useRef<HTMLDivElement>(null);
   const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
@@ -81,9 +86,13 @@ export function Layout({ workId, onBack }: LayoutProps) {
   }, []);
 
   const applyDetailUpdate = useCallback(
-    (next: AgentWorkDetailView, options?: { hydrate?: boolean }) => {
+    (
+      next: AgentWorkDetailView,
+      options?: { hydrate?: boolean; runPhase?: AgentRunPhase | null },
+    ) => {
       detailRef.current = next;
       setDetail(next);
+      if (options?.runPhase !== undefined) setRunPhase(options.runPhase);
       setLoading(false);
       stashWorkSnapshot(next);
       if (options?.hydrate) return;
@@ -119,6 +128,7 @@ export function Layout({ workId, onBack }: LayoutProps) {
     setError(null);
     setDetail(null);
     detailRef.current = null;
+    setRunPhase(null);
     setSideTab("results");
     setSelectedStepId(null);
 
@@ -131,9 +141,9 @@ export function Layout({ workId, onBack }: LayoutProps) {
         clearWorkDraft(workId);
         let handle = autoSendByWork.get(workId);
         if (!handle) {
-          handle = send(result.detail, result.pendingSend, (next) => {
+          handle = send(result.detail, result.pendingSend, (next, nextPhase) => {
             if (generation !== loadGenerationRef.current) return;
-            applyRef.current(next);
+            applyRef.current(next, { runPhase: nextPhase });
           });
           autoSendByWork.set(workId, handle);
           void handle.promise.finally(() => {
@@ -215,7 +225,9 @@ export function Layout({ workId, onBack }: LayoutProps) {
         agent_id: current.composer_agent_id ?? payload.agent_id,
         model_id: current.composer_model_id ?? payload.model_id,
       };
-      const handle = send(current, merged, applyDetailUpdate);
+      const handle = send(current, merged, (next, nextPhase) => {
+        applyDetailUpdate(next, { runPhase: nextPhase });
+      });
       activeSendRef.current = handle;
       try {
         await handle.promise;
@@ -253,7 +265,9 @@ export function Layout({ workId, onBack }: LayoutProps) {
         model_id: truncated.composer_model_id,
         attachments: [],
       };
-      const handle = send(truncated, payload, applyDetailUpdate);
+      const handle = send(truncated, payload, (next, nextPhase) => {
+        applyDetailUpdate(next, { runPhase: nextPhase });
+      });
       activeSendRef.current = handle;
       try {
         await handle.promise;
@@ -331,7 +345,7 @@ export function Layout({ workId, onBack }: LayoutProps) {
     detail.composer_agents.length > 0 ? detail.composer_agents : liveAgents;
   const sidePanel =
     sideTab === "results" ? (
-      <Products products={detail.products} />
+      <Products products={detail.products} comparison={detail.comparison} />
     ) : (
       <Settings
         agents={composerAgents}
@@ -381,6 +395,7 @@ export function Layout({ workId, onBack }: LayoutProps) {
         <ChatPane
           detail={detail}
           busy={!detail.can_send}
+          runPhase={runPhase}
           error={error}
           selectedStepId={selectedStepId}
           onSend={(payload) => void handleSend(payload)}

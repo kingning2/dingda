@@ -50,6 +50,8 @@ class ChildRole(AgentRole):
         *,
         platform_hint: str | None = None,
         resume: bool = False,
+        workdir: Path | None = None,
+        context_messages: list | None = None,
     ) -> str:
         """只发本次 prompt，不拼任何前言。"""
         return f"{(prompt or '').strip()}\n"

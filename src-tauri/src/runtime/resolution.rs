@@ -164,7 +164,10 @@ fn resolve_on_path(cmd: &str, path_var: Option<&std::ffi::OsStr>) -> Option<Path
 fn windows_fresh_path_var() -> Option<std::ffi::OsString> {
     use std::ffi::OsString;
 
-    let machine = read_registry_path("HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", "Path");
+    let machine = read_registry_path(
+        "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
+        "Path",
+    );
     let user = read_registry_path("HKCU\\Environment", "Path");
 
     let combined = match (machine, user) {
@@ -514,7 +517,9 @@ mod tests {
     #[test]
     fn known_locations_includes_local_bin() {
         let dirs = known_locations();
-        assert!(dirs.iter().any(|d| d.ends_with(".local/bin") || d.ends_with(".local\\bin")));
+        assert!(dirs
+            .iter()
+            .any(|d| d.ends_with(".local/bin") || d.ends_with(".local\\bin")));
     }
 
     #[test]

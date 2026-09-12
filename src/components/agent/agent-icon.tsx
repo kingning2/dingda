@@ -17,7 +17,6 @@ const ICON_EXT: Record<string, "svg" | "png"> = {
   mimo: "svg",
   "grok-build": "svg",
   pi: "svg",
-  codebuddy: "svg",
   "trae-cli": "png",
 };
 

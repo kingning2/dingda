@@ -6,7 +6,7 @@ use std::pin::Pin;
 
 use crate::runtime::model_discover::{parse_opencode_models, run_command};
 use crate::runtime::types::{
-    ManagedDownloadSpec, RuntimeCapabilities, RuntimeDefinition, RuntimeModel,
+    AuthParse, ManagedDownloadSpec, RuntimeAuth, RuntimeDefinition, RuntimeModel,
 };
 
 pub fn discover_models(
@@ -48,15 +48,17 @@ pub const OPENCODE: RuntimeDefinition = RuntimeDefinition {
     fallback_binaries: &["opencode-cli"],
     path_env_var: "DINGDA_OPENCODE_PATH",
     version_args: &["--version"],
-    capabilities: RuntimeCapabilities {
-        login_capable: false,
-    },
+    auth: Some(RuntimeAuth {
+        probe_args: &["auth", "list"],
+        parse: AuthParse::CredentialCount,
+        login_args: &["auth", "login"],
+        login_message: "已调用 opencode auth login，完成后请点击「扫描 Agent」刷新状态。",
+    }),
     install_url: "https://opencode.ai/docs",
     docs_url: "https://github.com/sst/opencode",
     external_mcp_injection: Some("opencode-env-content"),
     is_default: false,
     validate_executable: None,
-    auth_probe_args: None,
     discover_models,
     managed_download: Some(ManagedDownloadSpec {
         release_base_url: "https://github.com/anomalyco/opencode/releases/latest/download",

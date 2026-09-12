@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { openProductPreview } from "@/lib/product-preview";
 import { Collapse } from "../Collapse";
-import { cn } from "@/lib/utils";
+import { CodexActivityIndicator } from "../ThinkingOrb";
 
 export interface StepBlockProps {
   step: AgentWorkStepView;
@@ -144,7 +144,6 @@ export function StepBlock({
   step,
   pageUrl = null,
   products = [],
-  selected = false,
   onSelect,
 }: StepBlockProps) {
   const running = isRunning(step.status.state);
@@ -156,9 +155,9 @@ export function StepBlock({
   const title = (
     <span className="flex min-w-0 flex-1 items-center gap-2">
       {running ? (
-        <Loader2 className="size-3.5 shrink-0 animate-spin text-sky-600" />
+        <CodexActivityIndicator className="w-3.5 shrink-0 text-[13px] text-sky-600" />
       ) : (
-        <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+        <span className="w-3.5 shrink-0 text-center text-muted-foreground/70">•</span>
       )}
       <span className="min-w-0 truncate">
         <span className="font-medium text-foreground/90">{step.label}</span>
@@ -168,9 +167,15 @@ export function StepBlock({
   );
 
   const trailing = (
-    <Badge className={cn("h-auto shrink-0 rounded-full border-transparent", step.status.badge_class)}>
+    <span
+      className={
+        step.status.state === "error"
+          ? "shrink-0 text-[11px] text-destructive"
+          : "shrink-0 text-[11px] text-muted-foreground"
+      }
+    >
       {step.status.label}
-    </Badge>
+    </span>
   );
 
   const body = showPage && page ? (
@@ -190,10 +195,7 @@ export function StepBlock({
   ) : null;
 
   return (
-    <div
-      className={cn(selected && "rounded-md ring-1 ring-sky-400/40")}
-      onClick={() => onSelect?.(step)}
-    >
+    <div onClick={() => onSelect?.(step)}>
       <Collapse
         title={title}
         trailing={trailing}

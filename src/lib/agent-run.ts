@@ -18,6 +18,8 @@ export interface LaunchAgentRunRequest {
   runId?: string | null;
   /** 本轮优先爬取平台 */
   platformHint?: string | null;
+  /** 换 Agent 冷启动：叮答托管的先前对话 */
+  contextMessages?: Array<{ role: string; content: string }> | null;
   /** 预留：产品 Agent work_id（当前未开放） */
   workId?: string | null;
 }
@@ -111,6 +113,7 @@ export function startAgentRunWithEvents(
       extra_allowed_dirs: request.extraAllowedDirs ?? null,
       run_id: runId,
       platform_hint: request.platformHint ?? null,
+      context_messages: request.contextMessages ?? null,
     };
 
     const response = await fetch(url, {

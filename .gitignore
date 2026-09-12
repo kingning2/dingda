@@ -10,6 +10,7 @@ uv.lock
 !server/uv.lock
 server/tmp/
 server/.tmp/
+.dingda-skills/
 .tmp/
 
 # Desktop bundled runtime（prepare-desktop-runtime 产出；Camoufox zip 很大）

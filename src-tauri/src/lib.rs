@@ -1,6 +1,7 @@
 mod agent;
 mod camoufox;
 mod commands;
+mod logging;
 mod paths;
 mod platform;
 mod python;
@@ -38,7 +39,11 @@ pub fn run() {
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(error) = runtime_for_bg.start_background(app_handle).await {
-                    eprintln!("[shell] python server background start failed: {error}");
+                    logging::log(
+                        logging::Scope::Shell,
+                        "python server background start failed",
+                        Some(&error.to_string()),
+                    );
                 }
             });
             app.manage(runtime);
@@ -120,7 +125,11 @@ fn stop_python_server(app: &AppHandle) {
     };
     tauri::async_runtime::block_on(async {
         if let Err(error) = runtime.stop().await {
-            eprintln!("[shell] failed to stop python server: {error}");
+            logging::log(
+                logging::Scope::Shell,
+                "failed to stop python server",
+                Some(&error.to_string()),
+            );
         }
     });
     let _ = app.emit("server-stopped", ());

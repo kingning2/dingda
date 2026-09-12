@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use super::resolution::resolve_executable;
-use super::types::{RuntimeDefinition, RuntimeDetection};
+use super::types::{AuthParse, RuntimeDefinition, RuntimeDetection};
 
 pub async fn detect_runtime(definition: &RuntimeDefinition) -> RuntimeDetection {
     let Some(resolved) = resolve_executable(definition) else {
@@ -30,11 +30,8 @@ pub async fn detect_runtime(definition: &RuntimeDefinition) -> RuntimeDetection 
         };
     }
 
-    let authenticated = if definition.capabilities.login_capable {
+    let authenticated = if definition.auth.is_some() {
         probe_auth(&resolved.path, definition).await
-    } else if let Some(args) = definition.auth_probe_args {
-        let arg_refs: Vec<&str> = args.iter().copied().collect();
-        Some(run_command(&resolved.path, &arg_refs).await.is_ok())
     } else {
         None
     };
@@ -49,13 +46,56 @@ pub async fn detect_runtime(definition: &RuntimeDefinition) -> RuntimeDetection 
     }
 }
 
+/// 跑鉴权探针，按 `definition.auth.parse` 判定是否已登录。
+///
+/// 返回 `None` 表示「拿不到结论」（探针起不来，或输出不符合预期）——
+/// 比误判成「未登录」安全。
 pub async fn probe_auth(binary: &Path, definition: &RuntimeDefinition) -> Option<bool> {
-    if definition.id == "codex" {
-        return Some(run_command(binary, &["login", "status"]).await.is_ok());
+    let auth = definition.auth?;
+    let output = tokio::process::Command::new(binary)
+        .args(auth.probe_args)
+        .output()
+        .await
+        .ok()?;
+    parse_auth_output(
+        output.status.success(),
+        &String::from_utf8_lossy(&output.stdout),
+        auth.parse,
+    )
+}
+
+/// 按 `parse` 判定探针输出。非零退出不一定等于未登录（见下方各分支）。
+fn parse_auth_output(success: bool, stdout: &str, parse: AuthParse) -> Option<bool> {
+    match parse {
+        AuthParse::ExitCode => Some(success),
+        // 非零退出说明命令本身没跑通，直接判未登录；否则以 JSON 为准。
+        AuthParse::JsonLoggedIn => {
+            if !success {
+                return Some(false);
+            }
+            parse_json_logged_in(stdout)
+        }
+        AuthParse::CredentialCount => parse_credential_count(stdout),
     }
-    if let Some(args) = definition.auth_probe_args {
-        let arg_refs: Vec<&str> = args.iter().copied().collect();
-        return Some(run_command(binary, &arg_refs).await.is_ok());
+}
+
+fn parse_json_logged_in(stdout: &str) -> Option<bool> {
+    let value: serde_json::Value = serde_json::from_str(stdout.trim()).ok()?;
+    value.get("loggedIn")?.as_bool()
+}
+
+/// 找形如 `1 credentials` 的计数；找不到返回 `None`（未知）。
+fn parse_credential_count(stdout: &str) -> Option<bool> {
+    for line in stdout.lines() {
+        let Some(index) = line.find("credential") else {
+            continue;
+        };
+        let Some(token) = line[..index].split_whitespace().last() else {
+            continue;
+        };
+        if let Ok(count) = token.parse::<u64>() {
+            return Some(count > 0);
+        }
     }
     None
 }
@@ -98,4 +138,80 @@ fn first_line(text: &str) -> Option<String> {
         .map(str::trim)
         .find(|line| !line.is_empty())
         .map(str::to_string)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_auth_output;
+    use crate::runtime::types::AuthParse;
+
+    #[test]
+    fn exit_code_uses_process_status() {
+        assert_eq!(parse_auth_output(true, "", AuthParse::ExitCode), Some(true));
+        assert_eq!(
+            parse_auth_output(false, "not logged in", AuthParse::ExitCode),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn json_logged_in_reads_claude_status() {
+        assert_eq!(
+            parse_auth_output(
+                true,
+                r#"{"loggedIn":true,"authMethod":"claude.ai"}"#,
+                AuthParse::JsonLoggedIn
+            ),
+            Some(true)
+        );
+        assert_eq!(
+            parse_auth_output(true, r#"{"loggedIn":false}"#, AuthParse::JsonLoggedIn),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn json_logged_in_unknown_when_key_missing_or_not_bool() {
+        assert_eq!(parse_auth_output(true, "{}", AuthParse::JsonLoggedIn), None);
+        assert_eq!(
+            parse_auth_output(true, r#"{"loggedIn":"yes"}"#, AuthParse::JsonLoggedIn),
+            None
+        );
+        assert_eq!(
+            parse_auth_output(true, "not json", AuthParse::JsonLoggedIn),
+            None
+        );
+    }
+
+    #[test]
+    fn json_logged_in_treats_nonzero_exit_as_logged_out() {
+        assert_eq!(
+            parse_auth_output(false, "", AuthParse::JsonLoggedIn),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn credential_count_parses_opencode_auth_list() {
+        assert_eq!(
+            parse_auth_output(true, "1 credentials\n", AuthParse::CredentialCount),
+            Some(true)
+        );
+        assert_eq!(
+            parse_auth_output(true, "0 credentials\n", AuthParse::CredentialCount),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn credential_count_unknown_when_format_changes() {
+        assert_eq!(
+            parse_auth_output(true, "no stored auth\n", AuthParse::CredentialCount),
+            None
+        );
+        assert_eq!(
+            parse_auth_output(true, "", AuthParse::CredentialCount),
+            None
+        );
+    }
 }

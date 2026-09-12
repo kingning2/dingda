@@ -11,8 +11,11 @@ import type {
   AgentWorkStepView,
   AgentWorkTimelineEntry,
 } from "@/contracts/ai-work";
+import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@/lib/agent-run-phase";
 
 export interface AgentRunMessageState {
+  /** 前端运行阶段，由 SSE 事件推进。 */
+  phase: AgentRunPhase;
   content: string;
   thinking: string;
   steps: AgentWorkStepView[];
@@ -25,6 +28,7 @@ export interface AgentRunMessageState {
 
 export function createAgentRunMessageState(): AgentRunMessageState {
   return {
+    phase: "starting",
     content: "",
     thinking: "",
     steps: [],
@@ -105,14 +109,16 @@ function patchStep(
 export function reduceAgentEvent(
   state: AgentRunMessageState,
   event: AgentEvent,
+  options?: { hasProducts?: boolean },
 ): AgentRunMessageState {
   switch (event.type) {
     case "runStarted":
-      return state;
+      return { ...state, phase: "starting" };
     case "textDelta":
       if (!event.text) return state;
       return {
         ...state,
+        phase: "outputting",
         content: state.content + event.text,
         timeline: appendTextSegment(state.timeline, "text", event.text),
       };
@@ -120,6 +126,7 @@ export function reduceAgentEvent(
       if (!event.text) return state;
       return {
         ...state,
+        phase: "thinking",
         thinking: state.thinking + event.text,
         timeline: appendTextSegment(state.timeline, "thinking", event.text),
       };
@@ -161,6 +168,7 @@ export function reduceAgentEvent(
 
       return {
         ...state,
+        phase: "executing",
         steps: upsertStep(steps, step),
         timeline: appendStepSegment(
           state.timeline,
@@ -170,12 +178,19 @@ export function reduceAgentEvent(
       };
     }
     case "toolResult": {
+      // 商品结果不是后端事件类型，由调用方解析后显式推进到 products 阶段。
+      const phase = options?.hasProducts ? "products" : "executing";
       if (event.step?.id) {
-        return { ...state, steps: patchStep(state.steps, event.step.id, event.step) };
+        return {
+          ...state,
+          phase,
+          steps: patchStep(state.steps, event.step.id, event.step),
+        };
       }
       if (!event.id) return state;
       return {
         ...state,
+        phase,
         steps: patchStep(state.steps, event.id, {
           status: STEP_DONE,
           page_loading: false,
@@ -221,7 +236,7 @@ export function reduceAgentEvent(
           page,
         };
       }
-      return { ...state, steps, timeline };
+      return { ...state, phase: "live", steps, timeline };
     }
     case "fileChanged":
       return state;
@@ -237,6 +252,7 @@ export function reduceAgentEvent(
         const errOnly = `[错误] ${event.message}`;
         return {
           ...state,
+          phase: "failed",
           error: event.message,
           content: state.content ? `${state.content}${suffix}` : errOnly,
           timeline: appendTextSegment(
@@ -256,7 +272,30 @@ export function reduceAgentEvent(
             }
           : step,
       );
-      return { ...state, steps, completed: true };
+      // CLI 非 0 退出且没发过 error 事件时，也要让用户看到失败，而不是静默「已完成」
+      if (event.exitCode !== 0 && !state.error) {
+        const message = `Agent 异常退出（exitCode=${event.exitCode}）`;
+        const errOnly = `[错误] ${message}`;
+        return {
+          ...state,
+          phase: "failed",
+          error: message,
+          content: state.content ? `${state.content}\n\n${errOnly}` : errOnly,
+          timeline: appendTextSegment(
+            state.timeline,
+            "text",
+            state.content ? `\n\n${errOnly}` : errOnly,
+          ),
+          steps,
+          completed: true,
+        };
+      }
+      return {
+        ...state,
+        phase: state.error ? "failed" : "completed",
+        steps,
+        completed: true,
+      };
     }
     default:
       return state;
@@ -298,21 +337,13 @@ export function applyRunStateToDetail(
       : message,
   );
 
-  const status = state.error
-    ? {
-        state: "error" as const,
-        label: "执行失败",
-        hint: state.error,
-        badge_class: "bg-red-500/15 text-red-700",
-      }
-    : state.completed
-      ? {
-          state: "ready" as const,
-          label: "已完成",
-          hint: null,
-          badge_class: "bg-emerald-500/15 text-emerald-600",
-        }
-      : detail.status;
+  const phaseView = AGENT_RUN_PHASE_MAP[state.phase];
+  const status = {
+    state: phaseView.statusState,
+    label: phaseView.label,
+    hint: state.phase === "failed" ? state.error : phaseView.hint,
+    badge_class: phaseView.badgeClass,
+  };
 
   const crawl = [...state.steps]
     .reverse()
@@ -363,6 +394,7 @@ export function truncateBeforeUserMessage(
   return {
     ...detail,
     messages: detail.messages.slice(0, idx),
+    comparison: null,
     can_send: true,
     // 截断后 CLI 历史对不上，丢掉 session，下一轮当新会话
     cli_session_id: null,
@@ -419,16 +451,17 @@ export function createOptimisticSendDetail(
       ...detail,
       title: nextTitle,
       can_send: false,
+      comparison: null,
       composer_agent_id: agentId,
       composer_model_id: modelId ?? null,
       // 换 Agent 时丢掉旧 CLI session
       cli_session_id: sameRuntime ? detail.cli_session_id : null,
       cli_session_runtime_id: sameRuntime ? agentId : null,
       status: {
-        state: "running",
-        label: "执行中",
-        hint: "Agent 执行中…",
-        badge_class: "bg-sky-500/15 text-sky-700",
+        state: AGENT_RUN_PHASE_MAP.starting.statusState,
+        label: AGENT_RUN_PHASE_MAP.starting.label,
+        hint: AGENT_RUN_PHASE_MAP.starting.hint,
+        badge_class: AGENT_RUN_PHASE_MAP.starting.badgeClass,
       },
       messages: [...detail.messages, userMessage, assistantMessage],
     },

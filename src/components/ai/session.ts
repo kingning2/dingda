@@ -180,6 +180,7 @@ export function buildEmptyWorkDetail(
       status: status("idle", "待生成", "bg-muted text-muted-foreground"),
       summary: null,
     },
+    comparison: null,
     browser_live: {
       frame_id: null,
       url: "about:blank",

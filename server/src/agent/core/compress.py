@@ -1,8 +1,8 @@
 """Agent 上下文压缩（Headroom）。
 
 职责：
-    在消息进 LLM / MCP 大 JSON 回传前调用 headroom.compress，降低 token。
-    供产品 Agent 循环与 dingda-mcp 出口共用。
+    在消息进 LLM、Skill 注入块、CLI 工具大 JSON 回传前调用 headroom.compress，降低 token。
+    供产品 Agent、外部 CLI prompt / tools.cli 出口共用。
 
 设计说明：
     - ``DINGDA_HEADROOM=0`` 关闭；未安装 headroom-ai 时透传并打 warning
@@ -10,6 +10,8 @@
 
 使用示例：
     messages = compress_messages(messages, model="gpt-4o")
+    text = compress_text(skill_block)
+    payload = compress_tool_payload(payload, tool_name="search")
 """
 
 from __future__ import annotations
@@ -64,6 +66,21 @@ def compress_messages(
     )
     out = getattr(result, "messages", None)
     return list(out) if isinstance(out, list) and out else messages
+
+
+def compress_text(text: str, *, model: str | None = None) -> str:
+    """压缩大段纯文本（Skill 注入块等）；失败或关闭时原样返回。"""
+    body = (text or "").strip()
+    if not body or not headroom_enabled():
+        return text
+    compressed = compress_messages([{"role": "system", "content": body}], model=model)
+    for msg in compressed:
+        if not isinstance(msg, dict):
+            continue
+        content = msg.get("content")
+        if isinstance(content, str) and content.strip():
+            return content
+    return text
 
 
 def compress_tool_payload(

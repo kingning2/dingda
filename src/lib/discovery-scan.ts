@@ -40,6 +40,21 @@ function filterSupportedAgents(agents: AgentRuntimeItem[]): AgentRuntimeItem[] {
   return agents.filter((agent) => SUPPORTED_AGENT_IDS.has(agent.id));
 }
 
+/** 旧缓存缺新注册 Agent 时，用注册表占位补齐，避免卡片消失。 */
+function mergeCatalogCoverage(
+  agents: AgentRuntimeItem[],
+  placeholders: AgentRuntimeItem[],
+): AgentRuntimeItem[] {
+  const byId = new Map(filterSupportedAgents(agents).map((agent) => [agent.id, agent]));
+  for (const placeholder of placeholders) {
+    if (!SUPPORTED_AGENT_IDS.has(placeholder.id) || byId.has(placeholder.id)) continue;
+    byId.set(placeholder.id, placeholder);
+  }
+  return AGENT_CATALOG.map((entry) => byId.get(entry.id)).filter(
+    (agent): agent is AgentRuntimeItem => agent != null,
+  );
+}
+
 function commitAgents(next: AgentRuntimeItem[]) {
   useDiscoveryStore.getState().setAgents(filterSupportedAgents(next));
 }
@@ -90,8 +105,9 @@ export async function loadCachedAgentRuntimes(options?: {
     }
   }
 
+  const placeholders = await listAgentRegistryPlaceholders();
   if (!hasCache) {
-    agents = await listAgentRegistryPlaceholders();
+    agents = placeholders;
     commitAgents(agents);
 
     const canAutoScan =
@@ -103,7 +119,7 @@ export async function loadCachedAgentRuntimes(options?: {
     return;
   }
 
-  commitAgents(agents);
+  commitAgents(mergeCatalogCoverage(agents, placeholders));
 
   // 缓存有目录但模型为空时，后台补探测（不挡首屏）
   const needsModels = agents.some(
@@ -111,9 +127,13 @@ export async function loadCachedAgentRuntimes(options?: {
   );
   if (needsModels) {
     cancelBackgroundProbe?.();
-    cancelBackgroundProbe = probeAgentsInBackground(agents, commitAgents, (finalAgents) => {
-      void persistAgentsCatalog(finalAgents);
-    });
+    cancelBackgroundProbe = probeAgentsInBackground(
+      useDiscoveryStore.getState().agents,
+      commitAgents,
+      (finalAgents) => {
+        void persistAgentsCatalog(finalAgents);
+      },
+    );
   }
 }
 
@@ -234,11 +254,13 @@ export async function rescanAgentRuntimes(
   try {
     const status = apiBaseUrl ? { apiBaseUrl } : await fetchServerStatus();
     const detected = await listAgentRuntimes(status.apiBaseUrl);
-    commitAgents(detected);
+    const placeholders = await listAgentRegistryPlaceholders();
+    const covered = mergeCatalogCoverage(detected, placeholders);
+    commitAgents(covered);
 
     const probed = await new Promise<AgentRuntimeItem[]>((resolve) => {
       cancelBackgroundProbe = probeAgentsInBackground(
-        detected,
+        covered,
         commitAgents,
         (finalAgents) => resolve(finalAgents),
       );

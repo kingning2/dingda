@@ -38,6 +38,19 @@ def item_from_api(raw: dict[str, Any]) -> CrawlItem:
             "quantity_begin": raw.get("quantityBegin"),
             "unit": raw.get("unit") or "",
             "supplier": raw.get("company") or "",
+            "merchant_rating": _first_value(
+                raw,
+                "merchantRating",
+                "sellerRating",
+                "shopRating",
+                "companyScore",
+                "sellerScore",
+            ),
+            "repurchase_rate": _first_value(
+                raw,
+                "repurchaseRate",
+                "repeatPurchaseRate",
+            ),
             "sold_count": raw.get("soldOut") or 0,
             "stock_amount": raw.get("storeAmount") or 0,
             "user_id": str(raw.get("userId") or ""),
@@ -58,3 +71,12 @@ def items_from_api(rows: list[dict[str, Any]]) -> list[CrawlItem]:
         if item.item_id or item.title or item.url:
             out.append(item)
     return out
+
+
+def _first_value(raw: dict[str, Any], *keys: str) -> Any:
+    """返回首个非空原始字段，避免把未知字段硬编码成同名。"""
+    for key in keys:
+        value = raw.get(key)
+        if value is not None and value != "":
+            return value
+    return None

@@ -7,6 +7,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ComposerAgentOption, ComposerSubmitPayload } from "@/contracts/composer";
 import type {
+  AgentWorkComparisonItemView,
+  AgentWorkComparisonView,
   AgentWorkDetailView,
   AgentWorkMessageView,
   AgentWorkProductItem,
@@ -21,13 +23,13 @@ import {
   createOptimisticSendDetail,
   reduceAgentEvent,
 } from "@/lib/agent-event-reducer";
+import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@/lib/agent-run-phase";
 import { startAgentRunWithEvents } from "@/lib/agent-run";
 import { useDiscoveryStore } from "@/stores/discovery-store";
 import { PromptComposer } from "@/components/composer";
 import { useComposerAgentOptions } from "@/components/composer/composer-agents";
-import { Card, CardContent } from "@/components/ui/card";
 import { UserBlock, ThinkingBlock, TextBlock, StepBlock } from "./blocks";
-import { ThinkingOrb } from "./ThinkingOrb";
+import { CodexActivityIndicator } from "./ThinkingOrb";
 import { nearBottom, nextFollowIntent, type FollowIntent, type ScrollSample } from "./stick-to-bottom";
 
 export interface SendHandle {
@@ -35,6 +37,9 @@ export interface SendHandle {
   promise: Promise<AgentWorkDetailView>;
   cancel: () => Promise<void>;
 }
+
+/** 运行更新回调：同时返回对话快照和当前前端阶段。 */
+export type SendUpdate = (next: AgentWorkDetailView, phase: AgentRunPhase) => void;
 
 /** 调度后的块描述。 */
 export type ScheduledBlock =
@@ -88,15 +93,17 @@ function scheduleFromTimeline(
   steps: AgentWorkStepView[],
   detail: AgentWorkDetailView,
   streaming: boolean,
+  phase: AgentRunPhase | null,
   meta: { startedAt?: string | null; durationSec?: number | null },
 ): ScheduledBlock[] {
   const lastIdx = timeline.length - 1;
+  const streamingKind = phase ? AGENT_RUN_PHASE_MAP[phase].streamingKind : null;
   const out: ScheduledBlock[] = [];
   for (let i = 0; i < timeline.length; i++) {
     const entry = timeline[i];
     const isLast = i === lastIdx;
-    // 只有时间线最末一段在 busy 时带光标；前面的段视为已输出完
-    const live = streaming && isLast;
+    // 只有当前运行阶段对应的最末块处于流式状态。
+    const live = streaming && isLast && entry.kind === streamingKind;
     if (entry.kind === "thinking") {
       out.push({
         kind: "thinking",
@@ -134,6 +141,7 @@ function scheduleLegacy(
   message: AgentWorkMessageView,
   detail: AgentWorkDetailView,
   streaming: boolean,
+  phase: AgentRunPhase | null,
 ): ScheduledBlock[] {
   const thinking = (message.thinking ?? "").trim();
   const steps = message.steps ?? [];
@@ -141,9 +149,9 @@ function scheduleLegacy(
   const out: ScheduledBlock[] = [];
   const startedAt = message.thinking_started_at ?? message.created_at;
   const durationSec = message.thinking_duration_sec ?? null;
-  // 末段才 live：有正文则正文；否则有工具则无光标；否则思考
-  const thinkingLive = streaming && !hasContent && steps.length === 0;
-  const textLive = streaming && hasContent;
+  const streamingKind = phase ? AGENT_RUN_PHASE_MAP[phase].streamingKind : null;
+  const thinkingLive = streaming && streamingKind === "thinking";
+  const textLive = streaming && streamingKind === "text";
 
   if (thinking) {
     out.push({
@@ -190,6 +198,7 @@ export function scheduleMessage(
   message: AgentWorkMessageView,
   detail: AgentWorkDetailView,
   streaming: boolean,
+  phase: AgentRunPhase | null = null,
 ): ScheduledBlock[] {
   if (message.role === "user") {
     return [
@@ -205,16 +214,28 @@ export function scheduleMessage(
 
   const timeline = message.timeline ?? [];
   if (timeline.length > 0) {
-    return scheduleFromTimeline(message.id, timeline, message.steps ?? [], detail, streaming, {
-      startedAt: message.thinking_started_at ?? message.created_at,
-      durationSec: message.thinking_duration_sec ?? null,
-    });
+    return scheduleFromTimeline(
+      message.id,
+      timeline,
+      message.steps ?? [],
+      detail,
+      streaming,
+      phase,
+      {
+        startedAt: message.thinking_started_at ?? message.created_at,
+        durationSec: message.thinking_duration_sec ?? null,
+      },
+    );
   }
-  return scheduleLegacy(message, detail, streaming);
+  return scheduleLegacy(message, detail, streaming, phase);
 }
 
 /** 整页对话：按「用户 + 随后助手」切成轮次，便于 sticky。 */
-export function scheduleTurns(detail: AgentWorkDetailView, busy: boolean): ScheduledTurn[] {
+export function scheduleTurns(
+  detail: AgentWorkDetailView,
+  busy: boolean,
+  runPhase: AgentRunPhase | null = null,
+): ScheduledTurn[] {
   const lastAssistantId = [...detail.messages].reverse().find((m) => m.role === "assistant")?.id;
   const turns: ScheduledTurn[] = [];
   let current: ScheduledTurn | null = null;
@@ -226,7 +247,12 @@ export function scheduleTurns(detail: AgentWorkDetailView, busy: boolean): Sched
 
   for (const message of detail.messages) {
     const streaming = busy && message.id === lastAssistantId && message.role === "assistant";
-    const scheduled = scheduleMessage(message, detail, streaming);
+    const scheduled = scheduleMessage(
+      message,
+      detail,
+      streaming,
+      streaming ? runPhase : null,
+    );
     if (message.role === "user") {
       const user = scheduled.find((block): block is Extract<ScheduledBlock, { kind: "user" }> =>
         block.kind === "user",
@@ -288,9 +314,27 @@ function renderAssistantBlock(
   }
 }
 
+function outputRecord(output: unknown): Record<string, unknown> | null {
+  if (typeof output === "string") {
+    try {
+      return outputRecord(JSON.parse(output));
+    } catch {
+      return null;
+    }
+  }
+  if (!output || typeof output !== "object" || Array.isArray(output)) return null;
+  return output as Record<string, unknown>;
+}
+
+function asNumber(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function extractProducts(output: unknown): CrawlProductItem[] {
-  if (!output || typeof output !== "object") return [];
-  const record = output as Record<string, unknown>;
+  const record = outputRecord(output);
+  if (!record) return [];
   if (typeof record.platform !== "string" || !record.platform) return [];
   const platform = record.platform as CrawlProductItem["platform"];
   const now = new Date().toISOString();
@@ -334,6 +378,118 @@ function extractProducts(output: unknown): CrawlProductItem[] {
     });
   }
   return out;
+}
+
+function extractComparison(output: unknown): AgentWorkComparisonView | null {
+  const record = outputRecord(output);
+  if (!record || record.kind !== "price_compare" || !Array.isArray(record.items)) return null;
+
+  const sourceRaw =
+    record.source && typeof record.source === "object"
+      ? (record.source as Record<string, unknown>)
+      : {};
+  const items: AgentWorkComparisonItemView[] = [];
+  for (const row of record.items) {
+    if (!row || typeof row !== "object") continue;
+    const item = row as Record<string, unknown>;
+    const id = String(item.item_id ?? item.id ?? "").trim();
+    const title = String(item.title ?? "").trim();
+    if (!id || !title) continue;
+    items.push({
+      id,
+      title,
+      price: String(item.price ?? ""),
+      platform: "ali1688",
+      seller: typeof item.supplier === "string" ? item.supplier : null,
+      image_url: typeof item.image_url === "string" ? item.image_url : null,
+      product_url: typeof item.url === "string" ? item.url : null,
+      compare_label: typeof item.compare_label === "string" ? item.compare_label : null,
+      compare_reasons: Array.isArray(item.compare_reasons)
+        ? item.compare_reasons.map((reason) => String(reason)).filter(Boolean)
+        : [],
+      compare_score: asNumber(item.compare_score),
+      similarity_score: asNumber(item.similarity_score),
+      merchant_rating: asNumber(item.merchant_rating),
+      repurchase_rate: asNumber(item.repurchase_rate),
+      sold_count: asNumber(item.sold_count),
+      yx_index: asNumber(item.yx_index),
+      stock_amount: asNumber(item.stock_amount),
+      quantity_begin: asNumber(item.quantity_begin),
+      unit: typeof item.unit === "string" ? item.unit : null,
+      round: asNumber(item.round),
+      search_query: typeof item.search_query === "string" ? item.search_query : null,
+      search_mode: typeof item.search_mode === "string" ? item.search_mode : null,
+    });
+  }
+
+  return {
+    kind: "price_compare",
+    platform: String(record.platform || "ali1688"),
+    source: {
+      item_id: String(sourceRaw.item_id ?? ""),
+      title: String(sourceRaw.title ?? ""),
+      platform: String(sourceRaw.platform ?? "source"),
+      url: String(sourceRaw.url ?? record.source_url ?? ""),
+      image_url: String(sourceRaw.image_url ?? record.source_image ?? ""),
+      price:
+        sourceRaw.price == null || sourceRaw.price === "" ? null : String(sourceRaw.price),
+      seller:
+        sourceRaw.seller == null || sourceRaw.seller === "" ? null : String(sourceRaw.seller),
+    },
+    items,
+    total_candidates: asNumber(record.total_candidates) ?? items.length,
+    rounds: asNumber(record.rounds) ?? 1,
+    queries: Array.isArray(record.queries)
+      ? record.queries.map((query) => String(query)).filter(Boolean)
+      : [],
+    status: {
+      state: "ready",
+      label: "已完成",
+      hint: `${items.length} 款对比`,
+      badge_class: "bg-emerald-500/15 text-emerald-600",
+    },
+  };
+}
+
+/** 多次 compare 调用按 item_id 累积，保留每一轮证据而不是覆盖。 */
+function mergeComparison(
+  current: AgentWorkComparisonView | null | undefined,
+  next: AgentWorkComparisonView,
+): AgentWorkComparisonView {
+  if (!current) return next;
+
+  const roundOffset = current.rounds ?? 0;
+  const byId = new Map(current.items.map((item) => [item.id, item]));
+  for (const item of next.items) {
+    const existing = byId.get(item.id);
+    const round = roundOffset + (item.round ?? 1);
+    if (!existing) {
+      byId.set(item.id, { ...item, round });
+      continue;
+    }
+    byId.set(item.id, {
+      ...existing,
+      ...item,
+      round: Math.min(existing.round ?? round, round),
+      compare_reasons: [...new Set([...existing.compare_reasons, ...item.compare_reasons])],
+      compare_score: item.compare_score ?? existing.compare_score,
+      merchant_rating: item.merchant_rating ?? existing.merchant_rating,
+      repurchase_rate: item.repurchase_rate ?? existing.repurchase_rate,
+      sold_count: item.sold_count ?? existing.sold_count,
+      yx_index: item.yx_index ?? existing.yx_index,
+      stock_amount: item.stock_amount ?? existing.stock_amount,
+      quantity_begin: item.quantity_begin ?? existing.quantity_begin,
+    });
+  }
+
+  return {
+    ...next,
+    source: next.source.title || next.source.image_url ? next.source : current.source,
+    items: [...byId.values()],
+    total_candidates: current.total_candidates + next.total_candidates,
+    rounds: roundOffset + next.rounds,
+    queries: [...(current.queries ?? []), ...next.queries],
+  };
 }
 
 function parseComments(value: unknown): CrawlProductItem["comments"] {
@@ -381,10 +537,27 @@ function mergeProducts(
 }
 
 /** 跟后端打交道：外部 CLI SSE → 更新 detail。 */
+const CONTEXT_MAX_MESSAGES = 30;
+const CONTEXT_MAX_CHARS = 2000;
+
+/** 换 Agent 冷启动：从 work 消息抽出可注入的先前对话（不含本轮正在发的那句）。 */
+function buildContextMessages(
+  messages: AgentWorkMessageView[],
+): Array<{ role: string; content: string }> {
+  return messages
+    .filter((item) => item.role === "user" || item.role === "assistant")
+    .map((item) => ({
+      role: item.role,
+      content: item.content.trim().slice(0, CONTEXT_MAX_CHARS),
+    }))
+    .filter((item) => item.content)
+    .slice(-CONTEXT_MAX_MESSAGES);
+}
+
 export function send(
   detail: AgentWorkDetailView,
   payload: ComposerSubmitPayload,
-  onUpdate: (next: AgentWorkDetailView) => void,
+  onUpdate: SendUpdate,
 ): SendHandle {
   const message = payload.message.trim();
   if (!message) {
@@ -412,11 +585,10 @@ export function send(
   );
   let snapshot: AgentWorkDetailView = {
     ...optimistic,
-    status: { ...optimistic.status, hint: `${runtimeId} 执行中…` },
+    status: { ...optimistic.status, hint: `${runtimeId} 启动中…` },
   };
-  onUpdate(snapshot);
-
   let runState = createAgentRunMessageState();
+  onUpdate(snapshot, runState.phase);
   const catalogCommand =
     useDiscoveryStore.getState().agents.find((agent) => agent.id === runtimeId)?.command?.trim() ||
     null;
@@ -426,6 +598,8 @@ export function send(
     (snapshot.cli_session_runtime_id ?? snapshot.composer_agent_id) === runtimeId
       ? snapshot.cli_session_id
       : null;
+  // 无 CLI session（含换 Agent）时把叮答侧历史交给服务端压缩注入
+  const contextMessages = resumeSession ? null : buildContextMessages(detail.messages);
 
   const handle = startAgentRunWithEvents(
     {
@@ -435,41 +609,117 @@ export function send(
       platformHint: payload.crawl_platform ?? null,
       executable: catalogCommand,
       sessionId: resumeSession,
+      contextMessages,
     },
     (event) => {
-      runState = reduceAgentEvent(runState, event);
-      snapshot = applyRunStateToDetail(snapshot, assistantMessageId, runState);
+      let nextProducts: CrawlProductItem[] = [];
+      let nextProductsStepId: string | null = null;
+      let nextComparison: AgentWorkComparisonView | null = null;
       if (event.type === "toolResult") {
-        const products = extractProducts(event.output);
-        if (products.length > 0) {
-          snapshot = {
-            ...snapshot,
-            products: mergeProducts(snapshot.products, products, event.id ?? ""),
-          };
+        nextComparison = extractComparison(event.output);
+        if (!nextComparison) {
+          nextProducts = extractProducts(event.output);
+          nextProductsStepId = event.id;
         }
       }
-      onUpdate(snapshot);
+      runState = reduceAgentEvent(runState, event, {
+        hasProducts: nextProducts.length > 0 || Boolean(nextComparison),
+      });
+      snapshot = applyRunStateToDetail(snapshot, assistantMessageId, runState);
+      if (nextProducts.length > 0) {
+        snapshot = {
+          ...snapshot,
+          products: mergeProducts(snapshot.products, nextProducts, nextProductsStepId ?? ""),
+        };
+      }
+      if (nextComparison) {
+        snapshot = {
+          ...snapshot,
+          comparison: mergeComparison(snapshot.comparison, nextComparison),
+        };
+      }
+      onUpdate(snapshot, runState.phase);
     },
   );
 
-  const promise = handle.done.then(() => {
-    snapshot = {
-      ...snapshot,
-      can_send: true,
-      status: {
-        state: runState.error ? "error" : "ready",
-        label: runState.error ? "执行失败" : "已完成",
-        hint: runState.error ?? null,
-        badge_class: runState.error
-          ? "bg-red-500/15 text-red-700"
-          : "bg-emerald-500/15 text-emerald-600",
-      },
-    };
-    onUpdate(snapshot);
-    return snapshot;
-  });
+  const promise = handle.done
+    .then(() => {
+      // 流意外结束但没收到 runCompleted 时，仍由同一状态机收尾。
+      if (!runState.completed) {
+        runState = reduceAgentEvent(runState, { type: "runCompleted", exitCode: 0 });
+      }
+      snapshot = applyRunStateToDetail(snapshot, assistantMessageId, runState);
+      onUpdate(snapshot, runState.phase);
+      return snapshot;
+    })
+    .catch((err: unknown) => {
+      // 网络或启动错误也要进入 failed，并允许用户继续发送。
+      const message = err instanceof Error ? err.message : "Agent 执行失败";
+      runState = reduceAgentEvent(runState, { type: "error", message });
+      runState = reduceAgentEvent(runState, { type: "runCompleted", exitCode: 1 });
+      snapshot = applyRunStateToDetail(snapshot, assistantMessageId, runState);
+      onUpdate(snapshot, runState.phase);
+      throw err;
+    });
 
   return { runId: handle.runId, promise, cancel: handle.cancel };
+}
+
+/** 把秒数格式化成 Codex TUI 的紧凑形式。 */
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+  return `${minutes}m ${String(rest).padStart(2, "0")}s`;
+}
+
+/** Codex TUI 风格活动行：• Header (0s • esc to interrupt)，详情使用 └。 */
+function WorkingIndicator({
+  label,
+  details,
+  startedAt,
+}: {
+  label: string;
+  details?: string | null;
+  startedAt?: string | null;
+}) {
+  const startMs = startedAt ? Date.parse(startedAt) : Number.NaN;
+  const [elapsed, setElapsed] = useState(() =>
+    Number.isNaN(startMs) ? 0 : Math.max(0, Math.floor((Date.now() - startMs) / 1000)),
+  );
+
+  useEffect(() => {
+    if (Number.isNaN(startMs)) return;
+    setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    const timer = window.setInterval(() => {
+      setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [startMs]);
+
+  return (
+    <div
+      className="px-1 py-1.5 text-[13px] leading-relaxed text-muted-foreground"
+      aria-live="polite"
+      aria-label="Agent working"
+    >
+      <div className="flex min-w-0 items-center gap-2">
+        <CodexActivityIndicator className="shrink-0 text-[14px]" />
+        <span className="codex-status-shimmer shrink-0 font-medium text-foreground">
+          {label}
+        </span>
+        <span className="truncate text-muted-foreground/80">
+          ({formatElapsed(elapsed)} • esc to interrupt)
+        </span>
+      </div>
+      {details ? (
+        <p className="truncate pl-5 text-[12px] text-muted-foreground/80">
+          {"└ "}
+          {details}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 const ComposerFooter = memo(function ComposerFooter({
@@ -479,6 +729,7 @@ const ComposerFooter = memo(function ComposerFooter({
   placeholder,
   disabled,
   busy,
+  status,
   onSend,
   onCancel,
   onInputActivity,
@@ -489,30 +740,31 @@ const ComposerFooter = memo(function ComposerFooter({
   placeholder?: string | null;
   disabled: boolean;
   busy: boolean;
+  status?: ReactNode;
   onSend?: (payload: ComposerSubmitPayload) => void;
   onCancel?: () => void;
   onInputActivity?: () => void;
 }) {
   return (
-    <footer className="shrink-0 border-t border-border/70 p-3">
-      <Card size="sm" className="gap-0 py-2 shadow-sm">
-        <CardContent className="px-3 pb-2 pt-2">
-          <PromptComposer
-            agents={agents}
-            defaultAgentId={defaultAgentId}
-            defaultModelId={defaultModelId}
-            hideAgentPicker
-            placeholder={placeholder ?? "输入关键词，如：露营椅 / 咖啡"}
-            disabled={disabled}
-            busy={busy}
-            minRows={3}
-            textareaClassName="min-h-[72px] text-sm"
-            onSubmit={(payload) => onSend?.(payload)}
-            onCancel={onCancel}
-            onInputActivity={onInputActivity}
-          />
-        </CardContent>
-      </Card>
+    <footer className="shrink-0 border-t border-border/60 bg-background px-4 py-3">
+      {status ? <div className="mx-auto w-full max-w-3xl">{status}</div> : null}
+      <div className="mx-auto w-full max-w-3xl">
+        <PromptComposer
+          agents={agents}
+          defaultAgentId={defaultAgentId}
+          defaultModelId={defaultModelId}
+          hideAgentPicker
+          showPromptGlyph
+          placeholder={placeholder ?? "Ask Codex to do anything"}
+          disabled={disabled}
+          busy={busy}
+          minRows={3}
+          textareaClassName="min-h-[72px] text-sm"
+          onSubmit={(payload) => onSend?.(payload)}
+          onCancel={onCancel}
+          onInputActivity={onInputActivity}
+        />
+      </div>
     </footer>
   );
 });
@@ -520,6 +772,8 @@ const ComposerFooter = memo(function ComposerFooter({
 export interface ChatPaneProps {
   detail: AgentWorkDetailView;
   busy?: boolean;
+  /** 当前会话的前端运行阶段；历史回放时为 null。 */
+  runPhase?: AgentRunPhase | null;
   error?: string | null;
   selectedStepId?: string | null;
   onSend?: (payload: ComposerSubmitPayload) => void;
@@ -529,20 +783,6 @@ export interface ChatPaneProps {
   onResubmitUser?: (messageId: string, content: string) => void;
 }
 
-/** 等待 Agent：时间线最外层；正在打字的块不显示（对齐 Cursor）。 */
-function WorkingIndicator() {
-  return (
-    <div
-      className="flex items-center gap-2 py-1 text-[13px] text-muted-foreground"
-      aria-live="polite"
-      aria-label="Agent 工作中"
-    >
-      <ThinkingOrb />
-      <span>工作中…</span>
-    </div>
-  );
-}
-
 /** 末块是否正在流式输出（有光标）。 */
 function isActivelyStreaming(turn: ScheduledTurn | undefined): boolean {
   if (!turn || turn.blocks.length === 0) return false;
@@ -550,10 +790,12 @@ function isActivelyStreaming(turn: ScheduledTurn | undefined): boolean {
   return (last.kind === "thinking" || last.kind === "text") && last.streaming;
 }
 
-/**
- * 先思考后结论：尚未出正文时隐藏 text；工具/浏览器步骤始终保留。
- */
-function blocksForPhase(blocks: ScheduledBlock[]): ScheduledBlock[] {
+/** 按运行阶段裁剪块；工具、直播和商品块始终保留。 */
+function blocksForPhase(
+  blocks: ScheduledBlock[],
+  phase: AgentRunPhase | null,
+): ScheduledBlock[] {
+  if (!phase || !AGENT_RUN_PHASE_MAP[phase].hideTextWhileThinking) return blocks;
   let lastThinking = -1;
   let lastText = -1;
   for (let i = 0; i < blocks.length; i++) {
@@ -565,6 +807,37 @@ function blocksForPhase(blocks: ScheduledBlock[]): ScheduledBlock[] {
     return blocks.filter((block) => block.kind !== "text");
   }
   return blocks;
+}
+
+/** 从当前块中提取 Codex 状态行下方的 `└` 详情。 */
+function resolveWorkingDetails(
+  turn: ScheduledTurn | undefined,
+  phase: AgentRunPhase | null,
+  fallback: string | null,
+): string | null {
+  if (!turn || !phase) return fallback;
+  if (phase === "thinking") {
+    const thinking = [...turn.blocks]
+      .reverse()
+      .find((block): block is Extract<ScheduledBlock, { kind: "thinking" }> =>
+        block.kind === "thinking",
+      );
+    const lines = (thinking?.text ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    return lines.length > 0 ? lines[lines.length - 1] : fallback;
+  }
+  if (phase === "executing" || phase === "live" || phase === "products") {
+    const step = [...turn.blocks]
+      .reverse()
+      .find(
+        (block): block is Extract<ScheduledBlock, { kind: "step" }> =>
+          block.kind === "step",
+      );
+    if (step) return step.step.hint ? `${step.step.label} · ${step.step.hint}` : step.step.label;
+  }
+  return fallback;
 }
 
 type ChatRow =
@@ -583,6 +856,7 @@ function readScrollSample(el: HTMLElement): ScrollSample {
 export function ChatPane({
   detail,
   busy = false,
+  runPhase = null,
   error = null,
   selectedStepId = null,
   onSend,
@@ -595,14 +869,27 @@ export function ChatPane({
   const lastSampleRef = useRef<ScrollSample | null>(null);
   const liveAgents = useComposerAgentOptions();
   const agents = detail.composer_agents.length > 0 ? detail.composer_agents : liveAgents;
-  const turns = scheduleTurns(detail, busy);
+  const activePhase = busy ? runPhase : null;
+  const turns = scheduleTurns(detail, busy, activePhase);
   const lastTurn = turns[turns.length - 1];
-  const lastPhaseBlocks = lastTurn ? blocksForPhase(lastTurn.blocks) : [];
+  const lastPhaseBlocks = lastTurn ? blocksForPhase(lastTurn.blocks, activePhase) : [];
+  const activePhaseView = activePhase ? AGENT_RUN_PHASE_MAP[activePhase] : null;
+  const activeAssistant = [...detail.messages]
+    .reverse()
+    .find((message) => message.role === "assistant");
+  const activelyStreaming = isActivelyStreaming(
+    lastTurn ? { ...lastTurn, blocks: lastPhaseBlocks } : undefined,
+  );
   const showWorking =
     busy &&
-    !isActivelyStreaming(
-      lastTurn ? { ...lastTurn, blocks: lastPhaseBlocks } : undefined,
-    );
+    Boolean(activePhaseView?.workingLabel) &&
+    // 正文流入时由正文块承担反馈；思考阶段仍保留 Codex 状态行。
+    !(activePhase === "outputting" && activelyStreaming);
+  const workingDetails = resolveWorkingDetails(
+    lastTurn,
+    activePhase,
+    activePhaseView?.hint ?? null,
+  );
 
   const rows = useMemo<ChatRow[]>(() => {
     const list: ChatRow[] = turns.map((turn, turnIndex) => ({
@@ -611,9 +898,9 @@ export function ChatPane({
       turn,
       turnIndex,
     }));
-    if (error || showWorking) list.push({ kind: "tail", id: "tail" });
+    if (error) list.push({ kind: "tail", id: "tail" });
     return list;
-  }, [turns, error, showWorking]);
+  }, [turns, error]);
 
   const fingerprint =
     turns.length +
@@ -625,7 +912,6 @@ export function ChatPane({
       }, 0);
       return sum + userLen + bodyLen;
     }, 0) +
-    (showWorking ? 1 : 0) +
     (error ? 1 : 0);
 
   const [stickyIndex, setStickyIndex] = useState(0);
@@ -686,15 +972,22 @@ export function ChatPane({
     return () => window.cancelAnimationFrame(frame);
   }, [fingerprint, busy, rows.length, virtualizer]);
 
+  useEffect(() => {
+    if (!busy || !onCancel) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onCancel();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [busy, onCancel]);
+
   const stickyTurn = turns[stickyIndex] ?? null;
   const stickyUser = stickyPinned ? stickyTurn?.user ?? null : null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="flex shrink-0 items-center border-b border-border/70 px-4 py-3">
-        <p className="truncate font-mono text-xs text-muted-foreground">{detail.work_id}</p>
-      </header>
-
       <div className="relative min-h-0 flex-1">
         {stickyUser ? (
           <div className="pointer-events-auto absolute top-0 right-0 left-0 z-20 border-b border-border/40 bg-card/95 px-4 py-2 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80">
@@ -732,12 +1025,12 @@ export function ChatPane({
                   {item.kind === "tail" ? (
                     <div className="space-y-2 py-2">
                       {error ? <p className="text-sm text-destructive">{error}</p> : null}
-                      {showWorking ? <WorkingIndicator /> : null}
                     </div>
                   ) : (
                     <TurnSection
                       turn={item.turn}
                       turnIndex={item.turnIndex}
+                      runPhase={item.turnIndex === turns.length - 1 ? activePhase : null}
                       busy={busy}
                       selectedStepId={selectedStepId}
                       onSelectStep={onSelectStep}
@@ -758,6 +1051,15 @@ export function ChatPane({
         placeholder={detail.composer_placeholder}
         disabled={!detail.can_send && !busy}
         busy={busy}
+        status={
+          showWorking ? (
+            <WorkingIndicator
+              label={activePhaseView?.workingLabel ?? "Working"}
+              details={workingDetails}
+              startedAt={activeAssistant?.thinking_started_at ?? activeAssistant?.created_at}
+            />
+          ) : null
+        }
         onSend={onSend}
         onCancel={onCancel}
         onInputActivity={() => {
@@ -774,6 +1076,7 @@ export function ChatPane({
 function TurnSection({
   turn,
   turnIndex,
+  runPhase,
   busy,
   selectedStepId,
   onSelectStep,
@@ -781,12 +1084,13 @@ function TurnSection({
 }: {
   turn: ScheduledTurn;
   turnIndex: number;
+  runPhase: AgentRunPhase | null;
   busy: boolean;
   selectedStepId: string | null;
   onSelectStep?: (step: AgentWorkStepView) => void;
   onResubmitUser?: (messageId: string, content: string) => void;
 }) {
-  const phaseBlocks = blocksForPhase(turn.blocks);
+  const phaseBlocks = blocksForPhase(turn.blocks, runPhase);
   return (
     <section className="relative" data-turn-index={turnIndex}>
       {turn.user ? (

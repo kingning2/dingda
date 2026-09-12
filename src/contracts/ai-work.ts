@@ -130,6 +130,55 @@ export interface AgentWorkRecommendationsView {
   summary?: string | null;
 }
 
+/** 比价来源商品（通常是闲鱼/小红书/淘宝商品）。 */
+export interface AgentWorkComparisonSourceView {
+  item_id: string;
+  title: string;
+  platform: string;
+  url: string;
+  image_url: string;
+  price?: string | null;
+  seller?: string | null;
+}
+
+/** 1688 比价候选。 */
+export interface AgentWorkComparisonItemView {
+  id: string;
+  title: string;
+  price: string;
+  platform: "ali1688";
+  seller?: string | null;
+  image_url?: string | null;
+  product_url?: string | null;
+  compare_label?: string | null;
+  compare_reasons: string[];
+  compare_score?: number | null;
+  similarity_score?: number | null;
+  merchant_rating?: number | null;
+  repurchase_rate?: number | null;
+  sold_count?: number | null;
+  yx_index?: number | null;
+  stock_amount?: number | null;
+  quantity_begin?: number | null;
+  unit?: string | null;
+  round?: number | null;
+  search_query?: string | null;
+  search_mode?: string | null;
+}
+
+/** 一次 1688 同款比价快照。 */
+export interface AgentWorkComparisonView {
+  kind: "price_compare";
+  platform: string;
+  source: AgentWorkComparisonSourceView;
+  items: AgentWorkComparisonItemView[];
+  total_candidates: number;
+  rounds: number;
+  /** 每次 compare Tool 实际执行的检索策略 / 查询。 */
+  queries: string[];
+  status: AgentWorkStatusView;
+}
+
 export interface AgentWorkDetailView {
   work_id: string;
   title: string;
@@ -137,6 +186,8 @@ export interface AgentWorkDetailView {
   messages: AgentWorkMessageView[];
   products: AgentWorkProductsView;
   recommendations: AgentWorkRecommendationsView;
+  /** 最近一次 compare Tool 的货源对比；旧快照可缺省。 */
+  comparison?: AgentWorkComparisonView | null;
   browser_live: AgentBrowserLiveView;
   /** 按时间顺序排列的已归档页面（每页仅保留最后一帧截图）。 */
   browser_history: AgentBrowserFrameView[];

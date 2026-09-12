@@ -1,0 +1,7 @@
+interface:
+  display_name: "1688 候选验收"
+  short_description: "核验同款程度、价格口径、商家证据、供货风险和淘汰理由"
+  default_prompt: "Use $dingda-offer-verification to verify these 1688 candidates against the source product."
+
+policy:
+  allow_implicit_invocation: true

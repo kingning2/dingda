@@ -1,18 +1,19 @@
 //! 扫描本机 Agent CLI 目录（PATH / 配置路径），不做深度 probe。
 
 use super::discover::discover_agent_with_source;
-use super::log::log_agent;
 use super::registry::{
     AgentListResponse, AgentRuntimeCatalogItem, AgentRuntimeStatusView, AGENT_REGISTRY,
 };
+use crate::logging::{self, Scope};
 use crate::runtime::RuntimeDefinition;
 
 /// 仅返回注册表静态项（全部标为未安装），不扫 PATH。
 /// 用于首次未扫描时前端占位展示。
 pub fn list_agent_registry() -> AgentListResponse {
-    log_agent("加载 Agent 注册表占位", None);
+    logging::log(Scope::Agent, "加载 Agent 注册表占位", None);
     let agents: Vec<_> = AGENT_REGISTRY.iter().map(build_registry_stub).collect();
-    log_agent(
+    logging::log(
+        Scope::Agent,
         "Agent 注册表占位就绪",
         Some(&format!("共 {} 个", agents.len())),
     );
@@ -21,10 +22,11 @@ pub fn list_agent_registry() -> AgentListResponse {
 
 /// 列出已注册 Agent，并标注本机是否可找到可执行文件。
 pub fn list_agent_runtimes() -> AgentListResponse {
-    log_agent("开始扫描 Agent 列表", None);
+    logging::log(Scope::Agent, "开始扫描 Agent 列表", None);
     let agents: Vec<_> = AGENT_REGISTRY.iter().map(build_catalog_item).collect();
     let installed = agents.iter().filter(|item| item.available).count();
-    log_agent(
+    logging::log(
+        Scope::Agent,
         "Agent 列表扫描完成",
         Some(&format!("已安装 {installed} / 共 {}", agents.len())),
     );
@@ -54,7 +56,7 @@ fn build_registry_stub(definition: &RuntimeDefinition) -> AgentRuntimeCatalogIte
             }),
             badge_class: "bg-muted text-muted-foreground".to_string(),
         },
-        can_login: definition.capabilities.login_capable,
+        can_login: definition.can_login(),
         can_probe: true,
         can_download: definition.supports_managed_download(),
     }
@@ -82,7 +84,8 @@ fn build_catalog_item(definition: &RuntimeDefinition) -> AgentRuntimeCatalogItem
 
     let (command, source) = match resolved {
         Some((path, src)) => {
-            log_agent(
+            logging::log(
+                Scope::Agent,
                 "已找到 Agent",
                 Some(&format!(
                     "{} path={} source={}",
@@ -97,7 +100,7 @@ fn build_catalog_item(definition: &RuntimeDefinition) -> AgentRuntimeCatalogItem
             )
         }
         None => {
-            log_agent("未找到 Agent", Some(definition.id));
+            logging::log(Scope::Agent, "未找到 Agent", Some(definition.id));
             (None, None)
         }
     };
@@ -115,7 +118,7 @@ fn build_catalog_item(definition: &RuntimeDefinition) -> AgentRuntimeCatalogItem
         is_default: definition.is_default,
         external_mcp_injection: definition.external_mcp_injection.map(str::to_string),
         status,
-        can_login: definition.capabilities.login_capable,
+        can_login: definition.can_login(),
         can_probe: true,
         can_download: definition.supports_managed_download(),
     }

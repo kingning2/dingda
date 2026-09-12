@@ -1,0 +1,18 @@
+{
+  "item_id": "",
+  "platform": "",
+  "url": "",
+  "title": "",
+  "image_url": "",
+  "price": null,
+  "price_basis": {
+    "quantity_included": 1,
+    "condition": "unknown",
+    "shipping": "unknown",
+    "bundle": "unknown"
+  },
+  "seller": null,
+  "hard_constraints": [],
+  "soft_preferences": [],
+  "unknowns": []
+}

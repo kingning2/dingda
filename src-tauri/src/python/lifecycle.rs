@@ -6,12 +6,11 @@ use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use chrono::{FixedOffset, Utc};
-
+use crate::logging::{self, Scope};
 use crate::paths::resolve_server_dir;
 use reqwest::Client;
-use thiserror::Error;
 use tauri::{AppHandle, Emitter};
+use thiserror::Error;
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
 
@@ -96,7 +95,8 @@ impl PythonLifecycle {
         self.ready.store(false, Ordering::Relaxed);
 
         if self.health_check().await.unwrap_or(false) {
-            log_shell(
+            logging::log(
+                Scope::Shell,
                 "stopping existing server on",
                 Some(self.api_base_url().as_str()),
             );
@@ -125,13 +125,14 @@ impl PythonLifecycle {
         let mut guard = self.child.lock().await;
         if let Some(mut child) = guard.take() {
             kill_child_tree(&mut child).await?;
-            log_shell("python server stopped", None);
+            logging::log(Scope::Shell, "python server stopped", None);
             return Ok(());
         }
         drop(guard);
 
         if kill_listeners_on_port(self.config.port) {
-            log_shell(
+            logging::log(
+                Scope::Shell,
                 "python server stopped",
                 Some(format!("port {}", self.config.port).as_str()),
             );
@@ -165,16 +166,21 @@ impl PythonLifecycle {
             }
             match sync.status().await {
                 Ok(status) if status.success() => {
-                    log_shell("python deps synced (uv sync --frozen)", None);
+                    logging::log(Scope::Shell, "python deps synced (uv sync --frozen)", None);
                 }
                 Ok(status) => {
-                    log_shell(
+                    logging::log(
+                        Scope::Shell,
                         "python deps sync non-zero",
                         Some(&format!("code={}", status.code().unwrap_or(-1))),
                     );
                 }
                 Err(error) => {
-                    log_shell("python deps sync skipped", Some(&error.to_string()));
+                    logging::log(
+                        Scope::Shell,
+                        "python deps sync skipped",
+                        Some(&error.to_string()),
+                    );
                 }
             }
         }
@@ -182,14 +188,7 @@ impl PythonLifecycle {
         let mut command = if self.config.use_uv {
             let mut cmd = Command::new(&uv);
             cmd.args([
-                "run",
-                "python",
-                "-m",
-                "src",
-                "--host",
-                &host,
-                "--port",
-                &port,
+                "run", "python", "-m", "src", "--host", &host, "--port", &port,
             ]);
             cmd
         } else if let Some(python) = self
@@ -228,11 +227,15 @@ impl PythonLifecycle {
             .spawn()
             .map_err(|error| PythonLifecycleError::SpawnFailed(error.to_string()))?;
 
-        log_shell("python server spawned at", Some(self.api_base_url().as_str()));
+        logging::log(
+            Scope::Shell,
+            "python server spawned at",
+            Some(self.api_base_url().as_str()),
+        );
         let server_dir = self.config.server_dir.display().to_string();
-        log_shell("python server dir", Some(server_dir.as_str()));
+        logging::log(Scope::Shell, "python server dir", Some(server_dir.as_str()));
         let uv_disp = uv.display().to_string();
-        log_shell("python uv bin", Some(uv_disp.as_str()));
+        logging::log(Scope::Shell, "python uv bin", Some(uv_disp.as_str()));
         *self.child.lock().await = Some(child);
         Ok(())
     }
@@ -241,7 +244,7 @@ impl PythonLifecycle {
         let deadline = Instant::now() + self.config.startup_timeout;
         while Instant::now() < deadline {
             if self.health_check().await.unwrap_or(false) {
-                log_shell("python server ready", None);
+                logging::log(Scope::Shell, "python server ready", None);
                 return Ok(());
             }
             tokio::time::sleep(Duration::from_millis(200)).await;
@@ -263,23 +266,6 @@ fn apply_extra_env(cmd: &mut Command, extra: &[(String, String)]) {
     for (key, value) in extra {
         cmd.env(key, value);
     }
-}
-
-fn log_shell(message: &str, detail: Option<&str>) {
-    let prefix = "\x1b[1;36m[shell]\x1b[0m";
-    let timestamp = beijing_timestamp();
-    match detail {
-        Some(detail) => eprintln!("{prefix} {timestamp} {message} {detail}"),
-        None => eprintln!("{prefix} {timestamp} {message}"),
-    }
-}
-
-fn beijing_timestamp() -> String {
-    let offset = FixedOffset::east_opt(8 * 3600).expect("beijing offset");
-    Utc::now()
-        .with_timezone(&offset)
-        .format("%Y-%m-%d %H:%M:%S")
-        .to_string()
 }
 
 async fn kill_child_tree(child: &mut Child) -> Result<(), PythonLifecycleError> {

@@ -8,6 +8,7 @@ use std::time::SystemTime;
 use tauri::AppHandle;
 use zip::ZipArchive;
 
+use crate::logging::{self, Scope};
 use crate::paths::{data_dir, find_camoufox_exe, resolve_runtime_dir};
 
 const STAMP_NAME: &str = ".extract-stamp";
@@ -125,21 +126,20 @@ pub fn ensure_camoufox_exe(app: &AppHandle) -> Result<PathBuf, String> {
     }
 
     extract_camoufox_zip(&zip_path, &current)?;
-    find_camoufox_exe(&current).ok_or_else(|| {
-        format!(
-            "解压后未找到 {}（zip={}）",
-            exe_name(),
-            zip_path.display()
-        )
-    })
+    find_camoufox_exe(&current)
+        .ok_or_else(|| format!("解压后未找到 {}（zip={}）", exe_name(), zip_path.display()))
 }
 
 /// 用官方 `zip` crate 解压到目标目录；逐文件写出，中断时不写 stamp。
 pub fn extract_camoufox_zip(zip_path: &Path, dest: &Path) -> Result<(), String> {
-    eprintln!(
-        "[shell] camoufox extract zip={} -> {}",
-        zip_path.display(),
-        dest.display()
+    logging::log(
+        Scope::Shell,
+        &format!(
+            "camoufox extract zip={} -> {}",
+            zip_path.display(),
+            dest.display()
+        ),
+        None,
     );
     if dest.exists() {
         fs::remove_dir_all(dest).map_err(|e| e.to_string())?;
@@ -164,14 +164,16 @@ pub fn extract_camoufox_zip(zip_path: &Path, dest: &Path) -> Result<(), String> 
         if let Some(parent) = out.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
-        let mut outfile = File::create(&out).map_err(|e| {
-            format!("写入失败 {}: {e}", out.display())
-        })?;
-        std::io::copy(&mut entry, &mut outfile).map_err(|e| {
-            format!("解压失败 {}: {e}", out.display())
-        })?;
+        let mut outfile =
+            File::create(&out).map_err(|e| format!("写入失败 {}: {e}", out.display()))?;
+        std::io::copy(&mut entry, &mut outfile)
+            .map_err(|e| format!("解压失败 {}: {e}", out.display()))?;
         if i == 0 || (i + 1) % 50 == 0 || i + 1 == total {
-            eprintln!("[shell] camoufox extract {}/{}", i + 1, total);
+            logging::log(
+                Scope::Shell,
+                &format!("camoufox extract {}/{}", i + 1, total),
+                None,
+            );
         }
     }
 
@@ -193,6 +195,10 @@ pub fn extract_camoufox_zip(zip_path: &Path, dest: &Path) -> Result<(), String> 
     stamp_file
         .write_all(stamp.as_bytes())
         .map_err(|e| e.to_string())?;
-    eprintln!("[shell] camoufox extract done entries={total}");
+    logging::log(
+        Scope::Shell,
+        &format!("camoufox extract done entries={total}"),
+        None,
+    );
     Ok(())
 }

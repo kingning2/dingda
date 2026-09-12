@@ -7,7 +7,7 @@
 ```text
 RuntimeDefinition (defs/)
   → resolution → detection / model_discover
-  → download_managed（部分 CLI）
+  → install（托管下载/安装，部分 CLI）
 ```
 
 禁止在探测路径里 `if runtime_id == "codex"`。差异放 `defs/<id>.rs`。
@@ -33,6 +33,11 @@ RuntimeDefinition (defs/)
 ### `detection.rs`
 
 `detect_runtime`：resolve 后跑 `version_args` / auth probe。
+
+### `install.rs`
+
+托管下载 / 安装：`download_managed` + 下载 / 解压 / 落盘 / 版本读取。各插头只填
+`managed_download: Some(ManagedDownloadSpec { .. })`，不要复制下载代码。
 
 ## 子目录
 

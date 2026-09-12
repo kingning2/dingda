@@ -36,6 +36,10 @@ Windows release 隐藏控制台；`v2_lib::run()`。几乎无逻辑。
 
 `desktop_platform_label()`（macos/windows/linux）和注入 `window.__DINGDA_PLATFORM__` 的脚本。给无边框标题栏布局。不是 OS 文件对话框。
 
+### `logging.rs`
+
+壳内唯一日志出口：`logging::log(Scope::{Agent,Shell,Frontend,Runtime}, message, detail)` 打到 stderr，格式 `[scope] 北京时间 message detail`，scope 决定前缀颜色（agent 绿 / shell 青 / frontend 品红 / runtime 黄）。新增日志不要再自己 `eprintln!`。
+
 ## 子目录
 
 - [commands/](commands/README.md) — 前端 `invoke` 的函数

@@ -34,13 +34,41 @@ def test_codex_resume_args() -> None:
     assert "thread_abc" in args
 
 
-def test_compose_prompt_resume_skips_system() -> None:
+def test_compose_prompt_resume_skips_system(monkeypatch) -> None:
+    monkeypatch.setattr("src.cli.prompts._skill_prompt", lambda _workdir=None: "## Skills\n")
+    monkeypatch.setenv("DINGDA_HEADROOM", "0")
     first = compose_agent_prompt("搜露营椅", platform_hint="xianyu", resume=False)
     assert "用户请求" in first
     assert "搜露营椅" in first
     resumed = compose_agent_prompt("继续", resume=True)
-    assert resumed.strip() == "继续"
+    assert "继续" in resumed
     assert "用户请求" not in resumed
+    assert "本轮优先平台" not in resumed
+
+
+def test_compose_prompt_cold_start_injects_prior_context(monkeypatch) -> None:
+    monkeypatch.setattr("src.cli.prompts._skill_prompt", lambda _workdir=None: "## Skills\n")
+    monkeypatch.setenv("DINGDA_HEADROOM", "0")
+    prior = [
+        {"role": "user", "content": "先搜闲鱼键盘"},
+        {"role": "assistant", "content": "已找到 3 条候选"},
+    ]
+    cold = compose_agent_prompt(
+        "换个 Agent 继续比价",
+        resume=False,
+        context_messages=prior,
+    )
+    assert "先前对话（叮答托管）" in cold
+    assert "先搜闲鱼键盘" in cold
+    assert "换个 Agent 继续比价" in cold
+
+    resumed = compose_agent_prompt(
+        "继续",
+        resume=True,
+        context_messages=prior,
+    )
+    assert "先前对话（叮答托管）" not in resumed
+    assert "继续" in resumed
 
 
 def test_opencode_args() -> None:

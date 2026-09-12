@@ -4,24 +4,32 @@ use std::future::Future;
 use std::path::Path;
 use std::pin::Pin;
 
-use crate::runtime::model_discover::static_models;
+use crate::runtime::model_discover::{fetch_models_dev_anthropic, static_models};
 use crate::runtime::types::{
-    ManagedDownloadSpec, RuntimeCapabilities, RuntimeDefinition, RuntimeModel,
+    AuthParse, ManagedDownloadSpec, RuntimeAuth, RuntimeDefinition, RuntimeModel,
 };
 
 pub fn discover_models(
     binary: &Path,
 ) -> Pin<Box<dyn Future<Output = Vec<RuntimeModel>> + Send + '_>> {
     let _ = binary;
-    Box::pin(async {
-        static_models(&[
-            ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
-            ("claude-opus-4-6", "Claude Opus 4.6"),
-            ("claude-sonnet-4-5", "Claude Sonnet 4.5"),
-            ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
-            ("claude-opus-4-5", "Claude Opus 4.5"),
-        ])
-    })
+    Box::pin(discover())
+}
+
+/// `claude` 没有列模型的子命令，账号侧可用模型也拿不到，所以目录走 models.dev 的
+/// anthropic provider；拉不到（离线 / 接口变了）就回落静态列表。
+async fn discover() -> Vec<RuntimeModel> {
+    let remote = fetch_models_dev_anthropic().await;
+    if !remote.is_empty() {
+        return remote;
+    }
+    static_models(&[
+        ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
+        ("claude-opus-4-6", "Claude Opus 4.6"),
+        ("claude-sonnet-4-5", "Claude Sonnet 4.5"),
+        ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+        ("claude-opus-4-5", "Claude Opus 4.5"),
+    ])
 }
 
 /// 官方 CDN：`{base}/{version}/{platform}/claude[.exe]`；版本由 `version_file=latest` 解析。
@@ -45,15 +53,17 @@ pub const CLAUDE: RuntimeDefinition = RuntimeDefinition {
     fallback_binaries: &[],
     path_env_var: "DINGDA_CLAUDE_PATH",
     version_args: &["--version"],
-    capabilities: RuntimeCapabilities {
-        login_capable: false,
-    },
+    auth: Some(RuntimeAuth {
+        probe_args: &["auth", "status"],
+        parse: AuthParse::JsonLoggedIn,
+        login_args: &["auth", "login"],
+        login_message: "已调用 claude auth login，请在浏览器完成授权后点「扫描 Agent」。",
+    }),
     install_url: "https://docs.anthropic.com/en/docs/claude-code/setup",
     docs_url: "https://docs.anthropic.com/en/docs/claude-code",
     external_mcp_injection: Some("claude-mcp-json"),
     is_default: false,
     validate_executable: None,
-    auth_probe_args: None,
     discover_models,
     managed_download: Some(ManagedDownloadSpec {
         release_base_url: "https://downloads.claude.ai/claude-code-releases",

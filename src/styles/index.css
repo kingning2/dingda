@@ -198,3 +198,37 @@ button {
     transform: translateX(320%);
   }
 }
+
+/* Codex TUI 风格：活动标题使用一轮低对比度扫光，不改变文字颜色和布局。 */
+@keyframes codex-status-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.codex-status-shimmer {
+  color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--foreground) 0%,
+    var(--foreground) 35%,
+    var(--muted-foreground) 50%,
+    var(--foreground) 65%,
+    var(--foreground) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: codex-status-shimmer 2s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .codex-status-shimmer {
+    color: var(--foreground);
+    background: none;
+    animation: none;
+  }
+}

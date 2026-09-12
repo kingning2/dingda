@@ -11,6 +11,7 @@ import type {
 import { fetchAgentPreferences } from "@/lib/agent-api";
 
 let mockCodexAuthenticated = false;
+let mockClaudeAuthenticated = false;
 
   type RawAgentRuntimeItem = AgentRuntimeItem & {
   installUrl?: string | null;
@@ -152,12 +153,12 @@ export function buildAuthView(
         : "请在终端登录或配置 API Key，完成后点「扫描 Agent」",
     };
   }
-  // 无鉴权探针（OpenCode / Claude 等）：不臆造「需配置」
+  // 平台触发不了登录：不臆造「需配置」
   if (!canLogin) return null;
   return {
     state: "unknown",
     label: "未检测",
-    can_login: true,
+    can_login: canLogin,
     hint: "点击「扫描 Agent」查看登录状态",
   };
 }
@@ -188,17 +189,17 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
   const authenticated = raw.authenticated ?? null;
   const auth = buildAuthView(agent, authenticated);
   const models = raw.models?.length ? raw.models : null;
-  const canLogin = Boolean(agent.can_login);
+  const hasLoginPath = Boolean(agent.can_login);
 
   const status: AgentRuntimeStatusView =
     authenticated === false
       ? {
           state: "auth_required",
-          label: canLogin ? "待登录" : "待配置",
+          label: hasLoginPath ? "待登录" : "待配置",
           hint: auth?.hint ?? null,
           badge_class: "bg-amber-500/15 text-amber-700",
         }
-      : canLogin && authenticated == null
+      : hasLoginPath && authenticated == null
         ? {
             state: "auth_required",
             label: "待登录",
@@ -262,6 +263,7 @@ export async function probeAgentRuntime(agent: AgentRuntimeItem): Promise<AgentR
   if (agent.id === "claude") {
     return mergeProbeResult(agent, {
       available: true,
+      authenticated: mockClaudeAuthenticated,
       models: [
         { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
         { id: "claude-opus-4-6", label: "Claude Opus 4.6" },
@@ -372,6 +374,13 @@ export async function loginAgentRuntime(agentId: string): Promise<AgentRuntimeLo
   }
 
   await delay(400);
+  if (agentId === "claude") {
+    mockClaudeAuthenticated = true;
+    return {
+      started: true,
+      message: "已调用 claude auth login（mock）。实际环境会在浏览器完成授权，完成后请点击「扫描 Agent」。",
+    };
+  }
   if (agentId !== "codex") {
     return { started: false, message: "该 Agent 暂不支持从平台登录" };
   }

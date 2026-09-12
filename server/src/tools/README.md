@@ -10,9 +10,11 @@ MCP 与产品 Agent **共用**的选品能力。每个 Tool 一个文件（契�
 |------|------|
 | `search.py` | 关键词 / 图 / 链接搜品（含 ali1688） |
 | `product.py` | 单品详情（xianyu / xiaohongshu） |
-| `compare.py` | 1688 同款比价 |
+| `compare.py` | 1688 多轮同款比价（来源商品 + 价格/销量/商家依据） |
 | `preview.py` | 打开任意 URL，直播截图给前端预览 |
 | `login.py` | 平台扫码登录（阻塞等用户扫码） |
+| `cli.py` | 通用命令行入口：按 registry 的 Input Schema 调工具并输出 JSON |
+| `skill.py` | 从 `src/cli/skills/` 静态模板渲染、暂存并安装 Agent Skills |
 | `validate.py` | **内部工具**：在修复现场页面上试跑候选选择器（只给修复子 agent） |
 | `validate_cli.py` | 同上的命令行形态：`python -m src.tools.validate_cli --selectors '<JSON>'` |
 | `registry.py` | `list_tools` / `get_tool` / `call_tool` |

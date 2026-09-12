@@ -2,11 +2,10 @@
  * 思考块：Foldable + 100ms 合并 + ~2s CharReveal；历史挂载不重播。
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Collapse } from "../Collapse";
 import { MarkdownRenderer } from "../markdown";
 import { useRevealText } from "../useRevealText";
-import { useThinkingFollow } from "../useThinkingFollow";
 
 export interface ThinkingBlockProps {
   text: string;
@@ -17,9 +16,15 @@ export interface ThinkingBlockProps {
 
 function formatDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}分${s}s`;
+  if (sec < 3600) {
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+    return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+  }
+  const hours = Math.floor(sec / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+  return `${hours}h ${String(minutes).padStart(2, "0")}m ${String(seconds).padStart(2, "0")}s`;
 }
 
 function elapsedSeconds(startedAt: string | null | undefined): number {
@@ -36,9 +41,7 @@ export function ThinkingBlock({
   durationSec = null,
 }: ThinkingBlockProps) {
   const [liveSec, setLiveSec] = useState(() => elapsedSeconds(startedAt));
-  const bodyRef = useRef<HTMLDivElement>(null);
   const display = useRevealText(text, streaming);
-  useThinkingFollow(bodyRef, streaming);
 
   useEffect(() => {
     if (!streaming || !startedAt) {
@@ -51,27 +54,22 @@ export function ThinkingBlock({
   }, [streaming, startedAt]);
 
   if (!text.trim() && !streaming && durationSec == null) return null;
-  // 尚无思考正文时不占位；外层「工作中…」负责等待态
-  if (!text.trim() && streaming) return null;
+  // 活动阶段由 Codex 风格状态行承担，推理正文只在结束后保留为可展开摘要。
+  if (streaming) return null;
 
   const displaySec = streaming ? liveSec : (durationSec ?? liveSec);
-  const title = streaming
-    ? `思考中${displaySec > 0 ? ` · ${formatDuration(displaySec)}` : "…"}`
-    : displaySec > 0
-      ? `思考了 ${formatDuration(displaySec)}`
-      : "思考";
+  const title = displaySec > 0 ? `Thought for ${formatDuration(displaySec)}` : "Thought";
 
   const body = display.trim() ? (
-    <div className="border-l border-border/70 pl-3 text-muted-foreground">
+    <div className="border-l border-border/70 pl-3 text-muted-foreground/80">
       <MarkdownRenderer content={display} className="text-[12px]" />
     </div>
   ) : null;
 
   return (
     <Collapse
-      title={title}
-      lifecycleOpen={streaming}
-      bodyRef={bodyRef}
+      title={<span className="italic">• {title}</span>}
+      lifecycleOpen={false}
       bodyClassName="max-h-56 overflow-y-auto"
     >
       {body}

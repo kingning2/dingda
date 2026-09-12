@@ -6,7 +6,7 @@ use std::pin::Pin;
 
 use crate::runtime::model_discover::{parse_codex_debug_models, run_command, static_models};
 use crate::runtime::types::{
-    ManagedDownloadSpec, RuntimeCapabilities, RuntimeDefinition, RuntimeModel,
+    AuthParse, ManagedDownloadSpec, RuntimeAuth, RuntimeDefinition, RuntimeModel,
 };
 
 pub fn discover_models(
@@ -58,15 +58,17 @@ pub const CODEX: RuntimeDefinition = RuntimeDefinition {
     fallback_binaries: &[],
     path_env_var: "DINGDA_CODEX_PATH",
     version_args: &["--version"],
-    capabilities: RuntimeCapabilities {
-        login_capable: true,
-    },
+    auth: Some(RuntimeAuth {
+        probe_args: &["login", "status"],
+        parse: AuthParse::ExitCode,
+        login_args: &["login"],
+        login_message: "已在浏览器中打开 Codex 登录页，完成后请点击「扫描 Agent」刷新状态。",
+    }),
     install_url: "https://github.com/openai/codex",
     docs_url: "https://developers.openai.com/codex",
     external_mcp_injection: Some("codex-mcp"),
     is_default: true,
     validate_executable: None,
-    auth_probe_args: Some(&["login", "status"]),
     discover_models,
     managed_download: Some(ManagedDownloadSpec {
         release_base_url: "https://github.com/openai/codex/releases/latest/download",

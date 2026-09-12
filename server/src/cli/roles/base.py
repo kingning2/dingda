@@ -40,6 +40,8 @@ class AgentRole(ABC):
         *,
         platform_hint: str | None = None,
         resume: bool = False,
+        workdir: Path | None = None,
+        context_messages: list | None = None,
     ) -> str:
         """拼最终写进 CLI stdin 的 prompt。"""
 

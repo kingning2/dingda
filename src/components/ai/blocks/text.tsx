@@ -15,8 +15,11 @@ export function TextBlock({ text, streaming }: TextBlockProps) {
   if (!text.trim() && !streaming) return null;
 
   return (
-    <div className="max-w-none text-[14px] leading-relaxed text-foreground">
-      {display.trim() ? <MarkdownRenderer content={display} /> : null}
+    <div className="grid max-w-none grid-cols-[1rem_minmax(0,1fr)] gap-2 text-[14px] leading-relaxed text-foreground">
+      <span className="pt-px text-muted-foreground/70">•</span>
+      <div className="min-w-0">
+        {display.trim() ? <MarkdownRenderer content={display} /> : null}
+      </div>
     </div>
   );
 }

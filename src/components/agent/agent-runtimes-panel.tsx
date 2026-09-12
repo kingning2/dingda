@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { AgentRuntimeItem } from "@/contracts/agent-runtime";
-import { downloadAgentRuntime, loginAgentRuntime, applyAgentPreferences } from "@/lib/agent-runtime";
+import {
+  applyAgentPreferences,
+  downloadAgentRuntime,
+  loginAgentRuntime,
+} from "@/lib/agent-runtime";
 import { putDefaultAgentId, putDefaultModelId } from "@/lib/agent-api";
 import { probeSingleAgent, rescanAgentRuntimes } from "@/lib/discovery-scan";
 import { useDiscoveryStore } from "@/stores/discovery-store";

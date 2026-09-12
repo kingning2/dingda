@@ -91,6 +91,8 @@ def test_select_top_labels() -> None:
     assert labels["a"] == "销量最高"
     assert labels["b"] == "价格最低"
     assert labels["c"] == "综合最优"
+    assert top[0].raw["_compare_score"] is not None
+    assert top[0].raw["_compare_reasons"] == ["销量最高"]
 
 
 def test_select_top_merge_labels() -> None:
@@ -143,5 +145,78 @@ def test_compare_products_mocked() -> None:
         assert out.total_candidates == 2
         assert out.source_image == "https://img.alicdn.com/x.jpg"
         assert len(out.items) >= 1
+
+    asyncio.run(_run())
+
+
+def test_compare_products_multi_round_and_source() -> None:
+    first = CrawlResult(
+        items=[
+            CrawlItem(
+                item_id="1",
+                title="露营椅 折叠便携",
+                url="https://detail.1688.com/offer/1.html",
+                price="40",
+                raw={
+                    "score": 0.96,
+                    "sold_count": 100,
+                    "yx_index": 4.0,
+                    "supplier": "S",
+                },
+            )
+        ]
+    )
+    second = CrawlResult(
+        items=[
+            CrawlItem(
+                item_id="2",
+                title="露营椅 加厚",
+                url="https://detail.1688.com/offer/2.html",
+                price="35",
+                raw={
+                    "score": 0.93,
+                    "sold_count": 300,
+                    "yx_index": 4.8,
+                    "supplier": "T",
+                },
+            )
+        ]
+    )
+
+    async def _run() -> None:
+        with patch(
+            "src.crawler.sources.ali1688.compare.Ali1688Crawler"
+        ) as crawler_cls:
+            instance = AsyncMock()
+            instance.search = AsyncMock(side_effect=[first, second])
+            crawler_cls.return_value = instance
+            from src.crawler.sources.ali1688.compare import compare_products
+
+            out = await compare_products(
+                image="https://img.alicdn.com/x.jpg",
+                source_item={
+                    "item_id": "xy-1",
+                    "title": "闲鱼露营椅",
+                    "platform": "xianyu",
+                    "url": "https://www.goofish.com/item?id=xy-1",
+                    "price": "89",
+                    "seller": "山系玩家",
+                },
+                limit=3,
+                rounds=2,
+            )
+        assert out.rounds == 2
+        assert out.total_candidates == 2
+        assert out.source.item_id == "xy-1"
+        assert out.source.platform == "xianyu"
+        assert out.source.price == "89"
+        assert len(out.queries) == 2
+        assert out.queries[0] == "[image]"
+        assert "露营椅" in out.queries[1]
+        assert instance.search.await_count == 2
+        first_ctx = instance.search.await_args_list[0].args[0]
+        second_ctx = instance.search.await_args_list[1].args[0]
+        assert first_ctx.meta["mode"] == "image"
+        assert second_ctx.meta["mode"] == "text"
 
     asyncio.run(_run())

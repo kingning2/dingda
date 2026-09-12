@@ -83,45 +83,48 @@ export function UserBlock({
 
   if (editing) {
     return (
-      <div className="rounded-2xl border border-border/80 bg-muted/40 p-3 shadow-sm">
-        {attachmentRow}
-        <Textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            const el = event.target;
-            el.style.height = "auto";
-            el.style.height = `${Math.max(40, el.scrollHeight)}px`;
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.preventDefault();
-              cancel();
-              return;
-            }
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              if (draft.trim()) commit();
-            }
-          }}
-          className="min-h-[40px] resize-none border-0 bg-transparent px-0 py-0 text-[14px] font-medium shadow-none focus-visible:ring-0"
-          rows={1}
-        />
-        <div className="mt-2 flex items-center justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={cancel}>
-            取消
-          </Button>
-          <Button
-            type="button"
-            size="icon-sm"
-            className="rounded-full"
-            disabled={!draft.trim()}
-            onClick={commit}
-            aria-label="从此处重新生成"
-          >
-            <ArrowUp className="size-4" />
-          </Button>
+      <div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-2 rounded-[4px] bg-foreground/[0.04] px-3 py-2.5">
+        <span className="pt-px font-semibold leading-relaxed text-muted-foreground">›</span>
+        <div className="min-w-0">
+          {attachmentRow}
+          <Textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              const el = event.target;
+              el.style.height = "auto";
+              el.style.height = `${Math.max(40, el.scrollHeight)}px`;
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                cancel();
+                return;
+              }
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                if (draft.trim()) commit();
+              }
+            }}
+            className="min-h-[40px] resize-none border-0 bg-transparent px-0 py-0 text-[14px] font-medium shadow-none focus-visible:ring-0"
+            rows={1}
+          />
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={cancel}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              size="icon-sm"
+              className="rounded-full"
+              disabled={!draft.trim()}
+              onClick={commit}
+              aria-label="从此处重新生成"
+            >
+              <ArrowUp className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -136,22 +139,24 @@ export function UserBlock({
         setEditing(true);
       }}
       className={cn(
-        "w-full rounded-2xl border border-border/80 bg-muted/40 px-3.5 py-2.5 text-left shadow-sm",
+        "w-full rounded-[4px] bg-foreground/[0.04] px-3 py-2.5 text-left",
         "transition-colors",
         editable && onResubmit
-          ? "cursor-text hover:border-border hover:bg-muted/55"
+          ? "cursor-text hover:bg-foreground/[0.065]"
           : "cursor-default",
       )}
       aria-label="编辑消息并从此处重新生成"
     >
-      {attachmentRow}
-      {content ? (
-        <p className="whitespace-pre-wrap break-words text-[14px] font-medium leading-relaxed text-foreground">
-          {content}
-        </p>
-      ) : (
-        <p className="text-[13px] text-muted-foreground">空消息</p>
-      )}
+      <div className="w-full">
+        {attachmentRow}
+        {content ? (
+          <p className="whitespace-pre-wrap break-words text-[14px] font-medium leading-relaxed text-foreground">
+            {content}
+          </p>
+        ) : (
+          <p className="text-[13px] text-muted-foreground">空消息</p>
+        )}
+      </div>
     </button>
   );
 }

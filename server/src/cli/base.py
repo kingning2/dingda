@@ -9,8 +9,8 @@
     - 禁止插头自己 ``create_subprocess`` / 自己拼 system 前言 / 自己找二进制
     - 父 / 子 agent 的差异（提示词怎么拼 / 工具注入方式 / cwd 落哪）全在 ``roles/``
       的角色插头里；本文件只按 ``role`` 取那几条策略，不写「是不是子 agent」
-    - **工具注入统一走 skill**：runtime 读 skills 目录里的 ``dingda-crawl/SKILL.md``，
-      角色 ``mcp_mode()`` 恒返回 ``"none"``，不再注入 MCP
+    - **工具注入统一走 skill**：宿主把 Skill 正文拼进 prompt，并把资源复制到
+      ``.dingda-skills/``；角色 ``mcp_mode()`` 恒返回 ``"none"``，不再注入 MCP
     - 压缩是插座上的一个方法（``compress_payload``），不另立插座
 
 使用示例：
@@ -27,7 +27,7 @@ import logging
 import os
 import uuid
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -218,6 +218,8 @@ class CliRuntime(ABC):
     stdin_format: ClassVar[str] = "plain"
     prompt_via_stdin: ClassVar[bool] = True
     fallback_binaries: ClassVar[tuple[str, ...]] = ()
+    # 本 CLI 跑起来需要的额外环境变量（默认无）。
+    extra_env: ClassVar[Mapping[str, str]] = {}
 
     @abstractmethod
     def build_args(self, ctx: dict[str, Any]) -> list[str]:
@@ -327,6 +329,7 @@ class CliRuntime(ABC):
         executable: str | None = None,
         extra_allowed_dirs: list[str] | None = None,
         platform_hint: str | None = None,
+        context_messages: list[dict[str, Any]] | None = None,
         role: str | AgentRole | None = None,
         mcp_env: dict[str, str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
@@ -360,6 +363,8 @@ class CliRuntime(ABC):
         }
         args = list(self.build_args(ctx))
         env = {**os.environ, "PYTHONUTF8": "1"}
+        # 插头自带的环境变量（对系统 node 之类是 no-op）
+        env.update(self.extra_env)
         mcp_mode = session_role.mcp_mode(self.mcp_mode)
         session_mcp_env = {**session_role.mcp_env(), **(mcp_env or {})}
         # 同一份会话 env 也给 CLI 进程：子 agent 可能靠 CLI 回打（不一定走 MCP）
@@ -376,10 +381,14 @@ class CliRuntime(ABC):
             api_base=_api_base(),
             extra_env=session_mcp_env,
         )
+        has_session = bool(str(session_id or "").strip())
         full_prompt = session_role.compose_prompt(
             prompt,
             platform_hint=platform_hint,
-            resume=bool(str(session_id or "").strip()),
+            resume=has_session,
+            workdir=workdir,
+            # 有 CLI session 时记忆在 runtime 侧，勿再灌叮答历史
+            context_messages=None if has_session else context_messages,
         )
         session_log = _RunSessionLog(
             runtime_id=self.id,

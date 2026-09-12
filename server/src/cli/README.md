@@ -1,6 +1,6 @@
 # cli
 
-外部 CLI Agent Runtime：在 Python Server 内启动 Codex / Claude / OpenCode / WorkBuddy，
+外部 CLI Agent Runtime：在 Python Server 内启动 Codex / Claude / OpenCode，
 按 **skill** 暴露 dingda 工具，流式产出事件。
 
 前端经 `/v1/agent/runtimes/...` SSE 调用；**不再**由 Tauri `launch_agent_runtime` spawn。
@@ -19,7 +19,10 @@
 不在本文件写「是不是子 agent」—— 差异全在 [roles/](roles/README.md)。
 
 **注入方式当前统一为 skill**（`mcp_mode="none"`）：工具由 [../tools/skill.py](../tools/skill.py)
-渲染成 `dingda-crawl/SKILL.md` 装到各 runtime 的 skills 目录。`inject/mcp.py`
+从 [skills/](skills/) 的静态模板渲染，并在每轮 prompt 中直接注入正文，同时把资源复制到工作目录
+`.dingda-skills/`：`dingda-crawl`（命令行取证手册）、
+`dingda-source-evidence`（来源卡）、`dingda-price-compare`（多轮编排）、
+`dingda-offer-verification`（候选验收）。`inject/mcp.py`
 （`codex-mcp` / `claude-mcp-json` / `opencode-env-content`）保留为历史分支，主链路已不走。
 
 `compress_payload(payload, label)`：压要送进 CLI 的大 JSON 载荷（目前是修复 prompt 的

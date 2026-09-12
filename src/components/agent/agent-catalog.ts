@@ -11,7 +11,7 @@ export interface AgentCatalogEntry {
   external_mcp_injection?: string | null;
 }
 
-/** 当前对外暴露的本地 Agent CLI（OpenCode / Claude / Codex）。 */
+/** 当前对外暴露的本地 Agent CLI（对齐 Rust RUNTIME_REGISTRY）。 */
 export const AGENT_CATALOG: AgentCatalogEntry[] = [
   {
     id: "opencode",

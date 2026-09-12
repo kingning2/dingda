@@ -27,7 +27,7 @@ CLI **启动/取消**在 Python `/v1/agent/runtimes/...`；账号/搜品走 HTTP
 - `list_agent_runtimes_command` → `agent::catalog::list_agent_runtimes`
 - `list_agent_registry_command` — 未扫描时的注册表占位
 - `probe_agent_runtime` / `login_agent_runtime` → `agent::probe`
-- `download_agent_runtime` — 调 `RuntimeDefinition::download_managed`（有 `managed_download` 的插头才支持：OpenCode / Codex / Claude）
+- `download_agent_runtime` — 调 `RuntimeDefinition::download_managed`（[runtime/install.rs](../runtime/install.rs)）
 
 启动与取消：Python `POST /v1/agent/runtimes/{id}/run` / `.../runs/{run_id}/cancel`。
 

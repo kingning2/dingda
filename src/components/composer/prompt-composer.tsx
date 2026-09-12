@@ -23,6 +23,8 @@ interface PromptComposerProps {
   defaultMessage?: string;
   /** 隐藏 Agent 选择器（由外部设置面板接管）。 */
   hideAgentPicker?: boolean;
+  /** Codex TUI 风格：在输入行左侧显示 `›`。 */
+  showPromptGlyph?: boolean;
   onSubmit: (payload: ComposerSubmitPayload) => void;
   /** 生成中点击停止（有则 busy 时显示停止按钮）。 */
   onCancel?: () => void;
@@ -42,6 +44,7 @@ export function PromptComposer({
   defaultModelId = null,
   defaultMessage = "",
   hideAgentPicker = false,
+  showPromptGlyph = false,
   onSubmit,
   onCancel,
   onInputActivity,
@@ -127,33 +130,43 @@ export function PromptComposer({
     <div className={cn("flex flex-col gap-2", className)}>
       <ComposerAttachments items={attachments} onRemove={handleRemoveAttachment} className="px-1" />
 
-      <Textarea
-        value={message}
-        onChange={(event) => {
-          setMessage(event.target.value);
-          onInputActivity?.();
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            if (canCancel) return;
-            handleSubmit();
-          }
-        }}
-        onPaste={(event) => {
-          const files = event.clipboardData?.files;
-          if (!files || files.length === 0) return;
-          event.preventDefault();
-          void appendFiles(files);
-        }}
-        placeholder={placeholder}
-        rows={minRows}
-        disabled={disabled || busy}
+      <div
         className={cn(
-          "min-h-[120px] resize-none border-0 bg-transparent px-1 py-1 text-[15px] leading-relaxed shadow-none focus-visible:ring-0",
-          textareaClassName,
+          "grid items-start gap-2",
+          showPromptGlyph ? "grid-cols-[1rem_minmax(0,1fr)]" : "grid-cols-1",
         )}
-      />
+      >
+        {showPromptGlyph ? (
+          <span className="pt-[3px] font-semibold text-muted-foreground">›</span>
+        ) : null}
+        <Textarea
+          value={message}
+          onChange={(event) => {
+            setMessage(event.target.value);
+            onInputActivity?.();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              if (canCancel) return;
+              handleSubmit();
+            }
+          }}
+          onPaste={(event) => {
+            const files = event.clipboardData?.files;
+            if (!files || files.length === 0) return;
+            event.preventDefault();
+            void appendFiles(files);
+          }}
+          placeholder={placeholder}
+          rows={minRows}
+          disabled={disabled || busy}
+          className={cn(
+            "min-h-[120px] resize-none border-0 bg-transparent px-1 py-1 text-[15px] leading-relaxed shadow-none focus-visible:ring-0",
+            textareaClassName,
+          )}
+        />
+      </div>
 
       <input
         ref={fileInputRef}
