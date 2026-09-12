@@ -12,4 +12,4 @@ description: 约束叮答 Crawler 模块目录与平台扩展方式。开发或�
 1. `.agents/skills/layers.md`
 2. `.agents/skills/crawler-architecture/SKILL.md`
 
-新平台只加 `server/src/crawler/sources/<id>/`。不要改 Agent Core / Browser。
+新平台只加 `packages-py/crawler/src/crawler/sources/<id>/`。不要改 Agent Core / Browser。

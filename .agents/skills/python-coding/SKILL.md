@@ -1,17 +1,17 @@
 ---
 name: python-coding
-description: 叮答 Python 编码范例。编写或修改 server/ 下 Python 时必须遵循本 Skill 中的示例：文件头、函数注释、多平台插座基类、命名、生命周期日志。少写边界分支。
+description: 叮答 Python 编码范例。编写或修改 packages-py/ 下 Python 时必须遵循本 Skill 中的示例：文件头、函数注释、多平台插座基类、命名、生命周期日志。少写边界分支。
 ---
 
 # Python 编码范例（照抄结构）
 
-写 `server/**/*.py` 时**按下面示例的形状写**，不要自创风格。架构分层见 [layers.md](../layers.md)。
+写 `packages-py/**/*.py` 时**按下面示例的形状写**，不要自创风格。架构分层见 [layers.md](../layers.md)。
 
 ---
 
 ## 示例 A：文件头 + 函数注释 + 日志
 
-目标路径：`server/src/channels/xianyu/channel.py`（文件夹已是 `xianyu`，文件不要再叫 `xianyu_*.py`）
+目标路径：`packages-py/channels/src/channels/xianyu/channel.py`（文件夹已是 `xianyu`，文件不要再叫 `xianyu_*.py`）
 
 **文件头必须像 `infrastructure/events/bus.py` 这样写**：一行总述 + `职责：` +（可选）`设计说明：` / `使用示例：` / 后续备注。禁止只有一句话就结束。
 
@@ -83,7 +83,7 @@ class XianyuQrChannel:
 
 ## 示例 B：多平台插座（基类 + 插头 + registry）
 
-### 插座 — `server/src/channels/base.py`
+### 插座 — `packages-py/channels/src/channels/base.py`
 
 ```python
 """扫码登录渠道插座。
@@ -117,7 +117,7 @@ class QrLoginChannel(ABC):
         """读取当前登录快照供 HTTP 轮询。"""
 ```
 
-### 插头 — `server/src/channels/xiaohongshu/channel.py`
+### 插头 — `packages-py/channels/src/channels/xiaohongshu/channel.py`
 
 ```python
 """小红书扫码登录 Channel。
@@ -154,7 +154,7 @@ class XiaohongshuQrChannel(QrLoginChannel):
         return snap
 ```
 
-### 注册 — `server/src/channels/registry.py`
+### 注册 — `packages-py/channels/src/channels/registry.py`
 
 ```python
 """扫码 Channel 注册表。
@@ -195,7 +195,7 @@ def start_login(platform: str, timeout: int):
         ...
 
 # ❌ 平台特例塞进 core
-# server/src/crawler/core/xianyu_special_case.py
+# packages-py/crawler/src/crawler/core/xianyu_special_case.py
 ```
 
 ## 示例 C：爬虫插座（基类管浏览器会话，平台只写业务）
@@ -204,7 +204,7 @@ def start_login(platform: str, timeout: int):
 **平台只写：** 打开哪个 URL、怎么抽商品。  
 **禁止：** 每个平台 crawler 里再抄一套 launch。
 
-### 插座 — `server/src/crawler/core/base.py`
+### 插座 — `packages-py/crawler/src/crawler/core/base.py`
 
 ```python
 """爬虫浏览器会话基类。
@@ -272,7 +272,7 @@ class BrowserCrawler(ABC):
         """平台搜品：子类实现；开关页必须走 open_page/close_page。"""
 ```
 
-### 插头 — `server/src/crawler/sources/xianyu/crawler.py`
+### 插头 — `packages-py/crawler/src/crawler/sources/xianyu/crawler.py`
 
 ```python
 """闲鱼搜品 Source。
@@ -350,7 +350,7 @@ class BrowserCrawler:
 
 每个**有代码的文件夹**必须有 `README.md`。`__pycache__` 不要写。
 
-形状照抄 `server/src/README.md`：
+形状照抄 `packages-py/api/src/api/README.md`：
 
 1. 一行总述本目录职责
 2. **本目录文件**：每个 `.py` 单独一小节（或条目），写清：干什么、关键函数/类、谁调用。有 `app.py` 必须写透
@@ -374,13 +374,14 @@ class BrowserCrawler:
 无。
 ```
 
-上层引用下层（`server/src/README.md`）：
+上层引用下层（如 `packages-py/crawler/src/crawler/README.md`）：
 
 ```markdown
 ## 子目录
 
-- [api/](api/README.md) — 产品 HTTP
-- [crawler/](crawler/README.md) — 平台采集
+- [core/](core/README.md) — 采集核心
+- [sources/](sources/README.md) — 各平台 Source
+- [extraction/](extraction/README.md) — 抽取与修复
 ```
 
 新增目录时：**先写下层 README，再在上层「子目录」里加一行链接**。改职责时同步该层 README，不要只改注释。

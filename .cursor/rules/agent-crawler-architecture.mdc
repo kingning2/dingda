@@ -1,6 +1,6 @@
 ---
 description: 叮答 Agent / Crawler / Browser / Tool / 前端能力注入的详细架构入口。修改这些模块或新增平台/浏览器适配器时应用。
-globs: server/src/agent/**,server/src/crawler/**,server/src/browser/**,server/src/tools/**,server/src/domains/agent/**,server/src/domains/crawler/**,server/src/mcp/**,server/src/api/agent.py,server/src/api/crawler.py,packages/contracts/src/**,packages/client/runtime/src/capabilities.ts,packages/client/runtime/src/server.ts,packages/client/ui-agent/src/**,packages/client/ui-crawler/src/**,apps/web/src/pages/assets-page.tsx,packages-rs/client/src/commands/**,packages-rs/runtime/src/**,packages-rs/python/src/**
+globs: packages-py/agent/src/agent/**,packages-py/crawler/src/crawler/**,packages-py/browser/src/browser/**,packages-py/tools/src/tools/**,packages-py/domains/src/domains/agent/**,packages-py/domains/src/domains/crawler/**,packages-py/api/src/api/agent.py,packages-py/api/src/api/crawler.py,packages/contracts/src/**,packages/client/runtime/src/capabilities.ts,packages/client/runtime/src/server.ts,packages/client/ui-agent/src/**,packages/client/ui-crawler/src/**,apps/web/src/pages/assets-page.tsx,packages-rs/client/src/commands/**,packages-rs/runtime/src/**,packages-rs/python/src/**
 alwaysApply: false
 ---
 
@@ -13,9 +13,9 @@ alwaysApply: false
    - 产品 Agent / Workflow → `agent-architecture/SKILL.md`
    - 爬虫 / Source / 快照 / 去重 → `crawler-architecture/SKILL.md`
    - Playwright / Camoufox → `browser-architecture/SKILL.md`
-   - Tool / MCP → `tool-architecture/SKILL.md`
+   - Tool → `tool-architecture/SKILL.md`
    - Web vs 桌面注入 → `frontend-architecture/SKILL.md`
 
 未读完对应 SKILL 不得跨层 import，不得新增 Tauri 产品 command，不得在浏览器侧接入外部 CLI Agent。
 
-核心规则（必遵）：Browser 无平台业务；Crawler 不直连 Playwright/Camoufox；扩展只改 `sources/<platform>/` 或 `adapters/<browser>/`；登录在 `channels/`；Agent/MCP/Tool 走 Tool → Crawler → Browser；禁止新增 Rust Crawler/Browser/DB。全文见 `.agents/skills/layers.md`。
+核心规则（必遵）：Browser 无平台业务；Crawler 不直连 Playwright/Camoufox；扩展只改 `sources/<platform>/` 或 `adapters/<browser>/`；登录在 `channels/`；Agent/Tool 走 Tool → Crawler → Browser；禁止新增 Rust Crawler/Browser/DB。全文见 `.agents/skills/layers.md`。

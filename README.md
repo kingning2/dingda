@@ -28,7 +28,7 @@
 - **步骤实时直播** — 采集过程推送截图帧，打开页、翻页、进详情全程可见
 - **风控自动恢复** — 先自动过滑块；失败则弹有头窗口等人，Cookie 写回后从断点续跑
 - **DOM 自动修复** — 厂家改版导致选择器失效时，指纹重定位 + AI 修抽取规则，验证通过后热加载继续采
-- **Codex 即插即用** — Agent 页安装登录即可；运行时注入 `dingda-mcp`（`search` / `product` / `compare` / `preview`）
+- **Codex 即插即用** — Agent 页安装登录即可；内置工具（`search` / `product` / `compare` / `preview`）经 Skill 注入 CLI Agent
 - **多 Agent 管理** — OpenCode / Claude / Codex 同屏：版本、模型、默认 Agent 一键切换
 - **本地一体** — 数据与浏览器会话跑在本机，不依赖远程爬虫 SaaS
 
@@ -48,7 +48,7 @@
 
 ```bash
 pnpm install
-pnpm prepare:server   # uv sync --frozen（server/）
+pnpm prepare:python   # uv sync --frozen（仓库根 uv workspace）
 pnpm tauri dev        # 桌面壳 + 前端
 
 # 仅 Web 联调（默认 API http://127.0.0.1:8787）
@@ -61,14 +61,14 @@ pnpm dev
 2. 选好模型，设为默认，状态显示「已就绪」
 3. 回首页或爬虫页，用自然语言描述选品 / 调研任务
 
-工具经 `dingda-mcp` 注入，无需手写第二套爬虫脚本。
+工具经内置 Skill 注入 CLI Agent，无需手写第二套爬虫脚本。
 
 ## How it works
 
 ```text
 用户一句话
     → Codex / Claude / OpenCode
-    → dingda-mcp：search / product / compare / preview
+    → 内置工具：search / product / compare / preview（经 Skill 注入）
     → Crawler（闲鱼 / 1688 / 小红书）
          ├─ 步骤直播截图 → 界面
          ├─ 风控 → 自动滑块 / 有头人工 → Cookie 回写
@@ -86,8 +86,11 @@ packages/           前端 pnpm 工作区（见 packages/README.md）
   └─ client/        业务域包（ui-agent / ui-account / ui-ai / …）与机制包（runtime / app-state / routes）
 packages-rs/        Rust workspace（成员包，见 packages-rs/README.md）
   └─ client/        Tauri 客户端（起停 Server、OS 能力、外部 CLI）
-server/             Python Server（API / Agent / Crawler / Browser / MCP）
+packages-py/        Python uv workspace（见根 pyproject.toml）
+  ├─ api/            FastAPI 装配与入口（`python -m api`）
+  ├─ contracts/      零依赖线协议 DTO 与端口
+  └─ …               core / infrastructure / browser / crawler / tools / cli / domains
 ```
 
 更多目录说明见 [`AGENTS.md`](AGENTS.md)、[`packages/README.md`](packages/README.md)、
-[`packages-rs/README.md`](packages-rs/README.md) 与 `server/src/README.md`。
+[`packages-rs/README.md`](packages-rs/README.md) 与 [`packages-py/api/src/api/README.md`](packages-py/api/src/api/README.md)。

@@ -13,7 +13,7 @@ description: 约束叮答 Crawler 模块目录与平台扩展方式。开发或�
 - Crawler 禁止直接依赖 Playwright / Camoufox，必须依赖 Browser Interface。
 - 平台新增只修改 `crawler/sources/<platform>/`，浏览器新增只修改 `browser/adapters/<browser>/`。
 - 登录/账号语义属于 `channels/<platform>/`，Browser 只负责通用 Session/Cookie 能力。
-- Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+- Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
 - 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
 ## 何时必须遵守
@@ -22,12 +22,12 @@ description: 约束叮答 Crawler 模块目录与平台扩展方式。开发或�
 - 新增或修改一个电商平台
 - 解析 HTML/JSON、规范化商品字段
 - 保存快照、去重、任务幂等
-- Review `domains/crawler`、未来的 `server/src/crawler/`
+- Review `domains/crawler`、未来的 `packages-py/crawler/src/crawler/`
 
 ## 目标目录
 
 ```text
-server/src/crawler/
+packages-py/crawler/src/crawler/
 ├── core/
 ├── sources/
 ├── extraction/
@@ -65,9 +65,9 @@ sources/xiaohongshu/crawler.py
 
 完整示例见 [python-coding/SKILL.md](../python-coding/SKILL.md) 示例 C。
 
-现存 `server/src/domains/crawler/service.py` 是空骨架。**新代码不要往这里堆。**  
+现存 `packages-py/domains/src/domains/crawler/service.py` 是空骨架。**新代码不要往这里堆。**  
 
-前端手动搜品走 `POST /v1/crawler/...`（见 `packages/contracts/src/crawler.ts`），**不经产品 Agent**。Agent 搜品必须走同名 Crawler Tool，最后仍进同一套 `crawler/`。MCP（`dingda-mcp`）同样只能打到这套 Core，禁止再包一层 goofish 特例。
+前端手动搜品走 `POST /v1/crawler/...`（见 `packages/contracts/src/crawler.ts`），**不经产品 Agent**。Agent 搜品必须走同名 Crawler Tool，最后仍进同一套 `crawler/`。CLI skill 注入的 `tools.cli` 同样只能打到这套 Core，禁止再包一层 goofish 特例。
 
 ## sources
 
@@ -106,7 +106,7 @@ agent/
     xianyu_logic.py
 ```
 
-`server/src/channels/xianyu/` 只保留登录/cookie/风控恢复。不要在 Channel 里写搜品列表。
+`packages-py/channels/src/channels/xianyu/` 只保留登录/cookie/风控恢复。不要在 Channel 里写搜品列表。
 
 ## extraction
 
@@ -198,7 +198,7 @@ browser/
 4. 提供去重键给 `dedup/`
 5. 在 Source registry 注册
 6. 需要登录时 **复用** `channels/` 已有 session，不要复制扫码
-7. 加 `server/tests/crawler/sources/<id>/`
+7. 加 `packages-py/api/tests/crawler/sources/<id>/`
 8. 更新契约里的 platform 枚举（Python + `packages/contracts/src/crawler.ts`）
 9. **不改** Agent Core；Tool 若已有 `platform` 字段则不必改 Tool
 
@@ -214,7 +214,7 @@ browser/
 ```text
 ✅ sources/xianyu/crawler.py 继承 BrowserCrawler，只写闲鱼页
 ✅ core/base.py 统一代理 / 指纹 / context
-✅ 手动 UI、产品 Agent、MCP 三条入口汇合到同一 Crawler Core
+✅ 手动 UI、产品 Agent、CLI skill 三条入口汇合到同一 Crawler Core
 ```
 
 ## 检查清单

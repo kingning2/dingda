@@ -15,7 +15,7 @@ mcp.ts             MCP catalog
 ## 为什么单独成包
 
 它是前端与 `server/` 之间**唯一**的共同语言。放独立包的目的不是复用，是**让越界可被发现**：
-`server/src/contracts/` 改了字段，这里必须同步；而这里一旦 import 了 React 或任何运行时库，
+`packages-py/contracts/src/contracts/` 改了字段，这里必须同步；而这里一旦 import 了 React 或任何运行时库，
 就说明协议层被污染了 —— 那是可以直接看出来的信号。
 
 ## 边界

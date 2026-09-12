@@ -14,7 +14,7 @@ description: 约束叮答 Browser 基础设施与适配器。开发或修改浏�
 - Crawler 禁止直接依赖 Playwright / Camoufox，必须依赖 Browser Interface。
 - 浏览器新增只修改 `browser/adapters/<browser>/`；平台新增只修改 `crawler/sources/<platform>/`。
 - 登录/账号语义属于 `channels/<platform>/`，Browser 只负责通用 Session/Cookie 能力。
-- Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+- Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
 - 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
 ## 何时必须遵守
@@ -28,7 +28,7 @@ description: 约束叮答 Browser 基础设施与适配器。开发或修改浏�
 ## 目标目录
 
 ```text
-server/src/browser/
+packages-py/browser/src/browser/
 ├── manager.py
 ├── session.py
 ├── context.py
@@ -184,7 +184,7 @@ Channel 扫码经 `browser.sync.sync_headless_page` 或 `BrowserManager` 开页�
 
 ## 检查清单
 
-- [ ] 新文件在 `server/src/browser/`（浏览器在 adapters）
+- [ ] 新文件在 `packages-py/browser/src/browser/`（浏览器在 adapters）
 - [ ] 无商品模型、无 Agent、无「只存解析后价格」
 - [ ] Agent/Crawler/Workflow 未 import playwright/camoufox
 - [ ] 新增引擎只加 adapter

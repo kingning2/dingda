@@ -43,7 +43,7 @@ docs: 补充工具清单字段说明
 | 构建与依赖 | 根 `package.json`、`Cargo.toml`、`pnpm-workspace.yaml`、`tsconfig*.json`、`scripts/` | `build` / `deps` |
 | 环境与配置 | `.gitignore`、`.env.example`、`components.json` | `env` / `chore` |
 | Rust 侧 | `packages-rs/*/src/`（Cargo workspace，成员见根 `Cargo.toml`） | `rust` |
-| Python Server | `server/src/` | `server` |
+| Python Server | `packages-py/*/src/`（uv 工作区，成员见根 `pyproject.toml`） | `server` |
 | 前端线协议 | `packages/contracts/src/` | `contracts` |
 | 前端基座 | `packages/client/{app-state,runtime,routes}/src/` | `frontend` |
 | 前端 UI 包 | `packages/client/ui-*/src/` | `ui` |
