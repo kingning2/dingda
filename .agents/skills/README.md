@@ -21,7 +21,7 @@
 
 - **核心规则**：见 [layers.md](layers.md)「核心规则」原文（Browser / Crawler 职责、禁止跨层、扩展路径、禁止 Rust Crawler/Browser/DB）。
 - 产品能力写 Python HTTP/SSE；不要新开 Rust IPC 项目，也不要把搜品做成 `invoke`。
-- 壳能力留在现有 `src-tauri/src/commands/`（生命周期、对话框、CLI Agent Runtime）。
+- 壳能力留在现有 `packages-rs/client/src/commands/`（生命周期、对话框、CLI Agent Runtime）。
 - 新业务目录：`server/src/{agent,crawler,browser,tools}/`。
 - 禁止 Agent → Playwright / SQLite / 闲鱼。
 - 前端主开发在浏览器；外部 CLI Agent 仅桌面注入（`src/lib/capabilities.ts`）。

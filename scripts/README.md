@@ -12,7 +12,7 @@ node scripts/agent-rollback-check.mjs
 
 给 **GitHub Actions / 任意 CI** 用的跨平台准备脚本（也可用本机 `pnpm prepare:desktop-runtime`）。
 
-产出 `src-tauri/resources/runtime/`：
+产出 `packages-rs/client/resources/runtime/`：
 
 | 路径 | 说明 |
 |------|------|

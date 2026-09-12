@@ -17,7 +17,7 @@
 7. Agent / MCP / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
 8. 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
-路径均在 `server/src/` 下（如 `server/src/crawler/sources/xianyu/`）。Python 目录树见 [`server/src/README.md`](../../server/src/README.md)；Tauri 壳见 [`src-tauri/src/README.md`](../../src-tauri/src/README.md)。上层 README 只引用下层。产品 SQLite 继续留在 Python `infrastructure/db`，不要为 Browser/Crawler 新开 Rust DB。
+路径均在 `server/src/` 下（如 `server/src/crawler/sources/xianyu/`）。Python 目录树见 [`server/src/README.md`](../../server/src/README.md)；Tauri 壳见 [`packages-rs/client/src/README.md`](../../packages-rs/client/src/README.md)。上层 README 只引用下层。产品 SQLite 继续留在 Python `infrastructure/db`，不要为 Browser/Crawler 新开 Rust DB。
 
 ---
 
@@ -28,10 +28,14 @@
 ```text
 src/                     React（Web 产品）
 src/contracts/           前端 DTO（产品 API + CLI Runtime）
-src-tauri/               Tauri 壳
-  commands/              壳 IPC（invoke）
-  python/                拉起/停止 Python
-  agent/ + runtime/      外部 CLI Agent Runtime（Codex/Claude/…）
+packages-rs/             Rust Cargo workspace（工作区根在仓库根 Cargo.toml）
+  client/                Tauri 客户端（壳；唯一可执行体）
+    src/commands/        壳 IPC（invoke）
+  common/                日志出口 + 路径解析 + 平台标签
+  camoufox/              Camoufox 定位与解压
+  python/                Python 子进程起停与启动环境
+  runtime/               CLI Runtime 定义 / 探测 / 托管下载
+  agent/                 CLI Agent 目录与探测（IPC DTO）
 server/src/             Python Server
   api/                   HTTP
   contracts/             Pydantic DTO
@@ -41,6 +45,9 @@ server/src/             Python Server
   domains/               现存应用服务（骨架 + 账号等）
 ```
 
+包依赖单向无环：`common ← camoufox ← python ← client`、`common ← runtime ← agent ← client`。
+成员包边界见 [`packages-rs/README.md`](../../packages-rs/README.md)。
+
 ---
 
 ## 两个「Agent」禁止混用
@@ -48,9 +55,9 @@ server/src/             Python Server
 | 名称 | 路径 | 职责 |
 |------|------|------|
 | 产品 Agent | 目标：`server/src/agent/` | planning / tool 调用 / workflow |
-| CLI Agent Runtime | 探测/下载：`src-tauri/src/runtime/` + `agent/`；**启动**：`server/src/cli/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
+| CLI Agent Runtime | 探测/下载：`packages-rs/runtime/src/` + `agent/`；**启动**：`server/src/cli/` | 壳负责 PATH/下载；Python 负责 spawn + SSE |
 
-- 产品 Agent 的代码不要写进 `src-tauri/src/agent/` 或 `src-tauri/src/runtime/`。
+- 产品 Agent 的代码不要写进 `packages-rs/agent/src/` 或 `packages-rs/runtime/src/`。
 - CLI **探测/下载**在 Tauri；**spawn/SSE**在 `server/src/cli/`，不要再写回 Tauri command。
 - `server/src/domains/runtime/` 只是 Python 进程快照，不是垃圾桶，也不是 CLI Runtime。
 
@@ -154,7 +161,7 @@ Desktop 壳注入（仅客户端）
 | 环境 | 产品 API | 外部 CLI Agent |
 |------|----------|----------------|
 | 浏览器 | 连本机 `VITE_API_BASE_URL` 或 `http://127.0.0.1:8787` | **不支持** |
-| Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`src-tauri/src/runtime/`） |
+| Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`packages-rs/runtime/src/`） |
 
 实现入口：`src/lib/capabilities.ts`。UI / 扫描 / Composer 用 `supportsExternalAgents()`，不要散落 `isTauri()` 冒充业务开关。
 
@@ -173,7 +180,7 @@ Tauri 只是套壳。主要开发在 Web + Python。
 | 通道 | 写在哪 | 干什么 |
 |------|--------|--------|
 | 产品 API | Python `server/src/api/` + `server/src/contracts/` | 账号、扫码、爬虫、产品 Agent、调研、MCP catalog、进度事件 |
-| 壳 IPC | 现有 `src-tauri/src/commands/` | 只有浏览器/Python 做不了的事 |
+| 壳 IPC | 现有 `packages-rs/client/src/commands/` | 只有浏览器/Python 做不了的事 |
 
 React 产品调用形态：
 
@@ -198,7 +205,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 | `list_agent_runtimes_command` / `probe_agent_runtime` / `login_agent_runtime` / `download_agent_runtime` | 读 PATH、探测登录、托管下载（不 spawn） |
 | `log_frontend_error` | Python 未就绪时仍要落到壳日志 |
 
-新增同类能力：加在 `src-tauri/src/commands/`，不要新开仓库或 `src-tauri/src/ipc/` 平行体系。
+新增同类能力：加在 `packages-rs/client/src/commands/`，不要新开仓库或 `packages-rs/client/src/ipc/` 平行体系。
 
 ### 新产品能力：写 Python，不要写成 Tauri command
 
@@ -208,7 +215,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 ❌ invoke("search_products")
 ❌ invoke("agent_run")          // 产品 Agent
 ❌ invoke("save_snapshot")
-❌ src-tauri 里再做一套 SQLite Repository 给爬虫/账号用
+❌ packages-rs/client 里再做一套 SQLite Repository 给爬虫/账号用
 ❌ Rust 把 HTTP 再包一层当网关
 ```
 

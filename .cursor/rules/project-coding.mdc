@@ -13,9 +13,9 @@ alwaysApply: true
 |------|------|
 | `src/` | Web 产品 UI（主开发） |
 | `server/` | Python Server（产品 API / Agent / Crawler / Browser） |
-| `src-tauri/` | Tauri 壳（起停 Server、OS 能力、外部 CLI Agent） |
+| `packages-rs/client/` | Tauri 壳（起停 Server、OS 能力、外部 CLI Agent） |
 
-`server/src/` 目录树以 [`server/src/README.md`](../../server/src/README.md) 为准；Tauri 壳以 [`src-tauri/src/README.md`](../../src-tauri/src/README.md) 为准（上层 README 只链接下层，本层每个源文件写清职责）。
+`server/src/` 目录树以 [`server/src/README.md`](../../server/src/README.md) 为准；Tauri 壳以 [`packages-rs/client/src/README.md`](../../packages-rs/client/src/README.md) 为准（上层 README 只链接下层，本层每个源文件写清职责）。
 
 禁止新建 `apps/`、`packages/`、第二套 Skill、产品用 Rust IPC crate。
 
@@ -33,7 +33,7 @@ alwaysApply: true
 ## 怎么写功能
 
 1. **产品能力**（账号、爬虫、产品 Agent、调研）：`server/src/` + HTTP/SSE；前端 `fetch(apiBaseUrl + '/v1/...')`。
-2. **壳能力**（对话框、窗口、起停 Server、Codex/Claude 等外部 Agent）：现有 `src-tauri/src/commands/`，前端经 `src/lib/` 适配器。
+2. **壳能力**（对话框、窗口、起停 Server、Codex/Claude 等外部 Agent）：现有 `packages-rs/client/src/commands/`，前端经 `src/lib/` 适配器。
 3. **Web 联调**：默认 `http://127.0.0.1:8787`（或 `VITE_API_BASE_URL`）；不要用 `isTauri()` 挡住产品 HTTP。
 4. **外部 CLI Agent**：仅桌面；用 `supportsExternalAgents()`（`src/lib/capabilities.ts`）。浏览器禁止 mock Codex/Claude。
 
@@ -59,7 +59,7 @@ Agent → Tool → Crawler → BrowserPort → Adapter
 ## 语言规范（写代码时自动带上）
 
 - Python（`server/**/*.py`）→ 读 `.agents/skills/python-coding/SKILL.md` **照抄示例**
-- Rust（`src-tauri/**/*.rs`）→ 读 `.agents/skills/rust-coding/SKILL.md` **照抄示例**
+- Rust（`packages-rs/**/*.rs`）→ 读 `.agents/skills/rust-coding/SKILL.md` **照抄示例**
 
 规则入口：`.cursor/rules/python-coding.mdc`、`.cursor/rules/rust-coding.mdc`。
 

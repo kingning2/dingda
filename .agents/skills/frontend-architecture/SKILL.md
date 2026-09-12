@@ -25,7 +25,7 @@ src/                 产品 UI（主开发）
     window.ts        窗口铬（桌面）
     agent-runtime*   外部 CLI Agent（桌面）
   providers/         React context
-src-tauri/           壳：注入能力 + 起停 Server + CLI Runtime
+packages-rs/client/           壳：注入能力 + 起停 Server + CLI Runtime
 ```
 
 ## 能力表

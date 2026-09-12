@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "prepare:server": "cd server && uv sync --frozen",
     "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",
-    "tauri": "tauri"
+    "tauri": "node scripts/tauri.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

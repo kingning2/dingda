@@ -79,10 +79,12 @@ pnpm dev
 ## Repository
 
 ```text
-src/          Web UI（React）
-server/       Python Server（API / Agent / Crawler / Browser / MCP）
-src-tauri/    桌面壳（起停 Server、OS 能力、外部 CLI）
-public/       品牌资源与截图
+src/                Web UI（React）
+server/             Python Server（API / Agent / Crawler / Browser / MCP）
+packages-rs/        Rust workspace（成员包，见 packages-rs/README.md）
+  └─ client/        Tauri 客户端（起停 Server、OS 能力、外部 CLI）
+public/             品牌资源与截图
 ```
 
-更多目录说明见 [`AGENTS.md`](AGENTS.md) 与 `server/src/README.md`。
+更多目录说明见 [`AGENTS.md`](AGENTS.md)、[`packages-rs/README.md`](packages-rs/README.md)
+与 `server/src/README.md`。

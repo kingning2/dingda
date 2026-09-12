@@ -14,7 +14,7 @@ server/.tmp/
 .tmp/
 
 # Desktop bundled runtime（prepare-desktop-runtime 产出；Camoufox zip 很大）
-src-tauri/resources/runtime/
+packages-rs/client/resources/runtime/
 
 # Rust
 target/

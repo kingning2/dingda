@@ -12,4 +12,4 @@ description: 约束叮答产品 Agent 的目录、职责和依赖。开发或修
 1. `.agents/skills/layers.md`
 2. `.agents/skills/agent-architecture/SKILL.md`
 
-未读完不要写产品 Agent 代码。不要把实现放进 `src-tauri/src/runtime/`，不要为产品 Agent 新增 Tauri command。
+未读完不要写产品 Agent 代码。不要把实现放进 `packages-rs/runtime/src/`，不要为产品 Agent 新增 Tauri command。

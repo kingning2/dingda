@@ -28,7 +28,7 @@ import { Readable } from "node:stream";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const runtime = join(root, "src-tauri", "resources", "runtime");
+const runtime = join(root, "packages-rs", "client", "resources", "runtime");
 const binDir = join(runtime, "bin");
 const serverOut = join(runtime, "server");
 const serverSrc = join(root, "server");

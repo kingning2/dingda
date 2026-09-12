@@ -7,7 +7,7 @@ description: 变更前最小计划。开发 Agent / Crawler / Browser / Tool 或
 1. **边界定位**
    - 改动属于 React 产品 UI、Rust 壳、还是 Python Server
    - 产品 API 走 Python HTTP/SSE，不要经 Rust 转发
-   - 壳能力（对话框、Python 生命周期、CLI Agent Runtime）才走现有 `src-tauri/src/commands/`
+   - 壳能力（对话框、Python 生命周期、CLI Agent Runtime）才走现有 `packages-rs/client/src/commands/`
    - 涉及 Agent / Crawler / Browser / Tool 时，先读 `.agents/skills/layers.md` 与对应 SKILL
 
 2. **契约检查**

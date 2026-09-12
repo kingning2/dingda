@@ -5,7 +5,7 @@ description: 约束叮答产品 Agent 的目录、职责和依赖。开发或修
 
 # Agent 架构开发规范
 
-先读 [layers.md](../layers.md)（含**核心规则**原文）。本 Skill 只管**产品 Agent**（`server/src/agent/`），不管 `src-tauri` 里的 CLI Agent Runtime。
+先读 [layers.md](../layers.md)（含**核心规则**原文）。本 Skill 只管**产品 Agent**（`server/src/agent/`），不管 `packages-rs/client` 里的 CLI Agent Runtime。
 
 ## 核心规则（本层相关）
 
@@ -165,4 +165,4 @@ self.state.apply_tool_result("crawler.search_products", result)
 - [ ] 外部世界只经 Tool
 - [ ] Workflow 未直呼 Crawler/Browser 类
 - [ ] 未新增 Tauri command 来跑产品 Agent（产品 Agent 走 Python HTTP/SSE）
-- [ ] 未把代码写进 `src-tauri/src/runtime/`
+- [ ] 未把代码写进 `packages-rs/runtime/src/`

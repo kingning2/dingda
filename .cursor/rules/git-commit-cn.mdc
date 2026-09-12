@@ -42,12 +42,12 @@ docs: 补充工具清单字段说明
 |------|-----------------|------------|
 | 构建与依赖 | `package.json`、`Cargo.toml`、`build.rs`、`scripts/`、`.github/` | `build` / `deps` |
 | 环境与示例配置 | `.env.example`、`.gitignore` | `env` / `chore` |
-| Rust 后端 | `src-tauri/src/` | `tauri` |
+| Rust 后端 | `packages-rs/client/src/` | `tauri` |
 | Python Sidecar | `channel_agent/`（仓库根目录） | `tauri` 或 `sidecar` |
 | 前端 IPC / 枚举 / 契约 | `packages/shared/src/tauri-bridge/`、`packages/shared/src/contracts/` | `frontend` |
 | 控制台 UI | `packages/ui/src/agent-console/`、`packages/ui/src/` 基础组件 | `ui` |
 | 应用壳 / 路由 | `apps/wework/` | `frontend` |
-| i18n | `src-tauri/resources/languages/` | `tauri` 或 `i18n` |
+| i18n | `packages-rs/client/resources/languages/` | `tauri` 或 `i18n` |
 | 文档 | `docs/`、`AGENTS.md` | `docs` |
 | 契约生成 | `scripts/generate-contracts.mjs` 及生成物 | `chore` / `build` |
 

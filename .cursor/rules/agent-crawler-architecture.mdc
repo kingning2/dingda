@@ -1,6 +1,6 @@
 ---
 description: 叮答 Agent / Crawler / Browser / Tool / 前端能力注入的详细架构入口。修改这些模块或新增平台/浏览器适配器时应用。
-globs: server/src/agent/**,server/src/crawler/**,server/src/browser/**,server/src/tools/**,server/src/domains/agent/**,server/src/domains/crawler/**,server/src/mcp/**,server/src/api/agent.py,server/src/api/crawler.py,src/contracts/**,src/lib/capabilities.ts,src/lib/server.ts,src/lib/agent-*.ts,src/components/agent/**,src/components/crawler/**,src/pages/assets-page.tsx,src-tauri/src/commands/**,src-tauri/src/runtime/**,src-tauri/src/python/**
+globs: server/src/agent/**,server/src/crawler/**,server/src/browser/**,server/src/tools/**,server/src/domains/agent/**,server/src/domains/crawler/**,server/src/mcp/**,server/src/api/agent.py,server/src/api/crawler.py,src/contracts/**,src/lib/capabilities.ts,src/lib/server.ts,src/lib/agent-*.ts,src/components/agent/**,src/components/crawler/**,src/pages/assets-page.tsx,packages-rs/client/src/commands/**,packages-rs/runtime/src/**,packages-rs/python/src/**
 alwaysApply: false
 ---
 

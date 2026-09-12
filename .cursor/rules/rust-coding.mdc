@@ -1,6 +1,6 @@
 ---
-description: 叮答 Rust（src-tauri/）编码规范。编辑 src-tauri/**/*.rs 时必须先读 Skill 示例并照抄结构。
-globs: src-tauri/**/*.rs
+description: 叮答 Rust（packages-rs/）编码规范。编辑 packages-rs/**/*.rs 时必须先读 Skill 示例并照抄结构。
+globs: packages-rs/**/*.rs
 alwaysApply: false
 ---
 
@@ -19,4 +19,4 @@ alwaysApply: false
 
 未按 Skill 示例形状写的补丁视为不合格。产品 API 不要做成 Tauri command。
 
-每个有 `.rs` 的目录有 `README.md`（树形：上层只链下层；本层每个文件写清职责、关键符号、谁调用）。根地图：`src-tauri/src/README.md`。
+每个有 `.rs` 的目录有 `README.md`（树形：上层只链下层；本层每个文件写清职责、关键符号、谁调用）。根地图：`packages-rs/client/src/README.md`。
