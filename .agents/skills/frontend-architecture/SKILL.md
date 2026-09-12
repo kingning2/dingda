@@ -27,7 +27,7 @@ packages/
     runtime/         宿主能力（boot facts）+ HTTP 传输 + Server 状态
     ui-theme/        设计令牌与全局样式
     ui-primitives/   无业务的原子组件 + cn()
-    ui-layout/       窗口骨架：外壳 / 标题栏 / 导航栏
+    ui-layout/       窗口骨架：外壳 / 标题栏 / 导航栏 / 路由出口
     ui-feedback/     错误边界与告警宿主
     ui-ai/            AI 消息渲染
     ui-composer/     输入区
@@ -51,6 +51,17 @@ apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme
 1. **叶子包不许引业务包。** 启动编排要组合多个域时放 `apps/web/src/boot/`。
 2. **不留「兼容旧 import」的转发壳** —— 转发文件会把环藏起来。直接改调用方。
 3. **跨域状态放 `app-state`**，不要寄居在业务包下。
+4. **包不许引应用源码**（`apps/**`，含 `@web/*` 别名）。方向只能是应用 → 包；
+   实现要么挪进包，要么由应用注入。
+
+这四条都有自动检查，**改完结构务必跑一次**：
+
+```bash
+pnpm check:deps      # 环 / 跨层引用 / 用了没声明 / 自依赖 = 硬失败；声明没用 = 警告
+```
+
+已接进 `pnpm dev` 与 `pnpm build` 前置。违规在运行时是**静默正常**的
+（靠根级 hoisting 兜着），所以不能靠自觉。
 
 ## 能力表
 
@@ -72,6 +83,8 @@ apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme
 ❌ 新建 packages/ui + packages/shared 当「大杂烩」
 ❌ 业务包 import react-router-dom 自己跳转
 ❌ runtime / app-state 引 @v2/ui-*（叶子包反向依赖业务包）
+❌ 包 import "@web/*"（包依赖应用源码，方向反了）
+❌ 外部包只在仓库根声明、使用它的包不写（靠 hoisting 兜着）
 ❌ 浏览器 mock 已安装 Codex/Claude
 ❌ 账号页强制 isTauri() 才打 HTTP
 ❌ 为外部 Agent 再开一套产品 IPC
@@ -82,4 +95,5 @@ apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme
 ✅ 客户端注入 externalAgents 后才扫描 CLI
 ✅ 资产页 Web 只显示账号
 ✅ 需要跨域编排 → apps/web/src/boot/
+✅ 改完结构跑 pnpm check:deps
 ```

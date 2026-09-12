@@ -25,6 +25,28 @@ Tauri 壳以 [`packages-rs/client/src/README.md`](../../packages-rs/client/src/R
 禁止新建第二套 Skill、产品用 Rust IPC crate；也禁止在 `packages/` 下建
 `ui` / `shared` / `utils` 这类大杂烩包 —— 包名必须对应一个业务域或一层机制。
 
+## 前端依赖卫生（自动化，别靠自觉）
+
+拆包后「依赖必须声明在使用它的包里」「包不许 import 应用源码」都是硬约束，
+但**违反时运行时完全正常**（靠根级 hoisting 兜着），所以必须靠检查发现：
+
+```bash
+pnpm check:deps      # node scripts/check-workspace-deps.mjs，约 0.3 秒
+```
+
+已接进 `pnpm dev` 与 `pnpm build` 前置。硬失败项：**环** / **跨层引用**
+（包 import 了 `apps/**`）/ **用了没声明** / **自依赖**。
+
+三条对应纪律：
+
+1. **依赖声明在使用它的包。** `ui-theme` 的 `index.css` `@import` 的外部包必须写在
+   `ui-theme` 自己的 `package.json`；`vite` 写在 `apps/web`。不要靠根级 hoisting。
+2. **包不许引应用源码。** 包 → 应用是反向依赖。实现要么挪进包，要么由应用注入
+   （`setApiBaseUrl` / `setAppAlertNavigator` 那套）。`@web/*` 是应用内部别名，
+   包一旦用它就是越界。
+3. **不留转发壳。** `export { ... } from "@v2/other"` 会让依赖图凭空多一条边，
+   把环藏在转发层里。兼容旧 import 请直接改调用方。
+
 ## 核心规则（Browser / Crawler，原文必遵）
 
 1. Browser = 浏览器能力层，只负责启动、Context、Page、导航、点击、输入、Cookie、Session、截图、网络监听等通用能力。
