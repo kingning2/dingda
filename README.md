@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/logo.svg" alt="叮答" width="64" />
+  <img src="./apps/web/public/logo.svg" alt="叮答" width="64" />
 </p>
 
 <h1 align="center">叮答 DingDa</h1>
@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="./public/home.png" alt="叮答首页" width="900" />
+  <img src="./apps/web/public/home.png" alt="叮答首页" width="900" />
 </p>
 
 ---
@@ -36,7 +36,7 @@
 
 | 首页 | 爬虫过程 | Agent 配置 |
 | :--: | :------: | :--------: |
-| <img src="./public/home.png" width="280" alt="首页" /> | <img src="./public/crawler.png" width="280" alt="爬虫" /> | <img src="./public/agent.png" width="280" alt="Agent" /> |
+| <img src="./apps/web/public/home.png" width="280" alt="首页" /> | <img src="./apps/web/public/crawler.png" width="280" alt="爬虫" /> | <img src="./apps/web/public/agent.png" width="280" alt="Agent" /> |
 
 **爬虫工作台**：左侧 Agent 轨迹，中间步骤直播，右侧结构化结果（标题 / 价格 / 来源 / 详情）。
 
@@ -80,13 +80,13 @@ pnpm dev
 
 ```text
 apps/web/           Web 应用装配（React + Vite 根）
+  └─ public/        品牌资源与截图（Vite publicDir，按 `/xxx` 引用）
 packages/           前端 pnpm 工作区（见 packages/README.md）
   ├─ contracts/     与 Python 的线协议类型
   └─ client/        业务域包（ui-agent / ui-account / ui-ai / …）与机制包（runtime / app-state / routes）
 packages-rs/        Rust workspace（成员包，见 packages-rs/README.md）
   └─ client/        Tauri 客户端（起停 Server、OS 能力、外部 CLI）
 server/             Python Server（API / Agent / Crawler / Browser / MCP）
-public/             品牌资源与截图
 ```
 
 更多目录说明见 [`AGENTS.md`](AGENTS.md)、[`packages/README.md`](packages/README.md)、
