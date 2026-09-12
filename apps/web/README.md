@@ -22,52 +22,63 @@ pnpm preview   # vite preview
 `devDependencies` —— 谁用谁声明。`tailwindcss` 本身不用声明：`@tailwindcss/vite`
 已把它作为直接依赖带上。
 
+## 静态资源
+
+`public/` 在**本包内**，这是 Vite 的默认 `publicDir`（`<root>/public`）。
+里面按 `/xxx` 绝对路径引用，不要写相对路径。
+
+```text
+public/logo-mark.svg      →  代码里写 "/logo-mark.svg"
+public/agent-icons/*      →  代码里写 `/agent-icons/${id}.svg`
+```
+
+**不要把 `public/` 挪回仓库根** —— `publicDir` 相对 Vite 根，挪回去不会报错，
+只会让所有图片静默 404、构建产物里一张图都没有。
+
 ## 文件
 
-- `src/App.css`
-- `src/App.tsx`
-- `src/boot/boot-gate.tsx`
-- `src/boot/preload.ts`
-- `src/main.tsx`
-- `src/pages\accounts-page.tsx`
-- `src/pages\agents-page.tsx`
-- `src/pages\ai-work-page.tsx`
-- `src/pages\assets-page.tsx`
-- `src/pages\community-page.tsx`
-- `src/pages\crawler-page.tsx`
-- `src/pages\design-systems-page.tsx`
-- `src/pages\error-test-page.tsx`
-- `src/pages\http-status-page.tsx`
-- `src/pages\integrations-page.tsx`
-- `src/pages\plugins-page.tsx`
-- `src/pages\projects-page.tsx`
-- `src/pages\status-pages.tsx`
-- `src/routes\animated-outlet.tsx`
-- `src/routes\layouts\app-layout.tsx`
-- `src/routes\layouts\entry-layout.tsx`
-- `src/routes\layouts\workspace-layout.tsx`
-- `src/routes\pages\home-route.tsx`
-- `src/routes\pages\projects-route.tsx`
-- `src/routes\pages\status-routes.tsx`
-- `src/routes\pages\work-route.tsx`
-- `src/routes\route-handle.ts`
-- `src/routes\route-transition.ts`
-- `src/routes\router.tsx`
-- `src/vite-env.d.ts`
+```text
+index.html               Vite 入口（含启动屏 HTML）
+vite.config.ts           Vite 配置（root: __dirname）
+tsconfig.json
+public/                  静态资源（Vite publicDir，按 /xxx 引用）
+src/
+  main.tsx               挂载点
+  App.tsx                ServerProvider → BootGate → TooltipProvider → Router
+  App.css
+  vite-env.d.ts
+  boot/
+    preload.ts           首页数据预载编排
+    boot-gate.tsx        启动闸门
+    alert-navigator.ts   把 router.navigate 注入全局告警
+  pages/                 页面组件（13 个）
+  routes/
+    router.tsx           createHashRouter 路由表
+    route-handle.ts      路由 handle 类型与标题解析
+    route-transition.ts
+    animated-outlet.tsx
+    layouts/             app-layout / entry-layout / workspace-layout
+    pages/               home-route / projects-route / status-routes / work-route
+```
 
 ## 依赖
 
 - 工作区：@v2/app-state / @v2/contracts / @v2/routes / @v2/runtime / @v2/ui-account / @v2/ui-agent / @v2/ui-ai / @v2/ui-crawler / @v2/ui-feedback / @v2/ui-home / @v2/ui-layout / @v2/ui-primitives / @v2/ui-theme
-- 外部：lucide-react / motion / react-router-dom
-- peer：react / react-dom
+- dependencies：lucide-react / motion / react / react-dom / react-router-dom
+- devDependencies：@tailwindcss/vite / @vitejs/plugin-react / vite
+
+本包是**应用**不是库，所以 `react` / `react-dom` 是 `dependencies` 而非 `peerDependencies`
+（业务包声明 `react` 为 peer，由本包满足）。
 
 ## 启动编排（`src/boot/`）
 
 - `preload.ts` —— `preloadAppHome()`：Server 就绪后拉 Agent 目录 + 账号 + 最近会话；
   `ensureDiscoveryScanned()`：进首页前的兜底。
 - `boot-gate.tsx` —— `<BootGate>`：预载完成前不挂路由（HTML 启动屏继续挡着）。
+- `alert-navigator.ts` —— 把 `router.navigate` 注入 `@v2/runtime/app-alert`，
+  让告警里的操作按钮能走 SPA 路由（本应用是 `createHashRouter`，整页跳转会丢路由）。
 
-**为什么在这里而不是 `@v2/runtime`**：这段编排要组合 Agent 域与账号域，两个域互不引用；
+**为什么编排在这里而不是 `@v2/runtime`**：它要组合 Agent 域与账号域，两个域互不引用；
 放在基座包里等于让 `runtime` 反向依赖业务包。
 
 ## 边界
