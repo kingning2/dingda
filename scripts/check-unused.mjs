@@ -109,6 +109,23 @@ const RESERVED = [
     why: "关闭预览。与 openProductPreview / subscribeProductPreview（均在用）同属一个活跃机制。",
   },
 
+  // ── 成套 API：成套的判定器，缺一个就会有人再手写一遍 typeof 判断 ──
+  {
+    file: "packages/client/runtime/src/guards.ts",
+    name: "isNumber",
+    why: "成套判定器的一员（isString / isNumber / isBoolean / isObject / isArray / isFunction）。当前无调用方，但缺了它调用点会手写 `typeof x === \"number\"` —— 那样会把 NaN / Infinity 放进来。",
+  },
+  {
+    file: "packages/client/runtime/src/guards.ts",
+    name: "isBoolean",
+    why: "成套判定器的一员。当前无调用方；缺了它调用点会手写 typeof 判断（且容易漏掉包装对象与字符串 \"true\" 的区别）。",
+  },
+  {
+    file: "packages/client/runtime/src/guards.ts",
+    name: "isFunction",
+    why: "成套判定器的一员。当前无调用方；用于判定外部传入的回调是否为函数（如 Tauri 注入的钩子）。",
+  },
+
   // ── 待用户定性：疑为被取代的实现，我倾向删除，但不在本轮擅自删 ──
   {
     file: "packages/client/ui-account/src/mock-data.ts",

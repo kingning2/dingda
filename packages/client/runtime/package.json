@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "运行时基座：HTTP 传输、能力开关、错误上报、Server 状态",
+  "description": "运行时基座：HTTP 传输、能力开关、错误上报、Server 状态、值类型判定",
   "exports": {
     "./*": "./src/*"
   },

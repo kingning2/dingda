@@ -10,6 +10,9 @@
  *     reducer 不猜，本模块也不猜：解析不出来就返回空/null，由调用方决定阶段怎么走。
  *   - 解析全程容错：字段缺失、类型不对、JSON 解析失败都只丢那一条，不抛错。
  *     工具输出是外部 CLI 给的，不能假定形状。
+ *   - 字段级容错统一用 `@v2/runtime/guards` 的判定器，不写 `typeof x === "string" ? x : y`。
+ *     注意判定器**不转换**：所以「把数字 id 转成字符串」这类仍走 `String(...)`，
+ *     两者语义不同（判定是「信任这个值」，转换是「尽量救回来」）。
  *   - 多次 compare 调用**按 item_id 累积**而不是覆盖：每一轮检索都是证据，
  *     覆盖会丢掉前几轮的对比理由与评分。
  */
@@ -21,40 +24,52 @@ import type {
   AgentWorkProductsView,
 } from "@v2/contracts/ai-work";
 import type { CrawlProductItem } from "@v2/contracts/crawler";
+import { isArray, isObject, isString } from "@v2/runtime/guards";
 
 /** 把 output 归一成对象；字符串先尝试 JSON.parse。 */
 function outputRecord(output: unknown): Record<string, unknown> | null {
-  if (typeof output === "string") {
+  const text = isString(output, null);
+  if (text !== null) {
     try {
-      return outputRecord(JSON.parse(output));
+      return outputRecord(JSON.parse(text));
     } catch {
       return null;
     }
   }
-  if (!output || typeof output !== "object" || Array.isArray(output)) return null;
-  return output as Record<string, unknown>;
+  return isObject(output, null);
 }
 
-/** 宽松转数字：空值与非有限数都返回 null，而不是 NaN。 */
+/**
+ * 宽松转数字：空值与非有限数都返回 null，而不是 NaN。
+ *
+ * 这是**转换**不是判定 —— `asNumber("12")` 得 12，而 `isNumber("12")` 是 false。
+ * 后端偶发把数字写成字符串，这里救回来。
+ */
 function asNumber(value: unknown): number | null {
   if (value == null || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** 有值则转字符串；`null` / `undefined` / 空串一律归 null。 */
+function textOrNull(value: unknown): string | null {
+  return value == null || value === "" ? null : String(value);
+}
+
 function parseComments(value: unknown): CrawlProductItem["comments"] {
-  if (!Array.isArray(value)) return [];
   const out: NonNullable<CrawlProductItem["comments"]> = [];
-  for (const row of value) {
-    if (!row || typeof row !== "object") continue;
-    const item = row as Record<string, unknown>;
+  for (const row of isArray(value, [])) {
+    const item = isObject(row, null);
+    if (item === null) continue;
+    // content / author 走 String(...) 而非判定：后端偶发把数字当文本给，
+    // 判成非字符串直接丢掉反而更糟。
     const content = String(item.content ?? "").trim();
     if (!content) continue;
     out.push({
       author: String(item.author ?? "").trim() || "匿名",
       content,
-      time: typeof item.time === "string" ? item.time : null,
-      reply: typeof item.reply === "string" ? item.reply : null,
+      time: isString(item.time, null),
+      reply: isString(item.reply, null),
     });
   }
   return out;
@@ -68,22 +83,21 @@ function parseComments(value: unknown): CrawlProductItem["comments"] {
  */
 export function extractProducts(output: unknown): CrawlProductItem[] {
   const record = outputRecord(output);
-  if (!record) return [];
-  if (typeof record.platform !== "string" || !record.platform) return [];
-  const platform = record.platform as CrawlProductItem["platform"];
+  if (record === null) return [];
+  const platform = isString(record.platform, null);
+  if (platform === null) return [];
   const now = new Date().toISOString();
 
-  // 后端有时给 items 数组，有时给单个 item —— 两种都收。
-  const rows: unknown[] = Array.isArray(record.items)
-    ? record.items
-    : record.item && typeof record.item === "object"
-      ? [record.item]
-      : [];
+  // 后端有时给 items 数组，有时给单个 item —— 归一成数组。两种载荷互斥，优先 items。
+  // 这一处保留三元：它是「两种载荷形状二选一」，不是类型判定，套判定器反而绕。
+  const batch = isArray(record.items, null);
+  const single = isObject(record.item, null);
+  const rows: unknown[] = batch ?? (single === null ? [] : [single]);
 
   const out: CrawlProductItem[] = [];
   for (const row of rows) {
-    if (!row || typeof row !== "object") continue;
-    const item = row as Record<string, unknown>;
+    const item = isObject(row, null);
+    if (item === null) continue;
     const id = String(item.item_id ?? item.id ?? "");
     const title = String(item.title ?? "").trim();
     // id 与标题缺一不可：缺了渲染出来是个点不开的空壳。
@@ -92,24 +106,20 @@ export function extractProducts(output: unknown): CrawlProductItem[] {
       id,
       title,
       price: String(item.price ?? ""),
-      platform,
-      seller: typeof item.seller_nick === "string" ? item.seller_nick : undefined,
-      location: typeof item.location === "string" ? item.location : undefined,
-      image_url: typeof item.image_url === "string" ? item.image_url : undefined,
-      product_url:
-        typeof item.url === "string"
-          ? item.url
-          : typeof item.product_url === "string"
-            ? item.product_url
-            : undefined,
-      want_count: typeof item.want_count === "string" ? item.want_count : undefined,
-      browse_count: typeof item.browse_count === "string" ? item.browse_count : undefined,
-      desc: typeof item.desc === "string" ? item.desc : undefined,
+      platform: platform as CrawlProductItem["platform"],
+      seller: isString(item.seller_nick, undefined),
+      location: isString(item.location, undefined),
+      image_url: isString(item.image_url, undefined),
+      // 多候选：url 优先，回落 product_url，都没有则 undefined。
+      product_url: isString([item.url, item.product_url], undefined),
+      want_count: isString(item.want_count, undefined),
+      browse_count: isString(item.browse_count, undefined),
+      desc: isString(item.desc, undefined),
       comments: parseComments(item.comments),
-      ocr_text: typeof item.ocr_text === "string" ? item.ocr_text : undefined,
-      content_text: typeof item.content_text === "string" ? item.content_text : undefined,
-      note_type: typeof item.note_type === "string" ? item.note_type : undefined,
-      xsec_token: typeof item.xsec_token === "string" ? item.xsec_token : undefined,
+      ocr_text: isString(item.ocr_text, undefined),
+      content_text: isString(item.content_text, undefined),
+      note_type: isString(item.note_type, undefined),
+      xsec_token: isString(item.xsec_token, undefined),
       crawled_at: now,
     });
   }
@@ -119,16 +129,18 @@ export function extractProducts(output: unknown): CrawlProductItem[] {
 /** 从工具输出里抽比价视图；不是 price_compare 形状就返回 null。 */
 export function extractComparison(output: unknown): AgentWorkComparisonView | null {
   const record = outputRecord(output);
-  if (!record || record.kind !== "price_compare" || !Array.isArray(record.items)) return null;
+  if (record === null || record.kind !== "price_compare") return null;
+  const rawItems = isArray(record.items, null);
+  if (rawItems === null) return null;
 
-  const sourceRaw =
-    record.source && typeof record.source === "object"
-      ? (record.source as Record<string, unknown>)
-      : {};
+  // 源商品信息是可选的；缺了就用空对象，下面统一按「字段可能没有」取值。
+  // 注意不能写成 `isObject(record.source, {})` —— `{}` 字面量会被推成 `{}` 类型
+  // （没有索引签名），后面取 `.item_id` 会报错。
+  const sourceRaw: Record<string, unknown> = isObject(record.source, null) ?? {};
   const items: AgentWorkComparisonItemView[] = [];
-  for (const row of record.items) {
-    if (!row || typeof row !== "object") continue;
-    const item = row as Record<string, unknown>;
+  for (const row of rawItems) {
+    const item = isObject(row, null);
+    if (item === null) continue;
     const id = String(item.item_id ?? item.id ?? "").trim();
     const title = String(item.title ?? "").trim();
     if (!id || !title) continue;
@@ -137,13 +149,13 @@ export function extractComparison(output: unknown): AgentWorkComparisonView | nu
       title,
       price: String(item.price ?? ""),
       platform: "ali1688",
-      seller: typeof item.supplier === "string" ? item.supplier : null,
-      image_url: typeof item.image_url === "string" ? item.image_url : null,
-      product_url: typeof item.url === "string" ? item.url : null,
-      compare_label: typeof item.compare_label === "string" ? item.compare_label : null,
-      compare_reasons: Array.isArray(item.compare_reasons)
-        ? item.compare_reasons.map((reason) => String(reason)).filter(Boolean)
-        : [],
+      seller: isString(item.supplier, null),
+      image_url: isString(item.image_url, null),
+      product_url: isString(item.url, null),
+      compare_label: isString(item.compare_label, null),
+      compare_reasons: isArray(item.compare_reasons, [])
+        .map((reason) => String(reason))
+        .filter(Boolean),
       compare_score: asNumber(item.compare_score),
       similarity_score: asNumber(item.similarity_score),
       merchant_rating: asNumber(item.merchant_rating),
@@ -152,10 +164,10 @@ export function extractComparison(output: unknown): AgentWorkComparisonView | nu
       yx_index: asNumber(item.yx_index),
       stock_amount: asNumber(item.stock_amount),
       quantity_begin: asNumber(item.quantity_begin),
-      unit: typeof item.unit === "string" ? item.unit : null,
+      unit: isString(item.unit, null),
       round: asNumber(item.round),
-      search_query: typeof item.search_query === "string" ? item.search_query : null,
-      search_mode: typeof item.search_mode === "string" ? item.search_mode : null,
+      search_query: isString(item.search_query, null),
+      search_mode: isString(item.search_mode, null),
     });
   }
 
@@ -168,16 +180,15 @@ export function extractComparison(output: unknown): AgentWorkComparisonView | nu
       platform: String(sourceRaw.platform ?? "source"),
       url: String(sourceRaw.url ?? record.source_url ?? ""),
       image_url: String(sourceRaw.image_url ?? record.source_image ?? ""),
-      price: sourceRaw.price == null || sourceRaw.price === "" ? null : String(sourceRaw.price),
-      seller:
-        sourceRaw.seller == null || sourceRaw.seller === "" ? null : String(sourceRaw.seller),
+      price: textOrNull(sourceRaw.price),
+      seller: textOrNull(sourceRaw.seller),
     },
     items,
     total_candidates: asNumber(record.total_candidates) ?? items.length,
     rounds: asNumber(record.rounds) ?? 1,
-    queries: Array.isArray(record.queries)
-      ? record.queries.map((query) => String(query)).filter(Boolean)
-      : [],
+    queries: isArray(record.queries, [])
+      .map((query) => String(query))
+      .filter(Boolean),
     status: {
       state: "ready",
       label: "已完成",
