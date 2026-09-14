@@ -8,6 +8,7 @@ import type { AgentWorkProductItem } from "@v2/contracts/ai-work";
 import type { CrawlProductItem } from "@v2/contracts/crawler";
 import { getHostCapabilities } from "@v2/runtime/capabilities";
 
+/** 商品预览的目标数据：Crawler 和 AI Work 两种来源的交集字段。 */
 export type ProductPreviewTarget = Pick<
   CrawlProductItem,
   | "id"
@@ -86,6 +87,7 @@ export function openProductPreview(
   return "dialog";
 }
 
+/** 关闭当前预览弹窗。 */
 export function closeProductPreviewUi(): void {
   previewListener?.(null);
 }

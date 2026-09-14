@@ -1,3 +1,7 @@
+/**
+ * 爬虫结果展示：商品卡片列表 + 空态 + 状态横幅。
+ */
+
 import { ExternalLink, Loader2 } from "lucide-react";
 import type { CrawlProductItem } from "@v2/contracts/crawler";
 import { Button } from "@v2/ui-primitives/button";
@@ -10,6 +14,7 @@ interface CrawlerResultsProps {
   emptyHint?: string;
 }
 
+/** 商品卡片列表：加载态、空态、外部链接。 */
 export function CrawlerResults({ items, loading, emptyHint }: CrawlerResultsProps) {
   if (loading) {
     return (
@@ -65,6 +70,7 @@ interface CrawlerStatusBannerProps {
   badgeClass: string;
 }
 
+/** 状态横幅：标签徽标 + 提示文案。 */
 export function CrawlerStatusBanner({ label, hint, badgeClass }: CrawlerStatusBannerProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">

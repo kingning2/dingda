@@ -155,11 +155,6 @@ const RESERVED = [
     name: "fetchCrawlerProductLive",
     why: "【待定性·倾向删除】直播拉详情，从未接线；UI 走的是非流式的 fetchCrawlerProduct（在用）。",
   },
-  {
-    file: "packages/client/ui-crawler/src/crawler-api.ts",
-    name: "crawlerLiveFrameToDataUrl",
-    why: "【待定性·倾向删除】纯转发壳：函数体只有 `return frameToDataUrl(frame)`。",
-  },
 ];
 
 const reservedKey = (file, name) => `${file}:${name}`;

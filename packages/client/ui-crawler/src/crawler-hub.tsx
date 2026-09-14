@@ -1,3 +1,11 @@
+/**
+ * 爬虫搜索页：平台标签 + 搜索输入 + 结果列表。
+ *
+ * 职责：
+ *   - CrawlerHub：平台标签切换 + 各平台子面板。
+ *   - CrawlerPanel：单平台搜索输入框 + 触发搜品直播流 + 展示结果。
+ */
+
 import { useRef, useState } from "react";
 import { Search } from "lucide-react";
 import type { CrawlPlatform, CrawlSearchResponse } from "@v2/contracts/crawler";
@@ -12,6 +20,7 @@ interface CrawlerPanelProps {
   platform: CrawlPlatform;
 }
 
+/** 单平台搜索面板：输入框 + 搜品按钮 + 结果列表。 */
 export function CrawlerPanel({ platform }: CrawlerPanelProps) {
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<CrawlSearchResponse | null>(null);
@@ -151,6 +160,7 @@ interface CrawlerHubProps {
   initialPlatform?: CrawlPlatform;
 }
 
+/** 爬虫搜索页入口：平台标签切换 + 各平台子面板。 */
 export function CrawlerHub({ initialPlatform = "xianyu" }: CrawlerHubProps) {
   const [platform, setPlatform] = useState<CrawlPlatform>(initialPlatform);
 

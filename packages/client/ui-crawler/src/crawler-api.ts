@@ -1,3 +1,12 @@
+/**
+ * 爬虫 HTTP API：搜品、详情、直播流。
+ *
+ * 职责：
+ *   - 搜品与详情走统一 http-client（有错误兜底）。
+ *   - 直播流（searchCrawlerProductsLive / fetchCrawlerProductLive）必须裸 SSE fetch，
+ *     统一 http-client 会一次性读完响应，做不了流式。
+ */
+
 import type {
   CrawlPlatform,
   CrawlProductItem,
@@ -164,6 +173,7 @@ export async function fetchCrawlerProductLive(
   };
 }
 
+/** 直播流单帧：Base64 图片 + 元信息。 */
 export interface CrawlerLiveFrame {
   url: string;
   title: string;
@@ -199,14 +209,6 @@ export interface CrawlerProductLiveHandlers {
   onFrame?: (frame: CrawlerLiveFrame) => void;
   onResult?: (result: CrawlProductResponse) => void;
   onError?: (payload: CrawlerLiveError) => void;
-}
-
-function frameToDataUrl(frame: CrawlerLiveFrame): string {
-  return `data:${frame.mime || "image/jpeg"};base64,${frame.image_b64}`;
-}
-
-export function crawlerLiveFrameToDataUrl(frame: CrawlerLiveFrame): string {
-  return frameToDataUrl(frame);
 }
 
 /** 解析 SSE 文本块。 */

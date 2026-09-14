@@ -6,12 +6,21 @@
 
 ## 文件
 
-- `src/crawler-api.ts`
-- `src/crawler-hub.tsx`
-- `src/crawler-results.tsx`
-- `src/index.ts`
-- `src/mock-data.ts`
-- `src/product-preview.ts`
+- `src/index.ts` — 包入口，暴露 `CrawlerHub` / `CrawlerPanel` / `CrawlerResults` / `CrawlerStatusBanner`。
+- `src/crawler-api.ts` — HTTP API：搜品、详情、直播流（SSE）。
+  - 搜品/详情走统一 http-client；直播流必须裸 `fetch`（统一客户端做不了 SSE）。
+- `src/crawler-hub.tsx` — 页面级装配：`CrawlerHub`（平台标签切换）+ `CrawlerPanel`（单平台搜索）。
+- `src/crawler-results.tsx` — 结果展示：`CrawlerResults`（商品卡片列表）+ `CrawlerStatusBanner`（状态横幅）。
+- `src/product-preview.ts` — 商品预览状态机：订阅/打开/关闭 + 浏览器外链。
+- `src/mock-data.ts` — 支持的平台标签常量 `CRAWL_PLATFORM_TABS`。
+
+## 消费方式
+
+`package.json` exports 是 `{ ".": "./src/index.ts", "./*": "./src/*" }`：
+
+- **包入口** `@v2/ui-crawler` — `CrawlerHub`（`apps/web/src/pages/crawler-page.tsx`）
+- **子路径** `@v2/ui-crawler/crawler-api` — `fetchCrawlerProduct`（两个 PreviewDialog）
+- **子路径** `@v2/ui-crawler/product-preview` — `subscribeProductPreview` / `openProductPreview` / `openProductInBrowserTab`（ui-ai 多处）
 
 ## 依赖
 
@@ -21,7 +30,7 @@
 
 ## 曾经住在这里、现已迁出
 
-- `discovery-scan.ts` → 按归属拆开：Agent 部分进 `@v2/ui-agent/agent-runtime-scan`，
+- `discovery-scan.ts` → 按归属拆开：Agent 部分进 `@v2/ui-agent/cli/scan`，
   账号部分进 `@v2/ui-account/account-discovery`，跨域的启动编排进 `apps/web/src/boot`。
 - `discovery-store.ts` → 下沉为 `@v2/app-state`。
 
