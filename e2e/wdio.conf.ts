@@ -5,9 +5,14 @@
  *
  * 驱动方式：`driverProvider: 'embedded'` —— 应用在进程内跑一个 W3C WebDriver
  * 服务，不需要 tauri-driver、不需要 msedgedriver，也不依赖 WebView2 的远程调试
- * 端口。代价是 Rust 侧要引入 `tauri-plugin-wdio-webdriver`；已用
- * `#[cfg(debug_assertions)]` 隔离，release 构建不含该插件，生产二进制不受影响
- * （见 packages-rs/client）。
+ * 端口。代价是 Rust 侧要引入 `tauri-plugin-wdio-webdriver`；已用 Cargo feature
+ * `e2e` 隔离（见 packages-rs/client/Cargo.toml），release 与日常 dev 构建都不含
+ * 该插件，生产二进制不受影响。
+ *
+ * 注意是 **feature 而非 `#[cfg(debug_assertions)]`**：Cargo 的 target 段不支持
+ * `debug_assertions`，写了会被忽略并报 warning，依赖照样进 release。故壳必须用
+ * `cargo build -p client --features e2e` 构建，否则壳里没有 WebDriver 服务，
+ * session 创建必然失败。
  *
  * 原先用 external 走 tauri-driver，但那条路在 Windows 上是死的：
  *   wry 在 `additional_browser_args` 为 None 时会自行构造默认值并调用
@@ -29,6 +34,14 @@
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
+// `tauri:options` 不在 WebdriverIO 的标准 capability 里，上游把它定义在
+// `TauriCapabilities`（@wdio/tauri-service 导出）上，**而不是**通过
+// `declare global` 合并进 `WebdriverIO.Capabilities`。所以直接用对象字面量写
+// capabilities 会报 TS2353（`"tauri:options"` does not exist in type
+// `RequestedStandaloneCapabilities`）—— 这是上游的类型缺口，不是配置写错了。
+// 按上游预期用法给数组加类型标注即可，编译后不残留任何运行时代码。
+import type { TauriCapabilities } from "@wdio/tauri-service";
 
 import { isPortListening } from "./helpers/desktop";
 import { startStaticServer, type StaticServer } from "./helpers/static-server";
@@ -56,21 +69,49 @@ const webDistDir = path.join(repoRoot, "apps", "web", "dist");
 let frontendServer: StaticServer | null = null;
 
 const binaryName = process.platform === "win32" ? "client.exe" : "client";
-const appBinary = path.join(repoRoot, "target", "debug", binaryName);
+
+/**
+ * 壳二进制路径。
+ *
+ * 默认 `<repo>/target/debug/client`（= `cargo build -p client --features e2e`）。
+ *
+ * 为什么要可配：`target/debug/client.exe` 会被**正在运行的 dev 会话**锁住
+ * （`pnpm tauri dev` 起的那个进程），此时重链接会直接失败：
+ *   LINK : fatal error LNK1104: 无法打开文件 "...\target\debug\deps\client.exe"
+ * 不想打断 dev 会话时另建一个 target 目录即可 —— 仓库根的解析不受影响，因为壳的
+ * repo_root 来自编译期 `CARGO_MANIFEST_DIR`（见 packages-rs/client/src/lib.rs），
+ * 与 target 目录无关：
+ *   CARGO_TARGET_DIR=target-e2e cargo build -p client --features e2e
+ *   DINGDA_E2E_APP_BINARY=target-e2e/debug/client.exe pnpm --filter @v2/e2e test
+ * 相对路径按仓库根解析。
+ */
+function resolveAppBinary(): string {
+  const override = process.env.DINGDA_E2E_APP_BINARY?.trim();
+  if (!override) return path.join(repoRoot, "target", "debug", binaryName);
+  return path.isAbsolute(override) ? override : path.resolve(repoRoot, override);
+}
+
+const appBinary = resolveAppBinary();
+
+// 显式标注为 TauriCapabilities[]（而非内联字面量）：标注后 capability 对象
+// 先按 TauriCapabilities 校验（放行 `tauri:options`），再作为非新鲜值赋给
+// config.capabilities，从而绕过对 RequestedStandaloneCapabilities 的
+// 多余属性检查。用 `satisfies` 不够 —— 它保留字面量类型，赋值时仍会报错。
+const capabilities: TauriCapabilities[] = [
+  {
+    browserName: "tauri",
+    "tauri:options": {
+      application: appBinary,
+    },
+  },
+];
 
 export const config: WebdriverIO.Config = {
   runner: "local",
   specs: ["./specs/**/*.spec.ts"],
   maxInstances: 1,
 
-  capabilities: [
-    {
-      browserName: "tauri",
-      "tauri:options": {
-        application: appBinary,
-      },
-    },
-  ],
+  capabilities,
 
   services: [
     [
@@ -101,8 +142,15 @@ export const config: WebdriverIO.Config = {
   framework: "mocha",
   mochaOpts: {
     ui: "bdd",
-    // 单条用例上限：要覆盖冷启动 + 预热，比默认 60s 放宽。
-    timeout: 180_000,
+    // 单条用例上限。
+    //
+    // 180s 只够 desktop-smoke。account-qr 要等后端 120s 扫码窗口 + 超时后的风控
+    // 恢复，实测被 180s 直接掐断（报 mocha "Timeout"）—— 且用例里写的
+    // `this.timeout(400_000)` **不生效**：WDIO 的 testFrameworkFnWrapper 走自己的
+    // 超时（@wdio/utils 的 testFrameworkFnWrapper），不读 mocha 的 this.timeout。
+    // 所以只能在这里按最长的那条用例设。
+    // desktop-smoke 不受影响：它的断言各自带 15s 级显式等待，不会因此变慢。
+    timeout: 420_000,
   },
 
   reporters: ["spec"],
