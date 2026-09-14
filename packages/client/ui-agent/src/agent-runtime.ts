@@ -1,17 +1,24 @@
 /**
- * 外部 CLI Runtime 的探测与操作。
+ * 外部 CLI Runtime 的探测、鉴权与下载。
  *
  * 职责：
  *   PATH 探测、鉴权视图组装、后台并发 probe、登录、下载，以及把原始字段规整成 AgentRuntimeItem。
  *
  * 设计说明：
- *   - 本文件已混装四类职责（探测 / 鉴权 / 下载 / 浏览器 mock），432 行 / 14 个顶层导出，
- *     按 frontend-coding 应拆成 cli/{probe,login,download,normalize}.ts（见 README「已知结构问题」）
- *   - mock 分支（mockCodexAuthenticated / mockClaudeAuthenticated / delay）与生产代码混装，
- *     违反 frontend-architecture 反例第 6 条「浏览器 mock 已安装 Codex/Claude」，待移除
+ *   - **字段风格在 `normalizeAgentRuntimeItem` 一处抹平。** Rust 侧用
+ *     `#[serde(rename_all = "camelCase")]`（见 `packages-rs/agent/src/registry.rs`），
+ *     实际下发的是 `installUrl` / `canLogin` / `badgeClass`；而 `@v2/contracts` 的
+ *     `AgentRuntimeItem` 与 Python / SQLite 侧是 snake_case。两边都得吃，所以
+ *     `Raw*` 类型保留了 camelCase 别名 —— 这不是冗余，是**两条上游的风格差异**。
+ *   - **非桌面不提供 mock。** 原先非 Tauri 时会伪造「已安装 Codex / Claude」并返回假模型列表，
+ *     违反 `frontend-architecture` 反例第 6 条。现在非桌面直接不探测、原样返回 ——
+ *     Agent 页在 Web 上本就会重定向（`capabilities.externalAgents = isTauri()`），
+ *     所以这条路径没有 UI 需要喂数据。
+ *   - 本文件仍混装四类职责（探测 / 鉴权 / 下载 / 后台并发），按 `frontend-coding`
+ *     待拆成 `cli/{probe,login,download,normalize}.ts`（见 README「已知结构问题」）。
  */
 
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
 
 import type {
   AgentListResponse,
@@ -21,12 +28,17 @@ import type {
   AgentRuntimeProbeResult,
   AgentRuntimeStatusView,
 } from "@v2/contracts/agent-runtime";
+import { supportsExternalAgents } from "@v2/runtime/capabilities";
 import { fetchAgentPreferences } from "./agent-api";
+import { STATUS_TONE } from "./status-tone";
 
-let mockCodexAuthenticated = false;
-let mockClaudeAuthenticated = false;
-
-  type RawAgentRuntimeItem = AgentRuntimeItem & {
+/**
+ * Rust 侧下发的原始 item。
+ *
+ * 与 `AgentRuntimeItem` 的差别只有一处：Rust 用 camelCase，这里补上对应的别名。
+ * `status.badgeClass` 同理。
+ */
+type RawAgentRuntimeItem = AgentRuntimeItem & {
   installUrl?: string | null;
   docsUrl?: string | null;
   isDefault?: boolean;
@@ -34,7 +46,6 @@ let mockClaudeAuthenticated = false;
   canLogin?: boolean;
   canProbe?: boolean;
   canDownload?: boolean;
-  source?: string | null;
   status?: RawAgentRuntimeStatusView;
 };
 
@@ -54,14 +65,10 @@ export function supportsAgentLogin(agent: AgentRuntimeItem): boolean {
   return Boolean(agent.can_login);
 }
 
-export function supportsAgentProbe(_agent: AgentRuntimeItem): boolean {
-  return true;
-}
-
 /**
  * 把后端 / Rust 返回的原始字段收成 AgentRuntimeItem。
  *
- * 同时吃 snake_case 与 camelCase：上游字段风格不统一，在这里一次性抹平，
+ * snake_case 与 camelCase 都吃（来源见文件头设计说明），在这里一次性抹平，
  * 上层就不必再判断两种命名。status 缺失时回落成「未安装」而不是抛错。
  */
 export function normalizeAgentRuntimeItem(raw: RawAgentRuntimeItem): AgentRuntimeItem {
@@ -87,7 +94,7 @@ export function normalizeAgentRuntimeItem(raw: RawAgentRuntimeItem): AgentRuntim
       state: status?.state ?? "missing",
       label: status?.label ?? "未知",
       hint: status?.hint ?? null,
-      badge_class: status?.badge_class ?? status?.badgeClass ?? "bg-muted text-muted-foreground",
+      badge_class: status?.badge_class ?? status?.badgeClass ?? STATUS_TONE.neutral,
     },
   };
 }
@@ -122,7 +129,7 @@ export function applyAgentPreferences(
 export async function listAgentRuntimes(
   apiBaseUrl?: string | null,
 ): Promise<AgentRuntimeItem[]> {
-  if (!isTauri()) return [];
+  if (!supportsExternalAgents()) return [];
 
   const response = await invoke<AgentListResponse>("list_agent_runtimes_command");
   const agents = response.agents.map((agent) =>
@@ -144,7 +151,7 @@ export async function listAgentRuntimes(
  * 用于尚未手动扫描、库中无缓存时的首屏展示。
  */
 export async function listAgentRegistryPlaceholders(): Promise<AgentRuntimeItem[]> {
-  if (!isTauri()) return [];
+  if (!supportsExternalAgents()) return [];
   const response = await invoke<AgentListResponse>("list_agent_registry_command");
   return response.agents.map((agent) =>
     normalizeAgentRuntimeItem(agent as RawAgentRuntimeItem),
@@ -202,7 +209,7 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
           (agent.can_download
             ? "可点击「下载」安装到叮答托管目录"
             : "请按接入文档安装 CLI 后扫描"),
-        badge_class: "bg-muted text-muted-foreground",
+        badge_class: STATUS_TONE.neutral,
       },
     };
   }
@@ -218,20 +225,20 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
           state: "auth_required",
           label: hasLoginPath ? "待登录" : "待配置",
           hint: auth?.hint ?? null,
-          badge_class: "bg-amber-500/15 text-amber-700",
+          badge_class: STATUS_TONE.pending,
         }
       : hasLoginPath && authenticated == null
         ? {
             state: "auth_required",
             label: "待登录",
             hint: auth?.hint ?? null,
-            badge_class: "bg-amber-500/15 text-amber-700",
+            badge_class: STATUS_TONE.pending,
           }
         : {
             state: "ready",
             label: "已就绪",
             hint: null,
-            badge_class: "bg-emerald-500/15 text-emerald-600",
+            badge_class: STATUS_TONE.ready,
           };
 
   return {
@@ -247,83 +254,43 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
 }
 
 /**
- * 探测单个 Agent：桌面走 Tauri invoke；非桌面走 mock 分支（待移除，见文件头设计说明）。
+ * 探测单个 Agent（桌面走 Tauri invoke）。
  *
  * 无论成败都返回可渲染的 item：失败会转成「未安装 + 原因」，不抛错 ——
  * 一个 Agent 探测失败不应拖垮整轮并发探测。
+ *
+ * 非桌面直接原样返回：不探测、也不伪造结果。调用方（`agent-runtime-scan`）
+ * 已由 `supportsExternalAgents()` 挡在外面，这里是第二道保险。
  */
 export async function probeAgentRuntime(agent: AgentRuntimeItem): Promise<AgentRuntimeItem> {
-  if (isTauri() && supportsAgentProbe(agent)) {
-    try {
-      const raw = await invoke<AgentRuntimeProbeResult>("probe_agent_runtime", {
-        agentId: agent.id,
-      });
-      return mergeProbeResult(agent, raw);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return mergeProbeResult(agent, {
-        available: false,
-        error: message,
-      });
-    }
-  }
+  if (!supportsExternalAgents()) return agent;
 
-  await delay(500);
-  if (!agent.available) return agent;
-
-  if (agent.id === "codex") {
-    const authenticated = mockCodexAuthenticated;
-    return mergeProbeResult(agent, {
-      available: true,
-      authenticated,
-      models: authenticated
-        ? [
-            { id: "gpt-5.5", label: "GPT-5.5" },
-            { id: "gpt-5.4", label: "GPT-5.4" },
-          ]
-        : [{ id: "gpt-5.5", label: "GPT-5.5" }],
-      command: agent.command,
-      version: agent.version,
+  try {
+    const raw = await invoke<AgentRuntimeProbeResult>("probe_agent_runtime", {
+      agentId: agent.id,
     });
+    return mergeProbeResult(agent, raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return mergeProbeResult(agent, { available: false, error: message });
   }
-
-  if (agent.id === "claude") {
-    return mergeProbeResult(agent, {
-      available: true,
-      authenticated: mockClaudeAuthenticated,
-      models: [
-        { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-        { id: "claude-opus-4-6", label: "Claude Opus 4.6" },
-      ],
-      command: agent.command,
-      version: agent.version,
-    });
-  }
-
-  return {
-    ...agent,
-    status: {
-      state: "ready",
-      label: "已就绪",
-      hint: null,
-      badge_class: "bg-emerald-500/15 text-emerald-600",
-    },
-  };
 }
 
 const PROBING_STATUS: AgentRuntimeStatusView = {
   state: "probing",
   label: "检测中…",
   hint: null,
-  badge_class: "bg-sky-500/15 text-sky-700",
+  badge_class: STATUS_TONE.active,
 };
 
-function markAgentProbing(agent: AgentRuntimeItem): AgentRuntimeItem {
-  return { ...agent, status: PROBING_STATUS };
-}
-
-function markAgentsProbing(agents: AgentRuntimeItem[], agentIds: Set<string>): AgentRuntimeItem[] {
-  return agents.map((agent) => (agentIds.has(agent.id) ? markAgentProbing(agent) : agent));
+/** 把指定的一批 Agent 标成「检测中」—— 探测开始前先给 UI 反馈。 */
+export function markAgentsProbing(
+  agents: AgentRuntimeItem[],
+  agentIds: Set<string>,
+): AgentRuntimeItem[] {
+  return agents.map((agent) =>
+    agentIds.has(agent.id) ? { ...agent, status: PROBING_STATUS } : agent,
+  );
 }
 
 function replaceAgent(agents: AgentRuntimeItem[], updated: AgentRuntimeItem): AgentRuntimeItem[] {
@@ -391,37 +358,20 @@ export function probeAgentsInBackground(
 }
 
 /**
- * 拉起 CLI 登录（桌面走 Tauri invoke，非桌面走 mock）。
+ * 拉起 CLI 登录（桌面走 Tauri invoke）。
  *
  * 不抛错：失败以 `started=false` + 给用户看的 message 返回，调用方直接展示即可。
  */
 export async function loginAgentRuntime(agentId: string): Promise<AgentRuntimeLoginResult> {
-  if (isTauri()) {
-    try {
-      return await invoke<AgentRuntimeLoginResult>("login_agent_runtime", { agentId });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return { started: false, message };
-    }
+  if (!supportsExternalAgents()) {
+    return { started: false, message: "登录仅在桌面端可用" };
   }
-
-  await delay(400);
-  if (agentId === "claude") {
-    mockClaudeAuthenticated = true;
-    return {
-      started: true,
-      message: "已调用 claude auth login（mock）。实际环境会在浏览器完成授权，完成后请点击「扫描 Agent」。",
-    };
+  try {
+    return await invoke<AgentRuntimeLoginResult>("login_agent_runtime", { agentId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { started: false, message };
   }
-  if (agentId !== "codex") {
-    return { started: false, message: "该 Agent 暂不支持从平台登录" };
-  }
-
-  mockCodexAuthenticated = true;
-  return {
-    started: true,
-    message: "已调用 codex login（mock）。实际环境会在浏览器中完成授权，完成后请点击「扫描 Agent」。",
-  };
 }
 
 /** 下载结果：CLI 装到叮答托管目录后的绝对路径与版本。 */
@@ -434,9 +384,11 @@ export interface AgentDownloadResult {
 
 /** 下载到叮答托管目录（当前仅 OpenCode）。 */
 export async function downloadAgentRuntime(agentId: string): Promise<AgentDownloadResult> {
-  if (!isTauri()) {
-    throw new Error("downloadAgentRuntime 仅在桌面端可用");
+  if (!supportsExternalAgents()) {
+    throw new Error("下载仅在桌面端可用");
   }
+  // Rust 侧 ManagedDownloadResult 是 camelCase（install.rs 的 rename_all），
+  // 所以 agentId 是主字段；agent_id 是旧字段的兜底。
   const raw = await invoke<{
     agentId?: string;
     agent_id?: string;
@@ -451,15 +403,4 @@ export async function downloadAgentRuntime(agentId: string): Promise<AgentDownlo
     version: raw.version ?? null,
     message: raw.message,
   };
-}
-
-export interface AgentRuntimeDownloadResult {
-  agentId: string;
-  path: string;
-  version?: string | null;
-  message: string;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

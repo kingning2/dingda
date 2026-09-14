@@ -160,21 +160,6 @@ const RESERVED = [
     name: "crawlerLiveFrameToDataUrl",
     why: "【待定性·倾向删除】纯转发壳：函数体只有 `return frameToDataUrl(frame)`。",
   },
-  {
-    file: "packages/client/ui-agent/src/agent-run.ts",
-    name: "cancelAgentRun",
-    why: "【待定性·倾向删除】与 AgentRunHandle.cancel 重复实现同一 cancel 请求。已在 ui-agent 步骤 2 清单上。",
-  },
-  {
-    file: "packages/client/ui-agent/src/agent-run.ts",
-    name: "runAgentWithEvents",
-    why: "【待定性·倾向删除】只是 startAgentRunWithEvents(...).done 的包装。已在 ui-agent 步骤 2 清单上。",
-  },
-  {
-    file: "packages/client/ui-agent/src/agent-runtime.ts",
-    name: "AgentRuntimeDownloadResult",
-    why: "【待定性·倾向删除】与 AgentDownloadResult 字段全同且零引用。已在 ui-agent 步骤 2 清单上。",
-  },
 ];
 
 const reservedKey = (file, name) => `${file}:${name}`;

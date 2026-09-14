@@ -21,6 +21,7 @@ import {
   applyAgentPreferences,
   listAgentRegistryPlaceholders,
   listAgentRuntimes,
+  markAgentsProbing,
   normalizeAgentRuntimeItem,
   probeAgentsInBackground,
 } from "./agent-runtime";
@@ -152,20 +153,6 @@ export async function refreshRecentWorks(options?: { limit?: number }): Promise<
   }
 }
 
-/** Server 就绪后补读 SQLite 偏好（盖到当前列表）。 */
-export async function refreshDefaultAgentPreference(): Promise<void> {
-  if (!supportsExternalAgents()) return;
-  const current = useDiscoveryStore.getState().agents;
-  if (current.length === 0) return;
-
-  try {
-    const preferences = await fetchAgentPreferences();
-    commitAgents(applyAgentPreferences(current, preferences));
-  } catch {
-    // 偏好读取失败不打断列表
-  }
-}
-
 /**
  * 用户手动「扫描 Agent」：PATH 列表 + 深度 probe，全部完成后落库。
  */
@@ -221,29 +208,10 @@ export async function rescanAgentRuntimes(
 export function probeSingleAgent(agentId: string) {
   cancelBackgroundProbe?.();
   cancelBackgroundProbe = probeAgentsInBackground(
-    markSingleProbing(useDiscoveryStore.getState().agents, agentId),
+    markAgentsProbing(useDiscoveryStore.getState().agents, new Set([agentId])),
     commitAgents,
     (finalAgents) => {
       void persistAgentsCatalog(finalAgents);
     },
-  );
-}
-
-function markSingleProbing(
-  agents: AgentRuntimeItem[],
-  agentId: string,
-): AgentRuntimeItem[] {
-  return agents.map((agent) =>
-    agent.id === agentId
-      ? {
-          ...agent,
-          status: {
-            state: "probing",
-            label: "检测中…",
-            hint: null,
-            badge_class: "bg-sky-500/15 text-sky-700",
-          },
-        }
-      : agent,
   );
 }

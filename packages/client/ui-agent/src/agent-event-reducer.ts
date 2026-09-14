@@ -12,6 +12,7 @@ import type {
   AgentWorkTimelineEntry,
 } from "@v2/contracts/ai-work";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "./agent-run-phase";
+import { STATUS_TONE } from "./status-tone";
 
 /** 一条助手消息在运行中的完整状态；每来一个 SSE 事件就整体替换一次。 */
 export interface AgentRunMessageState {
@@ -74,14 +75,14 @@ const STEP_RUNNING: AgentWorkStepView["status"] = {
   state: "running",
   label: "执行中",
   hint: null,
-  badge_class: "bg-sky-500/15 text-sky-700",
+  badge_class: STATUS_TONE.active,
 };
 
 const STEP_DONE: AgentWorkStepView["status"] = {
   state: "ready",
   label: "已完成",
   hint: null,
-  badge_class: "bg-emerald-500/15 text-emerald-600",
+  badge_class: STATUS_TONE.ready,
 };
 
 function upsertStep(steps: AgentWorkStepView[], step: AgentWorkStepView): AgentWorkStepView[] {
@@ -422,7 +423,7 @@ export function truncateBeforeUserMessage(
       state: "ready",
       label: "已完成",
       hint: null,
-      badge_class: "bg-emerald-500/15 text-emerald-600",
+      badge_class: STATUS_TONE.ready,
     },
   };
 }

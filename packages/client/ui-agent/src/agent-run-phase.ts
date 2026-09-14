@@ -5,6 +5,8 @@
  * 不再通过“最后一个块是什么”猜测当前应该展示什么。
  */
 
+import { STATUS_TONE } from "./status-tone";
+
 /** 一次运行所处的前端阶段，由后端 SSE 事件推进，不由前端猜。 */
 export type AgentRunPhase =
   | "starting"
@@ -44,7 +46,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "running",
     label: "Starting",
     hint: "Agent 启动中…",
-    badgeClass: "bg-sky-500/15 text-sky-700",
+    badgeClass: STATUS_TONE.active,
     workingLabel: "Starting",
     streamingKind: null,
     hideTextWhileThinking: false,
@@ -53,7 +55,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "running",
     label: "Thinking",
     hint: "模型推理中…",
-    badgeClass: "bg-amber-500/15 text-amber-700",
+    badgeClass: STATUS_TONE.pending,
     workingLabel: "Thinking",
     streamingKind: "thinking",
     hideTextWhileThinking: true,
@@ -62,7 +64,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "running",
     label: "Working",
     hint: "工具执行中…",
-    badgeClass: "bg-sky-500/15 text-sky-700",
+    badgeClass: STATUS_TONE.active,
     workingLabel: "Working",
     streamingKind: null,
     hideTextWhileThinking: false,
@@ -71,7 +73,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "running",
     label: "Responding",
     hint: "正文生成中…",
-    badgeClass: "bg-emerald-500/15 text-emerald-600",
+    badgeClass: STATUS_TONE.ready,
     workingLabel: null,
     streamingKind: "text",
     hideTextWhileThinking: false,
@@ -80,7 +82,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "running",
     label: "Browsing",
     hint: "浏览器页面直播中…",
-    badgeClass: "bg-rose-500/15 text-rose-600",
+    badgeClass: STATUS_TONE.live,
     workingLabel: "Browsing",
     streamingKind: null,
     hideTextWhileThinking: false,
@@ -89,7 +91,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "running",
     label: "Collecting results",
     hint: "商品结果已更新",
-    badgeClass: "bg-emerald-500/15 text-emerald-600",
+    badgeClass: STATUS_TONE.ready,
     workingLabel: "Collecting results",
     streamingKind: null,
     hideTextWhileThinking: false,
@@ -98,7 +100,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "ready",
     label: "Completed",
     hint: null,
-    badgeClass: "bg-emerald-500/15 text-emerald-600",
+    badgeClass: STATUS_TONE.ready,
     workingLabel: null,
     streamingKind: null,
     hideTextWhileThinking: false,
@@ -107,7 +109,7 @@ export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = {
     statusState: "error",
     label: "Failed",
     hint: null,
-    badgeClass: "bg-red-500/15 text-red-700",
+    badgeClass: STATUS_TONE.failed,
     workingLabel: null,
     streamingKind: null,
     hideTextWhileThinking: false,

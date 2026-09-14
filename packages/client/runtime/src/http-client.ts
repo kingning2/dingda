@@ -71,7 +71,14 @@ export function onApiResponse(interceptor: ResponseInterceptor): () => void {
   };
 }
 
-function resolveBaseUrl(override?: string | null): string {
+/**
+ * 解析出可用的 base URL：优先用调用方给的覆盖值，否则用 `setApiBaseUrl` 注入的。
+ * 都没有就抛错 —— 调用方不该在 Server 未就绪时发请求。
+ *
+ * 导出给需要自己发 `fetch` 的场景（如 SSE 流式：统一客户端会一次性读完响应，
+ * 做不了流式）。**错误文案只在这里定义一处**，不要在各处再写一份。
+ */
+export function resolveBaseUrl(override?: string | null): string {
   const base = (override ?? apiBaseUrl)?.trim();
   if (!base) {
     throw new Error("服务未就绪，无法发起请求");

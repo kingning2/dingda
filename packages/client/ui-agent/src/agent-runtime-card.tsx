@@ -16,6 +16,7 @@ import { Download, ExternalLink, KeyRound, Loader2, LogIn, Star } from "lucide-r
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import { getAgentGuideUrl, supportsAgentLogin } from "./agent-runtime";
 import { AgentIcon } from "./agent-icon";
+import { STATUS_TONE } from "./status-tone";
 import { Badge } from "@v2/ui-primitives/badge";
 import { Button, buttonVariants } from "@v2/ui-primitives/button";
 import { Card, CardContent } from "@v2/ui-primitives/card";
@@ -60,12 +61,12 @@ function resolveSetupPhase(agent: AgentRuntimeItem): SetupPhase {
 function authBadgeClass(state: string | undefined): string {
   switch (state) {
     case "authenticated":
-      return "bg-emerald-500/15 text-emerald-600";
+      return STATUS_TONE.ready;
     case "unauthenticated":
     case "unknown":
-      return "bg-amber-500/15 text-amber-700";
+      return STATUS_TONE.pending;
     default:
-      return "bg-muted text-muted-foreground";
+      return STATUS_TONE.neutral;
   }
 }
 

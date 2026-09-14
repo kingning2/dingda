@@ -3,7 +3,7 @@
  */
 
 import type { AgentEvent } from "@v2/contracts/agent-event";
-import { getApiBaseUrl } from "@v2/runtime/http-client";
+import { resolveBaseUrl } from "@v2/runtime/http-client";
 
 /** 一次运行的入参；字段与后端 `/v1/agent/runtimes/{id}/run` 的 body 一一对应。 */
 export interface LaunchAgentRunRequest {
@@ -28,14 +28,6 @@ export interface LaunchAgentRunRequest {
 /** 生成一次运行的 id；前端先用它占位，后端按同一个 id 回报进度与取消。 */
 export function createRunId(): string {
   return `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function apiBase(): string {
-  const base = getApiBaseUrl()?.replace(/\/$/, "");
-  if (!base) {
-    throw new Error("Server 未就绪（缺少 API Base URL）");
-  }
-  return base;
 }
 
 function mapSsePayload(raw: unknown): AgentEvent | null {
@@ -100,7 +92,7 @@ export function startAgentRunWithEvents(
   let settled = false;
 
   const done = (async () => {
-    const base = apiBase();
+    const base = resolveBaseUrl();
     const isProduct = isProductRuntime(request.runtimeId);
     if (isProduct) {
       throw new Error("产品 Agent 尚未开放，请选择 Codex / Claude / OpenCode 等外部 Agent");
@@ -159,7 +151,7 @@ export function startAgentRunWithEvents(
     cancel: async () => {
       controller.abort();
       try {
-        await fetch(`${apiBase()}/v1/agent/runtimes/runs/${encodeURIComponent(runId)}/cancel`, {
+        await fetch(`${resolveBaseUrl()}/v1/agent/runtimes/runs/${encodeURIComponent(runId)}/cancel`, {
           method: "POST",
         });
       } catch {
@@ -167,19 +159,4 @@ export function startAgentRunWithEvents(
       }
     },
   };
-}
-
-export async function cancelAgentRun(runId: string): Promise<void> {
-  const id = runId.trim();
-  if (!id) return;
-  await fetch(`${apiBase()}/v1/agent/runtimes/runs/${encodeURIComponent(id)}/cancel`, {
-    method: "POST",
-  }).catch(() => undefined);
-}
-
-export async function runAgentWithEvents(
-  request: LaunchAgentRunRequest,
-  onEvent: (event: AgentEvent) => void,
-): Promise<{ runId: string; exitCode: number }> {
-  return startAgentRunWithEvents(request, onEvent).done;
 }
