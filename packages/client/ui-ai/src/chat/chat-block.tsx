@@ -17,6 +17,7 @@ import "../blocks";
 import { resolveBlock } from "./registry";
 import type { ChatBlock as ChatBlockData, ChatRenderContext } from "./types";
 
+/** 块分派器：按 kind 从注册表取组件并渲染。 */
 export function ChatBlock({
   block,
   context,

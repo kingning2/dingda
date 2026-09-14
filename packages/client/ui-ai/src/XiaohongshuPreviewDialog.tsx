@@ -20,12 +20,14 @@ import {
   type ProductPreviewTarget,
 } from "@v2/ui-crawler/product-preview";
 
+/** 小红书笔记预览弹窗的 props。 */
 export type XiaohongshuPreviewDialogProps = {
   open: boolean;
   item: ProductPreviewTarget | null;
   onOpenChange: (open: boolean) => void;
 };
 
+/** 小红书笔记预览：封面 + 正文/OCR + 评论。 */
 export function XiaohongshuPreviewDialog({
   open,
   item,

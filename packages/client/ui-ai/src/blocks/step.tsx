@@ -146,6 +146,7 @@ function PagePreview({
   );
 }
 
+/** 步骤块：工具调用结果（浏览/爬取/搜索/比对）的可折叠卡片。 */
 export function StepBlock({ block, context }: ChatBlockProps<"step">) {
   const { step, pageUrl = null, products = [] } = block;
   const onSelect = context.onSelectStep;

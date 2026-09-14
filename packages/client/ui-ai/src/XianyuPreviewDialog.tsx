@@ -20,12 +20,14 @@ import {
   type ProductPreviewTarget,
 } from "@v2/ui-crawler/product-preview";
 
+/** 闲鱼商品预览弹窗的 props。 */
 export type XianyuPreviewDialogProps = {
   open: boolean;
   item: ProductPreviewTarget | null;
   onOpenChange: (open: boolean) => void;
 };
 
+/** 闲鱼商品预览：左图右文 + 评论列表。 */
 export function XianyuPreviewDialog({ open, item, onOpenChange }: XianyuPreviewDialogProps) {
   const [detail, setDetail] = useState<ProductPreviewTarget | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);

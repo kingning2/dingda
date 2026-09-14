@@ -7,6 +7,7 @@
 
 import { cn } from "@v2/ui-primitives/utils";
 
+/** Codex 活动指示器：旋转的彩色圆点。 */
 export function CodexActivityIndicator({ className }: { className?: string }) {
   return (
     <span
@@ -19,4 +20,5 @@ export function CodexActivityIndicator({ className }: { className?: string }) {
   );
 }
 
+/** ThinkingOrb 组件映射表（按平台）。 */
 export const ThinkingOrb = CodexActivityIndicator;

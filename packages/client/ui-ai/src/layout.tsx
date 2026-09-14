@@ -21,6 +21,7 @@ import { ProductPreviewHost } from "./ProductPreviewHost";
 import { Settings } from "./Settings";
 import { truncateBeforeUserMessage } from "@v2/ui-agent/run/reducer";
 
+/** 右侧面板标签：结果 或 设置。 */
 export type SideTab = "results" | "settings";
 
 const MIN_CHAT_WIDTH = 360;
@@ -462,4 +463,5 @@ function RailTab({
 
 /** @deprecated 使用 Layout */
 export const View = Layout;
+/** AI 工作页视图别名（供路由装配用）。 */
 export const AiWorkView = Layout;

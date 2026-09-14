@@ -15,6 +15,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import { cn } from "@v2/ui-primitives/utils";
 
+/** Collapse 的 props。 */
 export interface CollapseProps {
   title: ReactNode;
   trailing?: ReactNode;
@@ -34,6 +35,7 @@ export interface CollapseProps {
   bodyRef?: React.Ref<HTMLDivElement>;
 }
 
+/** 可折叠面板：带旋转箭头的展开/收起。 */
 export function Collapse({
   title,
   trailing,

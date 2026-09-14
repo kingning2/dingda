@@ -7,10 +7,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+/** 思考内容提交防抖（ms）。 */
 export const THINKING_COMMIT_MS = 80;
+/** 逐字揭示预算（ms）。 */
 export const REVEAL_BUDGET_MS = 2200;
 const SNAP_CHARS = 8;
 
+/** 把高频思考源合并成稳定输入。 */
 export function useCoalescedSource(source: string, live: boolean): string {
   const [snapshot, setSnapshot] = useState(source);
   const latestRef = useRef(source);
@@ -48,6 +51,7 @@ function budgetFor(pending: number): number {
   return Math.min(REVEAL_BUDGET_MS, Math.max(350, Math.ceil(pending / 90) * 1000));
 }
 
+/** 逐字揭示效果：按预算匀速打出文字。 */
 export function useRevealText(source: string, live: boolean): string {
   const coalesced = useCoalescedSource(source, live);
   const [visible, setVisible] = useState(() => (live ? "" : source));

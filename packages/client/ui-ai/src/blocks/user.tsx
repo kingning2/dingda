@@ -19,6 +19,7 @@ import { cn } from "@v2/ui-primitives/utils";
 import { registerBlock } from "../chat/registry";
 import type { ChatBlockProps } from "../chat/types";
 
+/** 用户块：用户消息的渲染，含重发按钮。 */
 export function UserBlock({ block, context }: ChatBlockProps<"user">) {
   const { content, attachments, messageId } = block;
   const resubmit = context.onResubmitUser;

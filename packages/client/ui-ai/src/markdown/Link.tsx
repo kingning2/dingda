@@ -1,6 +1,10 @@
+/**
+ * Markdown 链接：外部链接自动开新标签并加安全属性。
+ */
 import type { ComponentProps } from "react";
 
 import { cn } from "@v2/ui-primitives/utils";
+/** Markdown 链接：外部链接自动新标签打开。 */
 
 type MarkdownLinkProps = ComponentProps<"a">;
 

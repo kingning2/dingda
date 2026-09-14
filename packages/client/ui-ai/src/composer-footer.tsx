@@ -16,6 +16,7 @@ import { memo, type ReactNode } from "react";
 import type { ComposerAgentOption, ComposerSubmitPayload } from "@v2/contracts/composer";
 import { PromptComposer } from "@v2/ui-composer";
 
+/** ComposerFooter 的 props。 */
 export interface ComposerFooterProps {
   agents: ComposerAgentOption[];
   defaultAgentId?: string | null;
@@ -30,6 +31,7 @@ export interface ComposerFooterProps {
   onInputActivity?: () => void;
 }
 
+/** 输入框底部栏：发送按钮、取消按钮、字数提示。 */
 export const ComposerFooter = memo(function ComposerFooter({
   agents,
   defaultAgentId,

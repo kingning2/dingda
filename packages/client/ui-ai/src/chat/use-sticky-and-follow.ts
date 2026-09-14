@@ -27,6 +27,7 @@ function readScrollSample(el: HTMLElement): ScrollSample {
   };
 }
 
+/** sticky 与跟随底部的配置项。 */
 export interface StickyAndFollowOptions {
   scrollRef: RefObject<HTMLDivElement | null>;
   /** 用 `Virtualizer<HTMLDivElement, Element>` 而非 HTMLDivElement：
@@ -41,6 +42,7 @@ export interface StickyAndFollowOptions {
   rowCount: number;
 }
 
+/** sticky 与跟随底部的返回值。 */
 export interface StickyAndFollow {
   /** 当前吸顶的那一轮在 turns 里的下标。 */
   stickyIndex: number;
@@ -50,6 +52,7 @@ export interface StickyAndFollow {
   keepFollowingToEnd: () => void;
 }
 
+/** 虚拟滚动下的 sticky 索引与跟随底部逻辑。 */
 export function useStickyAndFollow({
   scrollRef,
   virtualizer,

@@ -54,6 +54,7 @@ export function peekWorkDraft(workId: string): ComposerSubmitPayload | null {
   }
 }
 
+/** 清除工作草稿。 */
 export function clearWorkDraft(workId: string): void {
   try {
     sessionStorage.removeItem(draftKey(workId));
@@ -62,6 +63,7 @@ export function clearWorkDraft(workId: string): void {
   }
 }
 
+/** 暂存对话快照（Ctrl+R 兜底）。 */
 export function stashWorkSnapshot(detail: AgentWorkDetailView): void {
   try {
     sessionStorage.setItem(snapshotKey(detail.work_id), JSON.stringify(detail));
@@ -70,6 +72,7 @@ export function stashWorkSnapshot(detail: AgentWorkDetailView): void {
   }
 }
 
+/** 读取最近一次快照。 */
 export function peekWorkSnapshot(workId: string): AgentWorkDetailView | null {
   try {
     const value = sessionStorage.getItem(snapshotKey(workId));
@@ -82,6 +85,7 @@ export function peekWorkSnapshot(workId: string): AgentWorkDetailView | null {
   }
 }
 
+/** 清除对话快照。 */
 export function clearWorkSnapshot(workId: string): void {
   try {
     sessionStorage.removeItem(snapshotKey(workId));
@@ -198,6 +202,7 @@ export function buildEmptyWorkDetail(
   };
 }
 
+/** 加载工作详情的返回结构。 */
 export interface AgentWorkLoadResult {
   detail: AgentWorkDetailView;
   pendingSend: ComposerSubmitPayload | null;

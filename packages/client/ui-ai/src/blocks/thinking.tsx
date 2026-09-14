@@ -38,6 +38,7 @@ function elapsedSeconds(startedAt: string | null | undefined): number {
   return Math.max(0, Math.floor((Date.now() - start) / 1000));
 }
 
+/** 思考块：Codex / Claude 的推理过程，默认折叠。 */
 export function ThinkingBlock({ block }: ChatBlockProps<"thinking">) {
   const { text, streaming, startedAt = null, durationSec = null } = block;
   const [liveSec, setLiveSec] = useState(() => elapsedSeconds(startedAt));

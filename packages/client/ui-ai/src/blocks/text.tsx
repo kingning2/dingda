@@ -15,6 +15,7 @@ import { useRevealText } from "../useRevealText";
 import { registerBlock } from "../chat/registry";
 import type { ChatBlockProps } from "../chat/types";
 
+/** 纯文本块：助手正文的逐字渲染容器。 */
 export function TextBlock({ block }: ChatBlockProps<"text">) {
   const display = useRevealText(block.text, block.streaming);
   if (!block.text.trim() && !block.streaming) return null;

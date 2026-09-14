@@ -18,6 +18,7 @@ import { ChatBlock } from "./chat-block";
 import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
 import type { ChatRenderContext, ChatTurn as ChatTurnData } from "./types";
 
+/** 一轮对话：用户消息 + 助手消息（含时间线与块序列）。 */
 export function ChatTurn({
   turn,
   index,

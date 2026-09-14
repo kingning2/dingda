@@ -39,9 +39,3 @@ export {
 } from "./session";
 
 export { MarkdownRenderer, MarkdownCode, MarkdownLink } from "./markdown";
-
-export {
-  MOCK_XHS_PRODUCTS,
-  MOCK_XIANYU_PRODUCTS,
-  buildMockWorkDetail,
-} from "./mockData";

@@ -36,6 +36,7 @@ const TURN_ESTIMATED_HEIGHT = 320;
 /** 错误尾行的估算高度。 */
 const TAIL_ESTIMATED_HEIGHT = 48;
 
+/** Chat 面板的 props。 */
 export interface ChatProps {
   detail: AgentWorkDetailView;
   /** 可选的 Agent 列表，由上层提供（layout 已算好，避免重复取一次）。 */
@@ -56,6 +57,7 @@ type ChatRow =
   | { kind: "turn"; id: string; turn: ChatTurnData; turnIndex: number }
   | { kind: "tail"; id: "tail" };
 
+/** Chat 面板：虚拟滚动 + 轮次渲染 + 输入框。 */
 export function Chat({
   detail,
   agents,

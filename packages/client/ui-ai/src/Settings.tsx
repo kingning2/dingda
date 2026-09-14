@@ -1,3 +1,7 @@
+/**
+ * 右侧设置面板：选择 Agent 与模型。
+ */
+
 import { Check, Plug } from "lucide-react";
 import type { ComposerAgentOption } from "@v2/contracts/composer";
 import { AgentIcon } from "@v2/ui-agent/ui/icon";
