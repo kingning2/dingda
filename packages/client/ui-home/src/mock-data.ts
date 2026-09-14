@@ -6,37 +6,6 @@ export interface Project {
   status?: "draft" | "published";
 }
 
-export const MOCK_PROJECTS: Project[] = [
-  {
-    id: "1",
-    name: "电商落地页原型",
-    updatedAt: "2026-08-30",
-    kind: "prototype",
-    status: "draft",
-  },
-  {
-    id: "2",
-    name: "产品发布会幻灯片",
-    updatedAt: "2026-08-29",
-    kind: "slides",
-    status: "published",
-  },
-  {
-    id: "3",
-    name: "数据看板 Dashboard",
-    updatedAt: "2026-08-28",
-    kind: "dashboard",
-    status: "draft",
-  },
-  {
-    id: "4",
-    name: "移动端 App 流程",
-    updatedAt: "2026-08-27",
-    kind: "app",
-    status: "draft",
-  },
-];
-
 export const HOME_TYPE_CHIPS = [
   { id: "prototype", label: "原型", icon: "layout" as const },
   { id: "dashboard", label: "看板", icon: "bar-chart-3" as const },

@@ -89,6 +89,33 @@ pnpm check:deps      # node scripts/check-workspace-deps.mjs
 CI 能过，直到换个安装方式或挪个目录才炸。`ui-theme` 就是例子 —— 它的 `index.css`
 `@import` 了四个外部包，包清单里却一个依赖都没写。
 
+## 死代码检查
+
+拆包之后「定义了但没人引用」也是静默问题：`tsconfig` 的 `noUnusedLocals` /
+`noUnusedParameters` 只管**单文件内的局部变量**，跨文件的未使用导出、以及完全没人
+import 的孤立文件，它看不见。
+
+```bash
+pnpm check:unused          # 默认只警告（退出码 0）
+pnpm check:unused:strict   # 有发现就退出码 1，CI 用
+```
+
+它用 **TypeScript Compiler API** 做真正的引用分析，不是文本匹配 —— 正则/字符串计数
+会把 `index.ts` 的 re-export 全部误判成死代码（实测正则法报 25.5%、真实值 0.2%，
+高估约 100 倍）；re-export 链还须经 `getAliasedSymbol` 解析到原始符号才对得上号。
+
+组件库（`ui-primitives`）与跨语言契约（`contracts`）天然有未使用导出，走脚本内的
+`ALLOWLIST` 豁免。
+
+**它分不清「死代码」与「预留件」。** 明确标注的预留件（已声明、故意未接线）不是死代码：
+要么在文件里写清预留意图，要么加进 `ALLOWLIST`。反之，若某符号已被真实数据源取代
+（如 mock 常量被 store 取代），那就是真死代码，应删掉而不是豁免。
+
+已接进 `pnpm dev`（警告，不阻塞开发循环）与 `pnpm build`（`--strict`，拦住上线）；
+`pnpm tauri dev` / `pnpm tauri build` 经 `tauri.conf.json` 的
+`beforeDevCommand` / `beforeBuildCommand` 走同样两条链，因此一并覆盖。
+临时跳过：`SKIP_UNUSED_CHECK=1 pnpm dev`。
+
 ## 工程机制
 
 **源码直出**：每个包的 `exports` 直接指向 `./src/*`，不产出 `lib/`，全仓库仍是单次
@@ -96,9 +123,10 @@ Vite 构建。这样既有 pnpm 的真实包边界（依赖显式声明、越界
 编排的成本。
 
 ```bash
-pnpm dev         # → check:deps + pnpm --filter @v2/app-web dev
-pnpm build       # → check:deps + tsc（全仓库类型检查）+ vite build
-pnpm check:deps  # → node scripts/check-workspace-deps.mjs
+pnpm dev          # → check:deps + check:unused（警告）+ pnpm --filter @v2/app-web dev
+pnpm build        # → check:deps + check:unused --strict + tsc（全仓库类型检查）+ vite build
+pnpm check:deps   # → node scripts/check-workspace-deps.mjs
+pnpm check:unused # → node scripts/check-unused.mjs
 ```
 
 ## 新增一个包

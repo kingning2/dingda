@@ -16,7 +16,7 @@ pnpm preview   # vite preview
 ```
 
 类型检查不在本包：根 `pnpm build` 是
-`check-workspace-deps → tsc → pnpm --filter @v2/app-web build`，
+`check-workspace-deps → check-unused → tsc → pnpm --filter @v2/app-web build`，
 `tsc` 在仓库根跑全量（`apps` + `packages`），所以 `typescript` 声明在根。
 
 构建工具（`vite` / `@vitejs/plugin-react` / `@tailwindcss/vite`）声明在**本包**的

@@ -32,9 +32,6 @@ main.tsx
 外壳只负责**骨架与出口**：路由表、页面组件、`railOpen` 状态都在
 [`apps/web`](../../../../apps/web/README.md)。外壳不认识任何业务域页面。
 
-> **WorkspaceTabsBar**（多项目 Tab 顶栏）仍是预留件。只有入口页时它与侧栏导航重复，
-> 所以当前 `WorkspaceShell` 不渲染它；打开多项目 Tab 时再接入。
-
 ---
 
 ## 各文件职责
@@ -44,7 +41,6 @@ main.tsx
 | `app-shell.tsx` | Tauri 无边框窗口 + `TitleBar`，订阅最大化状态 | — |
 | `title-bar.tsx` | 自绘标题栏：拖拽区 + 最小化/最大化/关闭 | `Button` |
 | `workspace-shell.tsx` | 工作区主体容器（纯布局） | — |
-| `workspace-tabs-bar.tsx` | （预留）多项目 Tab 顶栏 | `Button`, `Separator` |
 | `entry-shell.tsx` | 左栏 + 主内容；搜索弹层；全宽模式 | `Dialog`, `Input` |
 | `entry-nav-rail.tsx` | 左侧导航 | `Button`, `DropdownMenu`, `Avatar`, `Kbd` |
 | `page-header.tsx` | 由路由 `handle.title` 注入的页面标题 | — |

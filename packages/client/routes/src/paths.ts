@@ -1,9 +1,7 @@
 export type EntryView =
   | "home"
   | "projects"
-  | "community"
   | "plugins"
-  | "design-systems"
   | "agents"
   | "accounts"
   | "crawler";
@@ -11,9 +9,7 @@ export type EntryView =
 const ENTRY_PATHS: Record<EntryView, string> = {
   home: "/",
   projects: "/projects",
-  community: "/community",
   plugins: "/plugins",
-  "design-systems": "/design-systems",
   agents: "/agents",
   accounts: "/accounts",
   crawler: "/crawler",
@@ -26,9 +22,7 @@ const PATH_TO_ENTRY = new Map<string, EntryView>(
 export const paths = {
   home: "/",
   projects: "/projects",
-  community: "/community",
   plugins: "/plugins",
-  designSystems: "/design-systems",
   agents: "/agents",
   accounts: "/accounts",
   /** @deprecated 使用 /agents 或 /accounts */

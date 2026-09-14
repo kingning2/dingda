@@ -4,9 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/check-workspace-deps.mjs && pnpm --filter @v2/app-web dev",
-    "build": "node scripts/check-workspace-deps.mjs && tsc && pnpm --filter @v2/app-web build",
+    "dev": "node scripts/check-workspace-deps.mjs && node scripts/check-unused.mjs && pnpm --filter @v2/app-web dev",
+    "build": "node scripts/check-workspace-deps.mjs && node scripts/check-unused.mjs --strict && tsc && pnpm --filter @v2/app-web build",
     "check:deps": "node scripts/check-workspace-deps.mjs",
+    "check:unused": "node scripts/check-unused.mjs",
+    "check:unused:strict": "node scripts/check-unused.mjs --strict",
     "preview": "pnpm --filter @v2/app-web preview",
     "prepare:python": "uv sync --frozen",
     "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",

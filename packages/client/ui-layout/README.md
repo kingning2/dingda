@@ -15,7 +15,6 @@
 - `src/route-transition.ts`
 - `src/title-bar.tsx`
 - `src/workspace-shell.tsx`
-- `src/workspace-tabs-bar.tsx`
 
 ## 依赖
 
