@@ -6,12 +6,7 @@
  *
  * 设计说明：
  *   - 不解析平台：kind / page / status 全部来自后端下发的 step，前端只决定怎么摆。
- *   - 选中回调走上下文，块自己不持有选中状态。
  *   - 文件末尾自注册，Chat 通过注册表取用，不认识本组件。
- *
- * 已知问题（本轮未改，待确认）：
- *   上下文里的 `selectedStepId` 本块并未消费 —— 原 `StepBlockProps.selected`
- *   声明后从未被读取，「选中步骤高亮」只有状态设置、没有渲染。
  */
 
 import { ExternalLink, Globe, Loader2, Lock, Radio } from "lucide-react";
@@ -147,9 +142,8 @@ function PagePreview({
 }
 
 /** 步骤块：工具调用结果（浏览/爬取/搜索/比对）的可折叠卡片。 */
-export function StepBlock({ block, context }: ChatBlockProps<"step">) {
+export function StepBlock({ block }: ChatBlockProps<"step">) {
   const { step, pageUrl = null, products = [] } = block;
-  const onSelect = context.onSelectStep;
   const running = isRunning(step.status.state);
   const page = step.page;
   const linkUrl = page?.url || pageUrl || null;
@@ -199,8 +193,7 @@ export function StepBlock({ block, context }: ChatBlockProps<"step">) {
   ) : null;
 
   return (
-    <div onClick={() => onSelect?.(step)}>
-      <Collapse
+    <Collapse
         title={title}
         trailing={trailing}
         defaultOpen={Boolean(body)}
@@ -208,8 +201,7 @@ export function StepBlock({ block, context }: ChatBlockProps<"step">) {
         lifecycleOpen={running && Boolean(body) ? true : undefined}
       >
         {body}
-      </Collapse>
-    </div>
+    </Collapse>
   );
 }
 

@@ -18,8 +18,6 @@ const DEFAULT_CHAT_WIDTH = 520;
 export interface SidePanelState {
   sideTab: SideTab | null;
   setSideTab: (tab: SideTab | null) => void;
-  selectedStepId: string | null;
-  setSelectedStepId: (id: string | null) => void;
   chatWidth: number;
   resizing: boolean;
   sideOpen: boolean;
@@ -29,7 +27,6 @@ export interface SidePanelState {
 
 export function useSidePanel(): SidePanelState {
   const [sideTab, setSideTab] = useState<SideTab | null>("results");
-  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
   const [resizing, setResizing] = useState(false);
   const splitRef = useRef<HTMLDivElement>(null);
@@ -68,8 +65,6 @@ export function useSidePanel(): SidePanelState {
   return {
     sideTab,
     setSideTab,
-    selectedStepId,
-    setSelectedStepId,
     chatWidth,
     resizing,
     sideOpen,

@@ -54,9 +54,6 @@ export type ChatBlockOf<K extends ChatBlockKind> = Extract<ChatBlock, { kind: K 
 export interface ChatRenderContext {
   /** 是否处于活回合。用户块据此决定能否编辑。 */
   busy: boolean;
-  /** 当前选中的步骤 id，用于步骤块高亮。 */
-  selectedStepId: string | null;
-  onSelectStep?: (step: AgentWorkStepView) => void;
   /** 编辑某条用户消息：截断后从此处重新生成。 */
   onResubmitUser?: (messageId: string, content: string) => void;
 }

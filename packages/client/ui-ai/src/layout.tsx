@@ -5,9 +5,8 @@
  * `useSidePanel`（侧边栏/分栏），本组件只剩 JSX 组合。
  */
 
-import { useCallback, type ReactNode } from "react";
 import { ArrowLeft, Loader2, Package, Settings2 } from "lucide-react";
-import type { AgentWorkStepView } from "@v2/contracts/ai-work";
+import type { ReactNode } from "react";
 import { useServer } from "@v2/runtime/server-provider";
 import { useComposerAgentOptions } from "@v2/ui-composer/composer-agents";
 import { Button } from "@v2/ui-primitives/button";
@@ -41,19 +40,12 @@ export function Layout({ workId, onBack }: LayoutProps) {
   } = useWorkDetail(workId, server.ready);
   const {
     sideTab,
-    selectedStepId,
-    setSelectedStepId,
     chatWidth,
     resizing,
     sideOpen,
     handleSideTabChange,
     handlePointerDown,
   } = useSidePanel();
-
-  const handleSelectStep = useCallback(
-    (step: AgentWorkStepView) => setSelectedStepId(step.id),
-    [setSelectedStepId],
-  );
 
   if (loading && !detail) {
     return (
@@ -143,10 +135,8 @@ export function Layout({ workId, onBack }: LayoutProps) {
             busy={!detail.can_send}
             runPhase={runPhase}
             error={error}
-            selectedStepId={selectedStepId}
             onSend={(payload) => void handleSend(payload)}
             onCancel={handleCancel}
-            onSelectStep={handleSelectStep}
             onResubmitUser={(messageId, content) => void handleResubmitUser(messageId, content)}
           />
         </div>

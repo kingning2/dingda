@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ComposerAgentOption, ComposerSubmitPayload } from "@v2/contracts/composer";
-import type { AgentWorkDetailView, AgentWorkStepView } from "@v2/contracts/ai-work";
+import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { ComposerFooter } from "../composer-footer";
 import { ChatBlock } from "./chat-block";
@@ -45,10 +45,8 @@ export interface ChatProps {
   /** 当前会话的前端运行阶段；历史回放时为 null。 */
   runPhase?: AgentRunPhase | null;
   error?: string | null;
-  selectedStepId?: string | null;
   onSend?: (payload: ComposerSubmitPayload) => void;
   onCancel?: () => void;
-  onSelectStep?: (step: AgentWorkStepView) => void;
   /** 编辑某条用户消息：截断后从此处重新生成。 */
   onResubmitUser?: (messageId: string, content: string) => void;
 }
@@ -64,10 +62,8 @@ export function Chat({
   busy = false,
   runPhase = null,
   error = null,
-  selectedStepId = null,
   onSend,
   onCancel,
-  onSelectStep,
   onResubmitUser,
 }: ChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -137,8 +133,6 @@ export function Chat({
 
   const context: ChatRenderContext = {
     busy,
-    selectedStepId,
-    onSelectStep,
     onResubmitUser,
   };
 
