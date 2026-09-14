@@ -14,6 +14,7 @@
 | [browser-architecture](browser-architecture/SKILL.md) | 浏览器生命周期与 adapter |
 | [tool-architecture](tool-architecture/SKILL.md) | Tool 契约、CLI skill 注入、registry |
 | [frontend-architecture](frontend-architecture/SKILL.md) | pnpm 工作区结构、桌面能力注入、包依赖方向 |
+| [frontend-coding](frontend-coding/SKILL.md) | 前端 **照抄示例**：文件粒度、同类归文件夹、注释、命名 |
 | [python-coding](python-coding/SKILL.md) | Python **照抄示例**：注释、插座、命名、日志 |
 | [rust-coding](rust-coding/SKILL.md) | Rust **照抄示例**：注释、插座、命名、日志 |
 
@@ -28,3 +29,5 @@
 - 前端主开发在浏览器；外部 CLI Agent 仅桌面注入（`@v2/runtime/capabilities`）。
 - 前端包依赖单向无环，叶子包（`app-state` / `runtime` / `routes` / `contracts`）不许引业务包。
 - 写 Python / Rust 时必须按 `python-coding` / `rust-coding` Skill 里的示例形状落笔。
+- 写前端必须按 `frontend-coding` Skill 的示例形状落笔：**一个功能块一个文件**、
+  同类归文件夹（禁 `utils/` `helpers/` `services/` 这类垃圾桶名）、文件头写「一行总述 + 职责：」。

@@ -1,0 +1,28 @@
+---
+description: 叮答前端（apps/web/ 与 packages/client/）编码规范。编辑其中的 .ts/.tsx 时必须先读 Skill 示例并照抄结构：一个功能块一个文件、同类归文件夹、文件头与符号注释。
+globs: apps/web/**/*.{ts,tsx},packages/client/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# 前端编码规范
+
+**先读并照抄示例**：`.agents/skills/frontend-coding/SKILL.md`
+
+硬约束摘要：
+
+1. **一个功能块 = 一个文件**。判定：文件头「职责：」能否用一句话说完且不含「和」。
+   阈值：> 250 行 或 > 8 个顶层导出 → 检查是否混装（单一职责的大文件须在 `设计说明：` 写明为何不拆）
+2. **同类归文件夹**，文件夹只在同类文件 ≥ 2 个时建立；只有 1 个文件的类别放包根
+3. **文件夹名 = 类别名**（`cli/` `run/` `ui/`）；禁止 `utils/` `helpers/` `services/` `common/` `misc/` `shared/` `lib/`
+4. **文件头块注释**：一行总述 + `职责：` +（按需）`设计说明：`。只有一行总述 = 不合格
+5. **每个导出符号有注释**，写「解决什么问题」；常量表 / 映射表写清「新增时只改这里」
+6. 注释只写**为什么**与故障场景推理，不复述代码、不写「本函数用于处理…」套话
+7. 文件名 kebab-case 且不重复文件夹名（`run/run.ts` ✗ → `run/stream.ts` ✓）；禁止 `data2` / `resultFinal` / `handleClick2`
+8. **不建包内桶文件**（`cli/index.ts`）；包入口 `index.ts` 只暴露应用层要装配的东西，内部引用走相对路径
+9. 拆 / 改名后**直接改调用方**，不留 `export { ... } from "./old"` 转发壳
+10. 每个有代码的目录有 `README.md`（树形：上层只链下层；本层每个文件写清职责、关键符号、谁调用，「谁调用」须 Grep 实证）
+11. 交代码前跑 `pnpm check:deps` + `pnpm check:unused` + `pnpm exec tsc --noEmit`
+
+**架构与依赖方向不在本规范**，见 `.agents/skills/frontend-architecture/SKILL.md`。
+
+未按 Skill 示例形状写的补丁视为不合格。
