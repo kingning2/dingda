@@ -91,7 +91,35 @@ Agent 域：外部 CLI Runtime 探测与运行态。
 3. `agent-runtime.ts` 里的浏览器 mock（`mockCodexAuthenticated` / `mockClaudeAuthenticated` /
    `delay`）与生产代码混装，违反 `frontend-architecture` 反例第 6 条。
 
-施工图见 `.workbuddy-ai/outputs/ui-agent-refactor-plan.md`。
+### 目标结构
+
+```text
+ui-agent/src/
+  index.ts                    包入口（只暴露 AgentRuntimesPanel）
+  api.ts                      Agent 域 Server HTTP（偏好 / 目录 / 工作会话）
+  cli/
+    catalog.ts                支持的 Agent 白名单（与后端 / Rust registry 对齐）
+    probe.ts                  探测
+    login.ts                  登录与鉴权视图
+    download.ts               下载
+    normalize.ts              数据规整
+    scan.ts                   发现编排（缓存 → 后台补探测 → 手动全量扫描）
+  run/
+    stream.ts                 SSE 收发
+    phase.ts                  阶段映射
+    reducer.ts                事件折叠
+  ui/
+    runtimes-panel.tsx        Agent 页主面板
+    runtime-card.tsx          单个 Agent 的配置卡
+    icon.tsx                  Agent 图标
+```
+
+改造分两步走：先补文档与注释（**已完成**），再拆 `agent-runtime.ts` 并改调用方。
+
+**改名的连锁影响**：`exports` 是 `"./*": "./src/*"`，路径变化对消费方是硬变更，
+以下 import 必须同步改完 —— `ui-ai/src/send.ts`、`ui-ai/src/chat/schedule.ts`、
+`ui-ai/src/chat/working-status.tsx`、`ui-ai/src/layout.tsx`、`ui-ai/src/session.ts`、
+`ui-composer/composer-agent-picker.tsx`、`apps/web/src/boot/preload.ts`。
 
 ## 边界
 

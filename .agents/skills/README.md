@@ -14,7 +14,7 @@
 | [browser-architecture](browser-architecture/SKILL.md) | 浏览器生命周期与 adapter |
 | [tool-architecture](tool-architecture/SKILL.md) | Tool 契约、CLI skill 注入、registry |
 | [frontend-architecture](frontend-architecture/SKILL.md) | pnpm 工作区结构、桌面能力注入、包依赖方向 |
-| [frontend-coding](frontend-coding/SKILL.md) | 前端 **照抄示例**：文件粒度、同类归文件夹、注释、命名、字段容错 |
+| [frontend-coding](frontend-coding/SKILL.md) | 前端 **通用规范模板**（与项目无关，可直接复制到其他项目）：文件粒度、同类归文件夹、注释、命名、字段容错 |
 | [python-coding](python-coding/SKILL.md) | Python **照抄示例**：注释、插座、命名、日志 |
 | [rust-coding](rust-coding/SKILL.md) | Rust **照抄示例**：注释、插座、命名、日志 |
 
@@ -29,7 +29,7 @@
 - 前端主开发在浏览器；外部 CLI Agent 仅桌面注入（`@v2/runtime/capabilities`）。
 - 前端包依赖单向无环，叶子包（`app-state` / `runtime` / `routes` / `contracts`）不许引业务包。
 - 写 Python / Rust 时必须按 `python-coding` / `rust-coding` Skill 里的示例形状落笔。
-- 写前端必须按 `frontend-coding` Skill 的示例形状落笔：**一个功能块一个文件**、
+- 写前端必须按 `frontend-coding` 的示例形状落笔：**一个功能块一个文件**、
   同类归文件夹（禁 `utils/` `helpers/` `services/` 这类垃圾桶名）、文件头写「一行总述 + 职责：」。
-  外部数据字段容错走 `@v2/runtime/guards`（`isString(x, fb)`），不写
-  `typeof x === "string" ? x : ""`。
+  **那份 Skill 是通用模板、不含本项目路径**，叮答特有的落点（源码根、共享模块、
+  检查命令）写在 `.cursor/rules/frontend-coding.mdc`。
