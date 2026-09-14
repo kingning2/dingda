@@ -236,6 +236,49 @@ export { loadCachedAgentRuntimes, probeSingleAgent /* ... */ } from "./cli/scan"
 
 ---
 
+## 示例 D：字段级容错用判定器，不写类型判定型三元
+
+后端 / 外部 CLI / `sessionStorage` 给的字段，形状不保证。这类「判定 + 兜底」不要写
+`typeof x === "string" ? x : ""`，用 `@v2/runtime/guards`：
+
+```ts
+import { isArray, isObject, isString } from "@v2/runtime/guards";
+
+// ✗ 判定型三元；嵌套两层之后基本读不动
+seller: typeof item.supplier === "string" ? item.supplier : null,
+product_url:
+  typeof item.url === "string" ? item.url
+  : typeof item.product_url === "string" ? item.product_url
+  : undefined,
+
+// ✓ 一次调用；多候选按顺序取第一个通过的
+seller: isString(item.supplier, null),
+product_url: isString([item.url, item.product_url], undefined),
+```
+
+**返回类型由兜底值决定**：`isString(x, "")` → `string`；`isString(x, null)` →
+`string | null`；`isString(x, undefined)` → `string | undefined`。不需要在调用点标注。
+
+成套的判定器：`isString` / `isNumber` / `isBoolean` / `isObject` / `isArray` /
+`isFunction`。
+
+### 三条使用边界（写错会引入 bug）
+
+1. **判定器不转换。** `isNumber("12")` 是 `false`。要「尽量救回来」用转换函数
+   （如 `asNumber`）。两者语义不同：判定是「信任这个值」，转换是「尽量救回来」。
+   把 `String(item.id)` 改成 `isString(item.id, "")` 会让数字 id 静默变成空串。
+2. **数组一律被当作候选列表。** 判断「某个值本身是不是数组」要写 `isArray([x], fb)`；
+   `isArray(x, fb)` 是「在 `x` 的元素里找一个数组」。
+3. **输入已经是数组类型时不要用 `isArray`。** 例如
+   `Array.isArray(data.agents) ? data.agents : []` 里 `data.agents` 已声明为
+   `AgentRuntimeItem[]`；`isArray` 会把元素类型退化成 `unknown`，反而要加断言。
+   这种「已声明类型的运行时校验」保持原样更清楚。
+
+### 不适用范围
+
+普通的二选一分支 —— 两种载荷形状、JSX 条件渲染、`x ?? y` —— **不属于**这个模式，
+仍该用 `if` / 三元。套判定器只会更绕。
+
 ## 检查清单（交代码前）
 
 - [ ] 文件顶部有块注释，且「职责：」能用一句话说完、不含「和」

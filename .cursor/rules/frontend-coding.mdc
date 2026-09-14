@@ -22,6 +22,10 @@ alwaysApply: false
 9. 拆 / 改名后**直接改调用方**，不留 `export { ... } from "./old"` 转发壳
 10. 每个有代码的目录有 `README.md`（树形：上层只链下层；本层每个文件写清职责、关键符号、谁调用，「谁调用」须 Grep 实证）
 11. 交代码前跑 `pnpm check:deps` + `pnpm check:unused` + `pnpm exec tsc --noEmit`
+12. **字段级容错用 `@v2/runtime/guards`**（`isString(x, fb)` / `isString([a, b], fb)`），
+    不写 `typeof x === "string" ? x : ""`。注意判定器**不转换**（`isNumber("12")` 是 false，
+    要转换用 `asNumber`）；数组一律是候选列表；输入已声明为数组类型时不用 `isArray`。
+    普通的二选一分支（JSX 条件渲染、`x ?? y`）不属于这个模式，仍用 `if` / 三元
 
 **架构与依赖方向不在本规范**，见 `.agents/skills/frontend-architecture/SKILL.md`。
 

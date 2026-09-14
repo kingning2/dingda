@@ -30,7 +30,7 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
 | [contracts/](contracts/README.md) | 与 Python 的线协议类型（纯类型） | `server/` 改字段时同步 |
 | [client/routes/](client/routes/README.md) | 路由契约：路径常量与解析 | 加页面时改 `paths.ts` |
 | [client/app-state/](client/app-state/README.md) | 跨域共享 UI 状态（zustand） | 启动探测结果存哪 |
-| [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、Server 状态、错误上报 | 连不上 Server / 判断是否桌面端 |
+| [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、Server 状态、错误上报、值类型判定 | 连不上 Server / 判断是否桌面端 / 判定外部数据字段类型 |
 | [client/ui-theme/](client/ui-theme/README.md) | 设计令牌与全局样式 | 改颜色、圆角、字体 |
 | [client/ui-primitives/](client/ui-primitives/README.md) | 无业务的原子组件 + `cn()` | 按钮/输入框长什么样 |
 | [client/ui-layout/](client/ui-layout/README.md) | 外壳、标题栏、导航栏、主区域、路由出口 | 窗口骨架、侧栏、页面切换动效 |
