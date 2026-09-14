@@ -15,16 +15,27 @@
  *       `export { X } from "./x"` 与 `import { X } from "@v2/pkg"` 对不上号。
  *     - 耗时 ≈ tsc --noEmit 同量级（本仓约 3.6s），所以默认不当作硬失败，
  *       也不建议无条件接进 `dev` 前置。
- *     - 组件库与跨语言契约天然有未使用导出，走 `ALLOWLIST` 豁免。
+ *     - 组件库与跨语言契约天然有未使用导出，走 `ALLOWLIST`（按文件路径前缀）豁免。
  *     - 本脚本分不清「死代码」与「预留件」。明确标注的预留件（已声明、故意未接线）
- *       不是死代码：要么在文件里写清预留意图，要么加进 `ALLOWLIST`。
+ *       不是死代码：要么在文件里写清预留意图，要么加进 `RESERVED`（按 文件+符号）。
  *       反过来，若某个符号已被真实数据源取代（如 mock 常量被 store 取代），
  *       那就是真死代码，应当删掉而不是豁免。
+ *
+ * 已知坑（改本脚本前必读）：
+ *     判定「未使用」要比对**标识符节点**起点，所以排除声明自身时必须用
+ *     `decl.name.getStart()`，不能用 `decl.getStart()`。原因是：
+ *       - `export const X` —— 声明节点是 `VariableDeclaration`（不含 `export`，
+ *         那属于父级 `VariableStatement`），起点恰好等于标识符起点，用哪个都对；
+ *       - `export function/interface/type/class/enum X` —— 声明节点**包含 `export`
+ *         修饰符**，起点在 `export` 上，与标识符起点差 7 个字符，于是
+ *         `declPos.has(...)` 恒为 false，把自己的标识符当成一次「使用」→ 永不报出。
+ *     这个缺陷曾让本脚本对后一类导出**系统性漏报**，给出「0 未使用」的虚假信心。
+ *     见下方 `nameStart()`。
  *
  * 用法：
  *     node scripts/check-unused.mjs            # 默认只警告，退出码 0
  *     node scripts/check-unused.mjs --strict   # 有问题就退出码 1（CI 用）
- *     node scripts/check-unused.mjs --no-allow # 忽略豁免名单，全量报告
+ *     node scripts/check-unused.mjs --no-allow # 忽略豁免与预留名单，全量报告
  *
  * 已接入启动链（见根 package.json）：
  *     pnpm dev    → 警告模式，不阻塞开发循环
@@ -53,9 +64,113 @@ const ALLOWLIST = [
 /** 这些文件是入口，没人 import 它们才正常。 */
 const ENTRY_RE = /(?:^|\/)(main|index)\.tsx?$/;
 
+/**
+ * 已定性为「预留件」的未使用导出：机制是活的，只是当前没有调用方。
+ *
+ * 与 ALLOWLIST 的区别 —— ALLOWLIST 按**文件路径前缀**豁免（整类文件天然没有引用，
+ * 例如 shadcn 组件库）；这里按**文件 + 符号**豁免，且每项必须写清为什么它是预留而不是死代码。
+ *
+ * 纪律（写死在这里，加新项前先读一遍）：
+ *   - 若某符号已被别的实现取代（如 mock 常量被 store 取代、非流式版被 SSE 版取代），
+ *     那是**真死代码**，应该删掉，**不要**加进来。
+ *   - 若某符号是某个活跃机制的对称接口（另一半在用），可以加进来并注明。
+ *   - 每项都要能回答：「删了它，哪段活代码会变成孤儿？」
+ */
+const RESERVED = [
+  // ── 活跃机制的对称接口：删了会让另一半失去配对的注册/读取入口 ──
+  {
+    file: "packages/client/runtime/src/http-client.ts",
+    name: "onApiRequest",
+    why: "请求拦截器注册入口。requestInterceptors 仍在 http-client.ts:118 被消费，删掉它这套机制就失去唯一注册点。与 onApiResponse（在用）对称。",
+  },
+  {
+    file: "packages/client/runtime/src/app-alert.ts",
+    name: "getAppAlerts",
+    why: "告警快照读取。与 subscribeAppAlerts / pushAppAlert（均在用）同属一个活跃机制。",
+  },
+  {
+    file: "packages/client/runtime/src/app-alert.ts",
+    name: "clearAppAlerts",
+    why: "清空全部告警，同上机制的对称操作。",
+  },
+  {
+    file: "packages/client/runtime/src/dismiss-boot-splash.ts",
+    name: "dismissBootSplashAfterPaint",
+    why: "双 rAF 后再移除启动屏的变体（等 React 提交到 DOM，避免闪白）。dismissBootSplash 被 boot-gate.tsx 直接调用；本变体是预留的更稳妥时序。",
+  },
+  {
+    file: "packages/client/ui-ai/src/session.ts",
+    name: "clearWorkSnapshot",
+    why: "清除会话快照。与 stashWorkSnapshot / peekWorkSnapshot（均在用）同属一个活跃机制。",
+  },
+  {
+    file: "packages/client/ui-crawler/src/product-preview.ts",
+    name: "closeProductPreviewUi",
+    why: "关闭预览。与 openProductPreview / subscribeProductPreview（均在用）同属一个活跃机制。",
+  },
+
+  // ── 待用户定性：疑为被取代的实现，我倾向删除，但不在本轮擅自删 ──
+  {
+    file: "packages/client/ui-account/src/mock-data.ts",
+    name: "accountFromAuthProbe",
+    why: "【待定性·倾向删除】登录态探活后的账号快照构造，属 mock 期产物；账号已接真实后端。",
+  },
+  {
+    file: "packages/client/ui-account/src/mock-data.ts",
+    name: "mockAccountAfterQrLogin",
+    why: "【待定性·倾向删除】已标 @deprecated（改用 accountFromQrLogin），且无调用方。",
+  },
+  {
+    file: "packages/client/ui-crawler/src/crawler-api.ts",
+    name: "searchCrawlerProducts",
+    why: "【待定性·倾向删除】非流式搜品，已被 searchCrawlerProductsLive（SSE 版，在用）取代。",
+  },
+  {
+    file: "packages/client/ui-crawler/src/crawler-api.ts",
+    name: "fetchCrawlerProductLive",
+    why: "【待定性·倾向删除】直播拉详情，从未接线；UI 走的是非流式的 fetchCrawlerProduct（在用）。",
+  },
+  {
+    file: "packages/client/ui-crawler/src/crawler-api.ts",
+    name: "crawlerLiveFrameToDataUrl",
+    why: "【待定性·倾向删除】纯转发壳：函数体只有 `return frameToDataUrl(frame)`。",
+  },
+  {
+    file: "packages/client/ui-agent/src/agent-run.ts",
+    name: "cancelAgentRun",
+    why: "【待定性·倾向删除】与 AgentRunHandle.cancel 重复实现同一 cancel 请求。已在 ui-agent 步骤 2 清单上。",
+  },
+  {
+    file: "packages/client/ui-agent/src/agent-run.ts",
+    name: "runAgentWithEvents",
+    why: "【待定性·倾向删除】只是 startAgentRunWithEvents(...).done 的包装。已在 ui-agent 步骤 2 清单上。",
+  },
+  {
+    file: "packages/client/ui-agent/src/agent-runtime.ts",
+    name: "AgentRuntimeDownloadResult",
+    why: "【待定性·倾向删除】与 AgentDownloadResult 字段全同且零引用。已在 ui-agent 步骤 2 清单上。",
+  },
+];
+
+const reservedKey = (file, name) => `${file}:${name}`;
+const RESERVED_INDEX = new Map(RESERVED.map((r) => [reservedKey(r.file, r.name), r.why]));
+
 const rel = (f) => path.relative(repoRoot, f).replace(/\\/g, "/");
 const isLocal = (f) => f && !f.includes("node_modules") && !f.endsWith(".d.ts");
 const exempt = (f) => ALLOWLIST.some((p) => f.startsWith(p));
+
+/**
+ * 取声明节点的「标识符起点」，不是声明节点起点。
+ *
+ * 必须用标识符起点，因为比对用的是 `node.getStart()`（标识符节点）。
+ * 两者在下列情况下不同：
+ *   - `export function/interface/type/class/enum X` —— 声明节点**包含 `export` 修饰符**，
+ *     起点在 `export` 上，与标识符起点差 7 个字符
+ *   - `export const X` —— 声明节点是 `VariableDeclaration`（不含 `export`，那属父级
+ *     `VariableStatement`），起点恰好等于标识符起点
+ * 曾经用声明节点起点，导致前一类导出把自己的标识符当成一次「使用」而永不报出。
+ */
+const nameStart = (d) => (d.name ? d.name.getStart() : d.getStart());
 
 /**
  * 跑一次全仓引用分析。
@@ -96,14 +211,14 @@ export function analyzeUnused() {
       const d = decls[0];
       if (!isLocal(d.getSourceFile().fileName)) continue;
 
-      const pos = ts.getLineAndCharacterOfPosition(d.getSourceFile(), d.getStart());
+      const pos = ts.getLineAndCharacterOfPosition(d.getSourceFile(), nameStart(d));
       exported.set(sym, {
         name: sym.getName(),
         file: rel(d.getSourceFile().fileName),
         line: pos.line + 1,
       });
       for (const dd of decls) {
-        declPos.add(`${dd.getSourceFile().fileName}:${dd.getStart()}`);
+        declPos.add(`${dd.getSourceFile().fileName}:${nameStart(dd)}`);
       }
     }
   }
@@ -164,8 +279,13 @@ export function analyzeUnused() {
  * @returns {number} 问题条数（豁免名单内的不计）
  */
 export function report(result, { useAllowlist = true } = {}) {
+  const reserved = useAllowlist
+    ? result.unusedExports.filter((i) => RESERVED_INDEX.has(reservedKey(i.file, i.name)))
+    : [];
+  const reservedSet = new Set(reserved.map((i) => reservedKey(i.file, i.name)));
+
   const ex = useAllowlist
-    ? result.unusedExports.filter((i) => !exempt(i.file))
+    ? result.unusedExports.filter((i) => !exempt(i.file) && !reservedSet.has(reservedKey(i.file, i.name)))
     : result.unusedExports;
   const or = useAllowlist ? result.orphans.filter((f) => !exempt(f)) : result.orphans;
 
@@ -178,9 +298,18 @@ export function report(result, { useAllowlist = true } = {}) {
   console.log(`\n完全未被 import 的文件：${or.length === 0 ? "无 ✅" : `${or.length} 个`}`);
   for (const f of or) console.log(`  ! ${f}`);
 
+  // 预留件单独列出并带理由 —— 是债务，不是豁免；不静默隐藏。
+  if (reserved.length > 0) {
+    console.log(`\n已定性为预留、不计入问题：${reserved.length} 个`);
+    for (const i of reserved) {
+      console.log(`  ~ ${i.file}:${i.line}  ${i.name}`);
+      console.log(`      ${RESERVED_INDEX.get(reservedKey(i.file, i.name))}`);
+    }
+  }
+
   if (useAllowlist) {
     const skipped =
-      result.unusedExports.length - ex.length + (result.orphans.length - or.length);
+      result.unusedExports.length - ex.length - reserved.length + (result.orphans.length - or.length);
     if (skipped > 0) console.log(`\n（豁免名单内另有 ${skipped} 项未列出，--no-allow 可查看）`);
   }
 
