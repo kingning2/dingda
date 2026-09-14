@@ -6,7 +6,7 @@
  */
 
 export { Layout, View, AiWorkView } from "./layout";
-export type { SideTab } from "./layout";
+export type { SideTab } from "./chat/use-side-panel";
 
 export { Chat } from "./chat/chat";
 export type { ChatProps } from "./chat/chat";
