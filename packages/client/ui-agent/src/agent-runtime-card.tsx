@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download, ExternalLink, KeyRound, Loader2, LogIn, Star } from "lucide-react";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import { getAgentGuideUrl, supportsAgentLogin } from "./agent-runtime";
@@ -85,6 +85,17 @@ export function AgentRuntimeCard({
   const { status } = agent;
   const guideUrl = getAgentGuideUrl(agent);
   const models = agent.models ?? [];
+  /**
+   * 交给 base-ui 的 value→label 映射。
+   *
+   * 不传的话 `<Select.Value>` 会回落成**原始 value**（模型 id），于是触发器显示
+   * `claude-sonnet-4-6`，而下拉项显示 `Claude Sonnet 4.6` —— 两处不一致。
+   * base-ui 文档：`items` 指定后，`<Select.Value>` 渲染选中项的 label 而非原始值。
+   */
+  const modelItems = useMemo(
+    () => models.map((model) => ({ value: model.id, label: model.label })),
+    [models],
+  );
   const phase = resolveSetupPhase(agent);
   const probing = phase === "probing";
   const preferredInList =
@@ -174,6 +185,7 @@ export function AgentRuntimeCard({
             <span className="text-[11px] text-muted-foreground">可用模型</span>
             <Select
               value={selectValue}
+              items={modelItems}
               onValueChange={(value) => {
                 if (!value || value === selectedModelId) return;
                 setSelectedModelId(value);
