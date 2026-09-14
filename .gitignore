@@ -19,6 +19,12 @@ e2e/.drivers/
 # Rust
 target/
 
+# E2E 备用构建目录：dev 会话锁住 target/debug/client.exe 时的替代（见 e2e/README.md）
+target-e2e/
+
+# E2E 运行产物（扫码二维码快照等）
+e2e/artifacts/
+
 # Logs
 logs
 *.log
