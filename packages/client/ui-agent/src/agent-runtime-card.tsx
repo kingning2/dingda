@@ -1,3 +1,16 @@
+/**
+ * 单个 Agent 的配置卡。
+ *
+ * 职责：
+ *   展示一个 Agent 的图标、状态徽标、鉴权徽标、下一步提示、模型下拉与下载进度，
+ *   并把用户操作（登录 / 下载 / 设为默认 / 改模型）回调给父级面板。
+ *
+ * 设计说明：
+ *   - 按钮显隐全部由 resolveSetupPhase() 推导出的阶段决定，不按 Agent 特判
+ *   - 模型下拉必须给 base-ui 的 Select 传 items 做 value→label 映射，
+ *     否则触发器会回落成模型 id，与下拉项文案不一致
+ */
+
 import { useEffect, useMemo, useState } from "react";
 import { Download, ExternalLink, KeyRound, Loader2, LogIn, Star } from "lucide-react";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
@@ -71,6 +84,11 @@ function nextStepText(phase: SetupPhase, agent: AgentRuntimeItem): string | null
   return null;
 }
 
+/**
+ * 渲染一个 Agent 的配置卡。
+ *
+ * 纯展示 + 回调：所有动作都由父级通过 props 传入，本组件不自己发请求。
+ */
 export function AgentRuntimeCard({
   agent,
   loggingIn = false,

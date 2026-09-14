@@ -213,6 +213,11 @@ export async function rescanAgentRuntimes(
   }
 }
 
+/**
+ * 只重探一个 Agent（登录 / 下载完成后调用）。
+ *
+ * 会先取消进行中的后台 probe，否则两轮结果会互相覆盖。
+ */
 export function probeSingleAgent(agentId: string) {
   cancelBackgroundProbe?.();
   cancelBackgroundProbe = probeAgentsInBackground(

@@ -5,6 +5,7 @@
  * 不再通过“最后一个块是什么”猜测当前应该展示什么。
  */
 
+/** 一次运行所处的前端阶段，由后端 SSE 事件推进，不由前端猜。 */
 export type AgentRunPhase =
   | "starting"
   | "thinking"
@@ -15,6 +16,7 @@ export type AgentRunPhase =
   | "completed"
   | "failed";
 
+/** 一个阶段对应的全部 UI 表现；组件只读这里，不再自己判断「该展示什么」。 */
 export interface AgentRunPhaseView {
   /** 对外持久化的状态值，保持 running / ready / error 兼容。 */
   statusState: string;

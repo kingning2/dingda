@@ -1,3 +1,16 @@
+/**
+ * 外部 CLI Runtime 的探测与操作。
+ *
+ * 职责：
+ *   PATH 探测、鉴权视图组装、后台并发 probe、登录、下载，以及把原始字段规整成 AgentRuntimeItem。
+ *
+ * 设计说明：
+ *   - 本文件已混装四类职责（探测 / 鉴权 / 下载 / 浏览器 mock），432 行 / 14 个顶层导出，
+ *     按 frontend-coding 应拆成 cli/{probe,login,download,normalize}.ts（见 README「已知结构问题」）
+ *   - mock 分支（mockCodexAuthenticated / mockClaudeAuthenticated / delay）与生产代码混装，
+ *     违反 frontend-architecture 反例第 6 条「浏览器 mock 已安装 Codex/Claude」，待移除
+ */
+
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
 import type {
@@ -29,12 +42,14 @@ type RawAgentRuntimeStatusView = AgentRuntimeStatusView & {
   badgeClass?: string;
 };
 
+/** 取该 Agent 的接入文档地址；没有文档时退回安装地址，都没有则返回 null。 */
 export function getAgentGuideUrl(agent: AgentRuntimeItem): string | null {
   const docs = agent.docs_url?.trim();
   const install = agent.install_url?.trim();
   return docs || install || null;
 }
 
+/** 该 Agent 是否支持从平台内拉起登录；决定卡片是否显示「登录」按钮。 */
 export function supportsAgentLogin(agent: AgentRuntimeItem): boolean {
   return Boolean(agent.can_login);
 }
@@ -43,6 +58,12 @@ export function supportsAgentProbe(_agent: AgentRuntimeItem): boolean {
   return true;
 }
 
+/**
+ * 把后端 / Rust 返回的原始字段收成 AgentRuntimeItem。
+ *
+ * 同时吃 snake_case 与 camelCase：上游字段风格不统一，在这里一次性抹平，
+ * 上层就不必再判断两种命名。status 缺失时回落成「未安装」而不是抛错。
+ */
 export function normalizeAgentRuntimeItem(raw: RawAgentRuntimeItem): AgentRuntimeItem {
   const status = raw.status;
   return {
@@ -225,6 +246,12 @@ function mergeProbeResult(agent: AgentRuntimeItem, raw: AgentRuntimeProbeResult)
   };
 }
 
+/**
+ * 探测单个 Agent：桌面走 Tauri invoke；非桌面走 mock 分支（待移除，见文件头设计说明）。
+ *
+ * 无论成败都返回可渲染的 item：失败会转成「未安装 + 原因」，不抛错 ——
+ * 一个 Agent 探测失败不应拖垮整轮并发探测。
+ */
 export async function probeAgentRuntime(agent: AgentRuntimeItem): Promise<AgentRuntimeItem> {
   if (isTauri() && supportsAgentProbe(agent)) {
     try {
@@ -363,6 +390,11 @@ export function probeAgentsInBackground(
   };
 }
 
+/**
+ * 拉起 CLI 登录（桌面走 Tauri invoke，非桌面走 mock）。
+ *
+ * 不抛错：失败以 `started=false` + 给用户看的 message 返回，调用方直接展示即可。
+ */
 export async function loginAgentRuntime(agentId: string): Promise<AgentRuntimeLoginResult> {
   if (isTauri()) {
     try {
@@ -392,6 +424,7 @@ export async function loginAgentRuntime(agentId: string): Promise<AgentRuntimeLo
   };
 }
 
+/** 下载结果：CLI 装到叮答托管目录后的绝对路径与版本。 */
 export interface AgentDownloadResult {
   agentId: string;
   path: string;

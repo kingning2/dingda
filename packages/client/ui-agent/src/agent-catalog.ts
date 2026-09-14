@@ -2,6 +2,7 @@
  * Agent 执行引擎目录 — 与后端 `AGENT_REGISTRY` / `RUNTIME_REGISTRY` 对齐。
  */
 
+/** 一个受支持的本地 Agent CLI 的展示与安装信息。 */
 export interface AgentCatalogEntry {
   id: string;
   name: string;

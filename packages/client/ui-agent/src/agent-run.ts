@@ -5,6 +5,7 @@
 import type { AgentEvent } from "@v2/contracts/agent-event";
 import { getApiBaseUrl } from "@v2/runtime/http-client";
 
+/** 一次运行的入参；字段与后端 `/v1/agent/runtimes/{id}/run` 的 body 一一对应。 */
 export interface LaunchAgentRunRequest {
   runtimeId: string;
   prompt: string;
@@ -24,6 +25,7 @@ export interface LaunchAgentRunRequest {
   workId?: string | null;
 }
 
+/** 生成一次运行的 id；前端先用它占位，后端按同一个 id 回报进度与取消。 */
 export function createRunId(): string {
   return `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
@@ -75,6 +77,7 @@ async function* readSse(
   }
 }
 
+/** 一次运行的句柄：拿 runId、等结束、主动取消。 */
 export interface AgentRunHandle {
   runId: string;
   done: Promise<{ runId: string; exitCode: number }>;

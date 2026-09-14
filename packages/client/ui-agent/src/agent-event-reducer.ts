@@ -13,6 +13,7 @@ import type {
 } from "@v2/contracts/ai-work";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "./agent-run-phase";
 
+/** 一条助手消息在运行中的完整状态；每来一个 SSE 事件就整体替换一次。 */
 export interface AgentRunMessageState {
   /** 前端运行阶段，由 SSE 事件推进。 */
   phase: AgentRunPhase;
@@ -26,6 +27,7 @@ export interface AgentRunMessageState {
   sessionId: string | null;
 }
 
+/** 新建一条空的助手消息状态，起始阶段为 starting。 */
 export function createAgentRunMessageState(): AgentRunMessageState {
   return {
     phase: "starting",
@@ -106,6 +108,12 @@ function patchStep(
   });
 }
 
+/**
+ * 把单个 SSE 事件折叠进状态，返回新对象（不改原状态）。
+ *
+ * `hasProducts` 由调用方解析事件后传入：「商品结果」不是后端的事件类型，
+ * 前端不猜，只能由知道业务语义的一方显式告知。
+ */
 export function reduceAgentEvent(
   state: AgentRunMessageState,
   event: AgentEvent,
@@ -302,6 +310,11 @@ export function reduceAgentEvent(
   }
 }
 
+/**
+ * 把运行态写回助手消息。
+ *
+ * 思考时长后端不给，只能在完成时按 thinking_started_at 起算补一次。
+ */
 export function applyRunStateToAssistantMessage(
   message: AgentWorkMessageView,
   state: AgentRunMessageState,
@@ -326,6 +339,12 @@ export function applyRunStateToAssistantMessage(
   };
 }
 
+/**
+ * 把运行态写回整份详情：消息、全局状态、浏览器直播帧、可发送标志。
+ *
+ * 直播帧取时间线上**最后一个**带截图的 browser_crawl 步骤，这样重进会话还能看到最后一帧，
+ * 而不是空白。
+ */
 export function applyRunStateToDetail(
   detail: AgentWorkDetailView,
   assistantMessageId: string,
@@ -408,6 +427,12 @@ export function truncateBeforeUserMessage(
   };
 }
 
+/**
+ * 乐观发送：先把用户消息与一条空的助手消息塞进详情，再等 SSE 推进。
+ *
+ * 换 Agent 时丢掉旧 CLI session —— 历史对不上，继续用会串上下文。
+ * 标题只在首轮生成，取用户输入前 24 字。
+ */
 export function createOptimisticSendDetail(
   detail: AgentWorkDetailView,
   userText: string,

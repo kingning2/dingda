@@ -1,3 +1,14 @@
+/**
+ * Agent 页主面板。
+ *
+ * 职责：
+ *   把 store 里的 agents 分成「已检测到 / 未安装」两组渲染卡片，承接扫描、登录、下载、
+ *   设为默认、改模型五个动作，并把动作结果统一展示在 actionHint 上。
+ *
+ * 设计说明：
+ *   - 服务未就绪时「设为默认」直接拒绝；改模型只生效本次并明确提示，不静默失败
+ */
+
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
@@ -13,6 +24,12 @@ import {
 import { putDefaultAgentId, putDefaultModelId } from "./agent-api";
 import { AgentRuntimeCard } from "./agent-runtime-card";
 
+/**
+ * Agent 页主面板。
+ *
+ * 只负责「分组 + 承接动作 + 展示结果」；探测、登录、下载、落库的实现都在同包的
+ * agent-runtime / agent-runtime-scan / agent-api 里，本组件不直接碰 HTTP 或 Tauri。
+ */
 export function AgentRuntimesPanel() {
   const server = useServer();
   const agents = useDiscoveryStore((state) => state.agents);
