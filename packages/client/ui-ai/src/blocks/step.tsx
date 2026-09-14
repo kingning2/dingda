@@ -14,8 +14,8 @@ import type { AgentWorkProductItem, AgentWorkStepView } from "@v2/contracts/ai-w
 import { Badge } from "@v2/ui-primitives/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
 import { openProductPreview } from "@v2/ui-crawler/product-preview";
-import { Collapse } from "../Collapse";
-import { CodexActivityIndicator } from "../ThinkingOrb";
+import { Collapse } from "./collapse";
+import { CodexActivityIndicator } from "./thinking-orb";
 import { registerBlock } from "../chat/registry";
 import type { ChatBlockProps } from "../chat/types";
 

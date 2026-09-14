@@ -13,7 +13,11 @@
 | `chat-turn.tsx` | 一轮：用户块 + 其后助手块 | `ChatTurn` |
 | `working-status.tsx` | Codex 风格状态行与 `└` 详情推导 | `WorkingIndicator` / `resolveWorkingDetails` |
 | `use-sticky-and-follow.ts` | sticky 分区索引 + 是否跟随底部 | `useStickyAndFollow` |
+| `use-side-panel.ts` | 侧边栏 Tab + 聊天面板宽度拖拽 | `useSidePanel` / `SideTab` |
+| `use-work-detail.ts` | 加载详情 / 自动发送草稿 / 发送编排 / 设置变更 | `useWorkDetail` |
 | `chat.tsx` | 面板本体：轮次 + 虚拟滚动 + 装配输入框 | `Chat` |
+| `composer-footer.tsx` | 输入框（无状态包装，memo 化） | `ComposerFooter` |
+| `stick-to-bottom.ts` | 是否贴底的纯函数 | `nearBottom` / `nextFollowIntent` |
 
 ## 加一个聊天块（四步，零处改 `Chat`）
 

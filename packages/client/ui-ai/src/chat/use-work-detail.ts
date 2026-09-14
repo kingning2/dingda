@@ -21,8 +21,8 @@ import { putAgentWorkDetail } from "@v2/ui-agent/api";
 import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { truncateBeforeUserMessage } from "@v2/ui-agent/run/reducer";
-import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "../session";
-import { send, type SendHandle } from "../send";
+import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "../work/session";
+import { send, type SendHandle } from "../work/send";
 
 const PERSIST_DEBOUNCE_MS = 800;
 

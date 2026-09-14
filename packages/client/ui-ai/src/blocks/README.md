@@ -1,6 +1,6 @@
 # blocks/
 
-聊天块：按 `kind` 注册到 `chat/registry.ts`，由 `chat/chat-block.tsx` 统一分派。
+聊天块与块级渲染基元。块按 `kind` 注册到 `chat/registry.ts`，由 `chat/chat-block.tsx` 统一分派。
 
 ## 块列表
 
@@ -10,6 +10,14 @@
 | `thinking.tsx` | `thinking` | 思考过程，默认折叠 |
 | `step.tsx` | `step` | 工具调用结果（浏览/爬取/搜索/比对） |
 | `text.tsx` | `text` | 助手正文 |
+
+## 块级渲染基元
+
+| 文件 | 说明 |
+|------|------|
+| `collapse.tsx` | Foldable：lifecycleOpen + 用户手点锁定 |
+| `thinking-orb.tsx` | Codex 风格活动符 `•` |
+| `use-reveal-text.ts` | 80ms 合并 + ~2s CharReveal；历史挂载即落定 |
 
 ## 加一个新块
 

@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { Virtualizer } from "@tanstack/react-virtual";
-import { nearBottom, nextFollowIntent, type FollowIntent, type ScrollSample } from "../stick-to-bottom";
+import { nearBottom, nextFollowIntent, type FollowIntent, type ScrollSample } from "./stick-to-bottom";
 import type { ChatTurn } from "./types";
 
 function readScrollSample(el: HTMLElement): ScrollSample {

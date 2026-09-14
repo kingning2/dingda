@@ -17,17 +17,17 @@ export type {
   ChatRenderContext,
   ChatTurn,
 } from "./chat/types";
-export { ComposerFooter } from "./composer-footer";
+export { ComposerFooter } from "./chat/composer-footer";
 
-export { send } from "./send";
-export type { SendHandle, SendUpdate } from "./send";
+export { send } from "./work/send";
+export type { SendHandle, SendUpdate } from "./work/send";
 
-export { Collapse } from "./Collapse";
-export { CodexActivityIndicator, ThinkingOrb } from "./ThinkingOrb";
+export { Collapse } from "./blocks/collapse";
+export { CodexActivityIndicator, ThinkingOrb } from "./blocks/thinking-orb";
 
-export { Products } from "./Products";
-export { ComparisonResults } from "./ComparisonResults";
-export { Settings } from "./Settings";
+export { Products } from "./panel/products";
+export { ComparisonResults } from "./panel/comparison-results";
+export { Settings } from "./panel/settings";
 
 export {
   stashWorkDraft,
@@ -36,6 +36,6 @@ export {
   clearWorkDraft,
   loadAgentWorkDetail,
   buildEmptyWorkDetail,
-} from "./session";
+} from "./work/session";
 
 export { MarkdownRenderer, MarkdownCode, MarkdownLink } from "./markdown";

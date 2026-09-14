@@ -15,7 +15,7 @@ import {
   extractProducts,
   mergeComparison,
   mergeProducts,
-} from "@v2/ui-ai/agent-output";
+} from "@v2/ui-ai/work/agent-output";
 
 const status = { state: "ready", label: "已完成", hint: null, badge_class: "b" };
 

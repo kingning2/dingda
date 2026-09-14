@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from "react";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
-import { CodexActivityIndicator } from "../ThinkingOrb";
+import { CodexActivityIndicator } from "../blocks/thinking-orb";
 import type { ChatBlock } from "./types";
 
 /** 把秒数格式化成 Codex TUI 的紧凑形式。 */

@@ -16,7 +16,7 @@ import { Badge } from "@v2/ui-primitives/badge";
 import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
 import { openProductPreview } from "@v2/ui-crawler/product-preview";
-import { ComparisonResults } from "./ComparisonResults";
+import { ComparisonResults } from "./comparison-results";
 
 /** 单行预估高度（含间距）。 */
 const ROW_ESTIMATE_PX = 112;

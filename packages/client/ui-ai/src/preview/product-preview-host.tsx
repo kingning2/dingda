@@ -4,8 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { subscribeProductPreview, type ProductPreviewTarget } from "@v2/ui-crawler/product-preview";
-import { XianyuPreviewDialog } from "./XianyuPreviewDialog";
-import { XiaohongshuPreviewDialog } from "./XiaohongshuPreviewDialog";
+import { XianyuPreviewDialog } from "./xianyu-preview-dialog";
+import { XiaohongshuPreviewDialog } from "./xiaohongshu-preview-dialog";
 
 /** 挂在 AI 工作 Layout：订阅 openProductPreview 并分流。 */
 export function ProductPreviewHost() {

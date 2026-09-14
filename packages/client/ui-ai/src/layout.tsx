@@ -15,9 +15,9 @@ import { cn } from "@v2/ui-primitives/utils";
 import { Chat } from "./chat/chat";
 import { useSidePanel } from "./chat/use-side-panel";
 import { useWorkDetail } from "./chat/use-work-detail";
-import { ProductPreviewHost } from "./ProductPreviewHost";
-import { Products } from "./Products";
-import { Settings } from "./Settings";
+import { ProductPreviewHost } from "./preview/product-preview-host";
+import { Products } from "./panel/products";
+import { Settings } from "./panel/settings";
 
 interface LayoutProps {
   workId: string;

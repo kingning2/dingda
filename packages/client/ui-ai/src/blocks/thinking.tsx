@@ -12,9 +12,9 @@
  */
 
 import { useEffect, useState } from "react";
-import { Collapse } from "../Collapse";
+import { Collapse } from "./collapse";
 import { MarkdownRenderer } from "../markdown";
-import { useRevealText } from "../useRevealText";
+import { useRevealText } from "./use-reveal-text";
 import { registerBlock } from "../chat/registry";
 import type { ChatBlockProps } from "../chat/types";
 

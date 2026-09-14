@@ -18,7 +18,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ComposerAgentOption, ComposerSubmitPayload } from "@v2/contracts/composer";
 import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
-import { ComposerFooter } from "../composer-footer";
+import { ComposerFooter } from "./composer-footer";
 import { ChatBlock } from "./chat-block";
 import { ChatTurn } from "./chat-turn";
 import { blocksForPhase, scheduleTurns } from "./schedule";
