@@ -1,0 +1,25 @@
+{
+  "name": "@v2/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "桌面端 E2E：WebdriverIO 驱动内嵌 WebDriver 的 target/debug/client",
+  "scripts": {
+    "build:web": "pnpm --filter @v2/app-web build",
+    "build:app": "cargo build -p client --features e2e",
+    "pretest": "node ./scripts/require-artifacts.mjs",
+    "test": "wdio run wdio.conf.ts",
+    "test:debug": "wdio run wdio.conf.ts --logLevel debug"
+  },
+  "devDependencies": {
+    "@wdio/cli": "^9.31.7",
+    "@wdio/globals": "^9.31.3",
+    "@wdio/local-runner": "^9.31.7",
+    "@wdio/mocha-framework": "^9.31.7",
+    "@wdio/spec-reporter": "^9.31.2",
+    "@wdio/tauri-service": "^1.4.0",
+    "@wdio/types": "^9.31.2",
+    "@types/node": "^22",
+    "typescript": "~5.8.3"
+  }
+}

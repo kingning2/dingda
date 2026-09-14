@@ -27,10 +27,21 @@ pub fn run() {
     paths::set_app_root(manifest_dir.clone());
     paths::set_repo_root(repo_root_from_manifest_dir(&manifest_dir));
     paths::set_dev_mode(cfg!(dev));
-    tauri::Builder::default()
+    // 只有 --features e2e 会重新赋值（内嵌 WebDriver 插件），其余构建此 mut 无意义。
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .append_invoke_initialization_script(platform_initialization_script())
+        .append_invoke_initialization_script(platform_initialization_script());
+
+    // 仅 `--features e2e`：内嵌 W3C WebDriver 服务，供 e2e 的 embedded provider 驱动。
+    // release 与日常 dev 构建都不含 —— 理由见 Cargo.toml。
+    #[cfg(feature = "e2e")]
+    {
+        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
+    }
+
+    builder
         .setup(|app| {
             let server_dir = paths::ensure_server_workdir(app.handle());
             let uv_bin = paths::resolve_uv_bin(app.handle());
@@ -48,7 +59,7 @@ pub fn run() {
             let runtime_for_bg = Arc::clone(&runtime);
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(error) = runtime_for_bg.start_background(app_handle).await {
+                if let Err(error) = runtime_for_bg.start_background(&app_handle).await {
                     logging::log(
                         logging::Scope::Shell,
                         "python server background start failed",
