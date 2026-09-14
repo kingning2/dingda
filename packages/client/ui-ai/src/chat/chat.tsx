@@ -191,7 +191,6 @@ export function Chat({
                   ) : (
                     <ChatTurn
                       turn={item.turn}
-                      index={item.turnIndex}
                       // 阶段只对最末一轮有效：历史轮次永远静态铺开。
                       runPhase={item.turnIndex === turns.length - 1 ? activePhase : null}
                       context={context}

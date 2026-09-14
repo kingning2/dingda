@@ -9,8 +9,7 @@
  *     这是原有视觉约定，不是冗余嵌套。
  *   - 助手块为空时留一个 `h-2` 占位：否则虚拟项测量高度会是 0，滚动会跳。
  *   - 阶段裁剪只作用于助手块；用户块永远原样渲染。
- *   - `data-turn-index` 目前无人消费，保留是因为 data-* 是本仓 E2E 的既定锚点约定；
- *     要么接一个消费方，要么在下一轮删掉，不要长期留着一个没人读的属性。
+ *   - 阶段裁剪只作用于助手块；用户块永远原样渲染。
  */
 
 import { blocksForPhase } from "./schedule";
@@ -21,19 +20,17 @@ import type { ChatRenderContext, ChatTurn as ChatTurnData } from "./types";
 /** 一轮对话：用户消息 + 助手消息（含时间线与块序列）。 */
 export function ChatTurn({
   turn,
-  index,
   runPhase,
   context,
 }: {
   turn: ChatTurnData;
-  index: number;
   runPhase: AgentRunPhase | null;
   context: ChatRenderContext;
 }) {
   const assistantBlocks = blocksForPhase(turn.blocks, runPhase);
 
   return (
-    <section className="relative" data-turn-index={index}>
+    <section className="relative">
       {turn.user ? (
         <div className="py-2">
           <ChatBlock block={turn.user} context={context} />
