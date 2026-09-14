@@ -65,6 +65,14 @@ const ALLOWLIST = [
 const ENTRY_RE = /(?:^|\/)(main|index)\.tsx?$/;
 
 /**
+ * 测试文件：由测试框架按 glob 发现，没人 import 它们才是正常的。
+ *
+ * 注意它们**仍参与**「谁引用了哪个导出」的分析 —— 只被测试引用的导出不算死代码
+ * （测试就是它的消费方）。这里只把它们从「孤立文件」里排除。
+ */
+const TEST_RE = /\.test\.[cm]?tsx?$/;
+
+/**
  * 已定性为「预留件」的未使用导出：机制是活的，只是当前没有调用方。
  *
  * 与 ALLOWLIST 的区别 —— ALLOWLIST 按**文件路径前缀**豁免（整类文件天然没有引用，
@@ -280,7 +288,7 @@ export function analyzeUnused() {
 
   const orphans = sourceFiles
     .map((sf) => sf.fileName)
-    .filter((f) => !imported.has(f) && !ENTRY_RE.test(rel(f)))
+    .filter((f) => !imported.has(f) && !ENTRY_RE.test(rel(f)) && !TEST_RE.test(f))
     .map(rel);
 
   const unusedExports = [...exported.entries()]
