@@ -6,32 +6,11 @@ AI 消息渲染：消息块、Markdown、思考过程。
 
 ## 文件
 
-- `src/Collapse.tsx`
-- `src/ComparisonResults.tsx`
-- `src/ProductPreviewHost.tsx`
-- `src/Products.tsx`
-- `src/README.md`
-- `src/Settings.tsx`
-- `src/ThinkingOrb.tsx`
-- `src/XianyuPreviewDialog.tsx`
-- `src/XiaohongshuPreviewDialog.tsx`
-- `src/blocks\index.ts`
-- `src/blocks\step.tsx`
-- `src/blocks\text.tsx`
-- `src/blocks\thinking.tsx`
-- `src/blocks\user.tsx`
-- `src/index.ts`
-- `src/layout.tsx`
-- `src/markdown\CodeBlock.tsx`
-- `src/markdown\Link.tsx`
-- `src/markdown\MarkdownRenderer.tsx`
-- `src/markdown\Table.tsx`
-- `src/markdown\index.ts`
-- `src/mockData.ts`
-- `src/scheduler.tsx`
-- `src/session.ts`
-- `src/stick-to-bottom.ts`
-- `src/useRevealText.ts`
+目录职责与分层见 [`src/README.md`](src/README.md)；聊天记录部分见
+[`src/chat/README.md`](src/chat/README.md)。
+
+**这里不再维护文件清单** —— 原来那份是手工生成的全量列表，改一次目录就要改两处，
+而且已经过期（列着 `src/scheduler.tsx`，该文件已拆入 `src/chat/` 与 `src/send.ts`）。
 
 ## 依赖
 

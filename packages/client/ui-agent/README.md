@@ -46,15 +46,16 @@ Agent 域：外部 CLI Runtime 探测与运行态。
 
 - `src/agent-run.ts` — 一次外部 CLI 运行：`POST /v1/agent/runtimes/{id}/run` 收 SSE 流，逐个事件回调。
   这里**必须裸 `fetch`**：统一 http-client 会一次性读完整个响应，做不了流式（见文件内注释）。
-  被 `ui-ai/src/scheduler.tsx` 使用。
+  被 `ui-ai/src/send.ts` 使用。
 
 - `src/agent-run-phase.ts` — 运行阶段到 UI 的**唯一映射** `AGENT_RUN_PHASE_MAP`：阶段、徽标样式、
   流式块类型、思考期是否隐藏正文。新增阶段只改这里。
-  被 `src/agent-event-reducer.ts`、`ui-ai/src/scheduler.tsx`、`ui-ai/src/layout.tsx` 使用。
+  被 `src/agent-event-reducer.ts`、`ui-ai/src/chat/`（schedule / working-status / chat）、
+  `ui-ai/src/layout.tsx` 使用。
 
 - `src/agent-event-reducer.ts` — 把 SSE 事件折叠成助手消息状态：时间线按到达顺序交错（思考 ↔ 工具 ↔
   正文）、步骤 upsert / patch、阶段推进、乐观发送、按用户消息截断。
-  被 `ui-ai/src/scheduler.tsx`、`ui-ai/src/layout.tsx` 使用。
+  被 `ui-ai/src/send.ts`、`ui-ai/src/layout.tsx` 使用。
 
 ## 消费方式（子路径 vs 包入口）
 
@@ -62,7 +63,7 @@ Agent 域：外部 CLI Runtime 探测与运行态。
 
 - **包入口** `@v2/ui-agent` —— 当前只有 `AgentRuntimesPanel` 走这里（`apps/web/src/pages/agents-page.tsx`）
 - **子路径** `@v2/ui-agent/<file>` —— `agent-runtime-scan`（preload）、`agent-api`（ui-ai）、
-  `agent-run` / `agent-run-phase` / `agent-event-reducer`（ui-ai/scheduler）、
+  `agent-run` / `agent-event-reducer`（ui-ai/send）、`agent-run-phase`（ui-ai/chat）、
   `agent-icon`（ui-ai、ui-composer）
 
 新增消费方时**按需选一种，不要两种都留**；包内互相引用一律走相对路径，不要绕回包入口。

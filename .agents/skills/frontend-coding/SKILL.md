@@ -100,7 +100,7 @@ export function buildAuthView(
 /**
  * Agent 运行阶段到 UI 的唯一映射。
  *
- * 新增阶段时只改这里，避免状态判断散落在 reducer、scheduler 和块组件中。
+ * 新增阶段时只改这里，避免状态判断散落在 reducer、chat 和块组件中。
  */
 export const AGENT_RUN_PHASE_MAP: Record<AgentRunPhase, AgentRunPhaseView> = { /* ... */ };
 ```
