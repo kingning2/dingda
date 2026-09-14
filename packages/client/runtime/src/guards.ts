@@ -12,10 +12,10 @@
  *     套判定器只会更绕。
  *   - 返回类型是 `T | F`，兜底值决定结果类型：传 `undefined` 得 `T | undefined`，
  *     传 `""` 得 `string`，不需要在调用点标注。
- *   - **数组一律被当作候选列表。** 所以「判断某个值本身是不是数组」要写成
- *     `isArray([value], fallback)`；`isArray(value, fallback)` 是「在 value 的元素里
- *     找一个数组」。这是本模块唯一的语义歧义点，刻意选了「数组即候选」，
- *     因为多候选比单值判断更常用，且这样才能表达 `isString([a, b], "")`。
+ *   - **数组先整体、再逐元素。** 整个值满足判定就直接用它；不满足、且它是数组时，
+ *     才把数组当候选列表按顺序找。所以 `isString([a, b], "")` 是「在 a、b 里找字符串」，
+ *     而 `isArray([1, 2], [])` 是「它本身是数组」。反过来「在一个数组里找数组」不支持 ——
+ *     那种需求不存在，而先逐元素会让「取一个数组字段」这个最常见写法静默拿到兜底值。
  *   - **判定不转换。** `isNumber("12")` 是 `false`。需要转换用各自的转换函数，
  *     两者语义不同（判定是「信任这个值」，转换是「尽量救回来」），不要混。
  *   - 判定器是成套的：`isString / isNumber / isBoolean / isObject / isArray /
@@ -31,17 +31,21 @@ export type TypeGuard<T> = (value: unknown) => value is T;
  *
  * 这是本模块的类型体操核心 —— 所有判定器都由它派生。加一个类型只需要写一个谓词，
  * 不必再写一遍候选遍历；返回类型 `T | F` 也由这里统一推导。
+ *
+ * 数组的处理顺序是**先整体、再逐元素**：整个值满足判定就直接用它；不满足、
+ * 且它是个数组时，才把数组当候选列表按顺序找。这个顺序不能颠倒 ——
+ * 若先逐元素，`isArray([1, 2], [])` 会去 `[1, 2]` **里面**找数组，返回兜底 `[]`，
+ * 于是「取一个数组字段」这种最常见用法会静默拿到空数组。
  */
 export function picker<T>(guard: TypeGuard<T>) {
   return <F>(values: unknown, fallback: F): T | F => {
-    // 数组即候选列表（见文件头说明）。
+    if (guard(values)) return values;
     if (Array.isArray(values)) {
       for (const candidate of values) {
         if (guard(candidate)) return candidate;
       }
-      return fallback;
     }
-    return guard(values) ? values : fallback;
+    return fallback;
   };
 }
 

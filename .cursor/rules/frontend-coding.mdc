@@ -36,7 +36,8 @@ alwaysApply: false
 11. 交代码前跑上表「交代码前」那三条命令
 12. **字段级容错用 `@v2/runtime/guards`**（`isString(x, fb)` / `isString([a, b], fb)`），
     不写 `typeof x === "string" ? x : ""`。注意判定器**不转换**（`isNumber("12")` 是 false，
-    要转换用 `asNumber`）；数组一律是候选列表；输入已声明为数组类型时不用 `isArray`。
+    要转换用 `asNumber`）；数组先整体再逐元素（所以 `isArray(x, fb)` 是「x 本身是不是数组」）；
+    输入已声明为数组类型时不用 `isArray`。
     普通的二选一分支（JSX 条件渲染、`x ?? y`）不属于这个模式，仍用 `if` / 三元
 
 **架构与依赖方向不在本规范**，见 `.agents/skills/frontend-architecture/SKILL.md`。

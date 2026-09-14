@@ -284,12 +284,13 @@ export type TypeGuard<T> = (value: unknown) => value is T;
  */
 export function picker<T>(guard: TypeGuard<T>) {
   return <F>(values: unknown, fallback: F): T | F => {
-    // 数组即候选列表（见下方边界 2）。
+    // 先整体：整个值满足判定就直接用它
+    if (guard(values)) return values;
+    // 再逐元素：整体不满足、且它是数组时，才当候选列表按顺序找（见下方边界 2）
     if (Array.isArray(values)) {
       for (const candidate of values) if (guard(candidate)) return candidate;
-      return fallback;
     }
-    return guard(values) ? values : fallback;
+    return fallback;
   };
 }
 
@@ -318,8 +319,10 @@ export const isFunction = picker<(...args: never[]) => unknown>(
 1. **判定器不转换。** `isNumber("12")` 是 `false`。要「尽量救回来」用转换函数
    （如 `asNumber`）。两者语义不同：判定是「信任这个值」，转换是「尽量救回来」。
    把 `String(item.id)` 改成 `isString(item.id, "")` 会让数字 id 静默变成空串。
-2. **数组一律被当作候选列表。** 判断「某个值本身是不是数组」要写 `isArray([x], fb)`；
-   `isArray(x, fb)` 是「在 `x` 的元素里找一个数组」。
+2. **数组先整体、再逐元素。** 整个值满足判定就直接用它；不满足、且它是数组时，才当候选列表
+   按顺序找。所以 `isString([a, b], "")` 是「在 a、b 里找字符串」，而 `isArray(x, [])`
+   是「`x` 本身是不是数组」。**这个顺序不能颠倒** —— 先逐元素的话，`isArray(items, [])`
+   会去 `items` **里面**找数组，让「取一个数组字段」这个最常见写法静默拿到兜底值。
 3. **输入已经是数组类型时不要用 `isArray`。** 例如
    `Array.isArray(data.items) ? data.items : []` 里 `data.items` 已声明为
    `Item[]`；`isArray` 会把元素类型退化成 `unknown`，反而要加断言。
