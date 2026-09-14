@@ -1,29 +1,29 @@
 /**
  * 用户消息块：像 Cursor 一样的输入框外观，可点开编辑并从该处重新生成。
+ *
+ * 职责：
+ *   渲染一条用户消息（user 块），支持就地编辑并从该条截断重新生成。
+ *
+ * 设计说明：
+ *   - 可编辑性来自上下文（活回合不可编辑），块自己不判断运行状态。
+ *   - 上下文回调收的是 (messageId, content)，块在这里把 messageId 绑上 ——
+ *     块不需要知道「我是哪条消息」以外的任何事。
+ *   - 文件末尾自注册，Chat 通过注册表取用，不认识本组件。
  */
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp } from "lucide-react";
-import type { ComposerAttachmentView } from "@v2/contracts/composer";
 import { Button } from "@v2/ui-primitives/button";
 import { Textarea } from "@v2/ui-primitives/textarea";
 import { cn } from "@v2/ui-primitives/utils";
+import { registerBlock } from "../chat/registry";
+import type { ChatBlockProps } from "../chat/types";
 
-export interface UserBlockProps {
-  content: string;
-  attachments?: ComposerAttachmentView[];
-  /** 忙碌时不可编辑。 */
-  editable?: boolean;
-  /** 提交编辑：从该条截断并重新跑。 */
-  onResubmit?: (content: string) => void;
-}
-
-export function UserBlock({
-  content,
-  attachments,
-  editable = true,
-  onResubmit,
-}: UserBlockProps) {
+export function UserBlock({ block, context }: ChatBlockProps<"user">) {
+  const { content, attachments, messageId } = block;
+  const resubmit = context.onResubmitUser;
+  const editable = !context.busy;
+  const onResubmit = resubmit ? (next: string) => resubmit(messageId, next) : undefined;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -160,3 +160,5 @@ export function UserBlock({
     </button>
   );
 }
+
+registerBlock("user", UserBlock);

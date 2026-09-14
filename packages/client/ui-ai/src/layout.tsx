@@ -14,7 +14,8 @@ import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
 import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "./session";
-import { ChatPane, send, type SendHandle } from "./scheduler";
+import { Chat } from "./chat/chat";
+import { send, type SendHandle } from "./send";
 import { Products } from "./Products";
 import { ProductPreviewHost } from "./ProductPreviewHost";
 import { Settings } from "./Settings";
@@ -392,8 +393,9 @@ export function Layout({ workId, onBack }: LayoutProps) {
         )}
         style={sideOpen ? { width: chatWidth } : undefined}
       >
-        <ChatPane
+        <Chat
           detail={detail}
+          agents={composerAgents}
           busy={!detail.can_send}
           runPhase={runPhase}
           error={error}
