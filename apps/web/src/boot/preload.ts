@@ -17,7 +17,7 @@ import {
   loadCachedAgentRuntimes,
   refreshRecentWorks,
   rescanAgentRuntimes,
-} from "@v2/ui-agent/agent-runtime-scan";
+} from "@v2/ui-agent/cli/scan";
 
 let preloadPromise: Promise<void> | null = null;
 let initialLoadStarted = false;

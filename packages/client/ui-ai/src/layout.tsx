@@ -6,8 +6,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ArrowLeft, Loader2, Package, Settings2 } from "lucide-react";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import type { AgentWorkDetailView, AgentWorkStepView } from "@v2/contracts/ai-work";
-import { putAgentWorkDetail } from "@v2/ui-agent/agent-api";
-import type { AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
+import { putAgentWorkDetail } from "@v2/ui-agent/api";
+import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { useServer } from "@v2/runtime/server-provider";
 import { useComposerAgentOptions } from "@v2/ui-composer/composer-agents";
 import { Button } from "@v2/ui-primitives/button";
@@ -19,7 +19,7 @@ import { send, type SendHandle } from "./send";
 import { Products } from "./Products";
 import { ProductPreviewHost } from "./ProductPreviewHost";
 import { Settings } from "./Settings";
-import { truncateBeforeUserMessage } from "@v2/ui-agent/agent-event-reducer";
+import { truncateBeforeUserMessage } from "@v2/ui-agent/run/reducer";
 
 export type SideTab = "results" | "settings";
 

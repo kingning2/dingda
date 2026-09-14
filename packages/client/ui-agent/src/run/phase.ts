@@ -5,7 +5,7 @@
  * 不再通过“最后一个块是什么”猜测当前应该展示什么。
  */
 
-import { STATUS_TONE } from "./status-tone";
+import { STATUS_TONE } from "../status-tone";
 
 /** 一次运行所处的前端阶段，由后端 SSE 事件推进，不由前端猜。 */
 export type AgentRunPhase =

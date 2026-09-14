@@ -11,4 +11,4 @@
  *   - 因此本文件只有一行。加导出前先问：应用层装配真的需要它吗？
  */
 
-export { AgentRuntimesPanel } from "./agent-runtimes-panel";
+export { AgentRuntimesPanel } from "./ui/runtimes-panel";

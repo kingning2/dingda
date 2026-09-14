@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
+import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { CodexActivityIndicator } from "../ThinkingOrb";
 import type { ChatBlock } from "./types";
 

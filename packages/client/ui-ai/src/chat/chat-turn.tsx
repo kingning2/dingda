@@ -15,7 +15,7 @@
 
 import { blocksForPhase } from "./schedule";
 import { ChatBlock } from "./chat-block";
-import type { AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
+import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
 import type { ChatRenderContext, ChatTurn as ChatTurnData } from "./types";
 
 export function ChatTurn({

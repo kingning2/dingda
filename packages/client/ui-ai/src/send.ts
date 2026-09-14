@@ -25,9 +25,9 @@ import {
   createAgentRunMessageState,
   createOptimisticSendDetail,
   reduceAgentEvent,
-} from "@v2/ui-agent/agent-event-reducer";
-import type { AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
-import { startAgentRunWithEvents } from "@v2/ui-agent/agent-run";
+} from "@v2/ui-agent/run/reducer";
+import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
+import { startAgentRunWithEvents } from "@v2/ui-agent/run/stream";
 import { useDiscoveryStore } from "@v2/app-state";
 import { extractComparison, extractProducts, mergeComparison, mergeProducts } from "./agent-output";
 

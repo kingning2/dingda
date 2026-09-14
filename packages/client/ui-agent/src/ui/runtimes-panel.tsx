@@ -15,14 +15,12 @@ import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import { useDiscoveryStore } from "@v2/app-state";
 import { useServer } from "@v2/runtime/server-provider";
 import { Button } from "@v2/ui-primitives/button";
-import { probeSingleAgent, rescanAgentRuntimes } from "./agent-runtime-scan";
-import {
-  applyAgentPreferences,
-  downloadAgentRuntime,
-  loginAgentRuntime,
-} from "./agent-runtime";
-import { putDefaultAgentId, putDefaultModelId } from "./agent-api";
-import { AgentRuntimeCard } from "./agent-runtime-card";
+import { probeSingleAgent, rescanAgentRuntimes } from "../cli/scan";
+import { applyAgentPreferences } from "../cli/normalize";
+import { downloadAgentRuntime } from "../cli/download";
+import { loginAgentRuntime } from "../cli/login";
+import { putDefaultAgentId, putDefaultModelId } from "../api";
+import { AgentRuntimeCard } from "./runtime-card";
 
 /**
  * Agent 页主面板。

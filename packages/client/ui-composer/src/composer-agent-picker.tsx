@@ -1,6 +1,6 @@
 import { Check, ChevronDown, Plug } from "lucide-react";
 import type { ComposerAgentOption } from "@v2/contracts/composer";
-import { AgentIcon } from "@v2/ui-agent/agent-icon";
+import { AgentIcon } from "@v2/ui-agent/ui/icon";
 import { buttonVariants } from "@v2/ui-primitives/button";
 import {
   DropdownMenu,

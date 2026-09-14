@@ -20,7 +20,7 @@ import type {
   AgentWorkStepView,
   AgentWorkTimelineEntry,
 } from "@v2/contracts/ai-work";
-import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
+import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
 import type { ChatBlock, ChatBlockOf, ChatTurn } from "./types";
 
 /** 一个步骤挂着的商品。 */

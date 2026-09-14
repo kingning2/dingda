@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ComposerAgentOption, ComposerSubmitPayload } from "@v2/contracts/composer";
 import type { AgentWorkDetailView, AgentWorkStepView } from "@v2/contracts/ai-work";
-import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
+import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { ComposerFooter } from "../composer-footer";
 import { ChatBlock } from "./chat-block";
 import { ChatTurn } from "./chat-turn";

@@ -12,7 +12,7 @@ import {
   getComposerAgentOptions,
   resolveDefaultAgentId,
 } from "@v2/ui-composer/composer-agents";
-import { fetchAgentWorkDetail } from "@v2/ui-agent/agent-api";
+import { fetchAgentWorkDetail } from "@v2/ui-agent/api";
 
 const WORK_DRAFT_PREFIX = "dingda:work-draft:";
 const WORK_SNAPSHOT_PREFIX = "dingda:work-snapshot:";

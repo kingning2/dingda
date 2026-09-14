@@ -14,9 +14,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, ExternalLink, KeyRound, Loader2, LogIn, Star } from "lucide-react";
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
-import { getAgentGuideUrl, supportsAgentLogin } from "./agent-runtime";
-import { AgentIcon } from "./agent-icon";
-import { STATUS_TONE } from "./status-tone";
+import { getAgentGuideUrl, supportsAgentLogin } from "../cli/auth-view";
+import { AgentIcon } from "./icon";
+import { STATUS_TONE } from "../status-tone";
 import { Badge } from "@v2/ui-primitives/badge";
 import { Button, buttonVariants } from "@v2/ui-primitives/button";
 import { Card, CardContent } from "@v2/ui-primitives/card";

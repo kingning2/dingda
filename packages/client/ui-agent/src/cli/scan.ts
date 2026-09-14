@@ -4,10 +4,6 @@
  * 与账号发现（@v2/ui-account/account-discovery）刻意分开：两者写同一份 store
  * （@v2/app-state），但各自只管自己那半边，互不引用。需要「一起做」的启动编排
  * 属于应用层，放在 apps/web/src/boot 组合，不在这里。
- *
- * 本文件早先是 ui-crawler/discovery-scan 的转发壳（「兼容旧 import」）。那种壳
- * 会让依赖图看起来像 ui-agent → ui-crawler → ui-agent，把环掩盖在转发层里。
- * 实现归位后 ui-agent 不再需要认识 ui-crawler。
  */
 
 import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
@@ -16,21 +12,16 @@ import { supportsExternalAgents } from "@v2/runtime/capabilities";
 import { getApiBaseUrl } from "@v2/runtime/http-client";
 import { fetchServerStatus } from "@v2/runtime/server";
 
-import { AGENT_CATALOG } from "./agent-catalog";
-import {
-  applyAgentPreferences,
-  listAgentRegistryPlaceholders,
-  listAgentRuntimes,
-  markAgentsProbing,
-  normalizeAgentRuntimeItem,
-  probeAgentsInBackground,
-} from "./agent-runtime";
+import { AGENT_CATALOG } from "../agent-catalog";
 import {
   fetchAgentPreferences,
   fetchAgentRuntimesCatalog,
   fetchAgentWorkList,
   putAgentRuntimesCatalog,
-} from "./agent-api";
+} from "../api";
+import { applyAgentPreferences, normalizeAgentRuntimeItem } from "./normalize";
+import { listAgentRegistryPlaceholders, listAgentRuntimes } from "./catalog";
+import { markAgentsProbing, probeAgentsInBackground } from "./probe";
 
 /** 防止启动路径并发触发多次首次自动扫描。 */
 let firstAutoScanStarted = false;
