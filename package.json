@@ -9,7 +9,8 @@
     "check:deps": "node scripts/check-workspace-deps.mjs",
     "check:unused": "node scripts/check-unused.mjs",
     "check:unused:strict": "node scripts/check-unused.mjs --strict",
-    "check:chat-render": "tsx scripts/check-chat-render.mts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "pnpm --filter @v2/app-web preview",
     "prepare:python": "uv sync --frozen",
     "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",
@@ -61,6 +62,7 @@
     "@types/react-transition-group": "^4.4.12",
     "@vitejs/plugin-react": "^4.6.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^5.0.0"
   }
 }

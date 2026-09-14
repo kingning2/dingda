@@ -18,7 +18,8 @@ alwaysApply: false
 | 包名 | 一律 `@v2/*`；工作区清单见 `pnpm-workspace.yaml` |
 | 字段判定器 | `@v2/runtime/guards` —— `isString` / `isNumber` / `isBoolean` / `isObject` / `isArray` / `isFunction` |
 | 架构与依赖方向 | `.agents/skills/frontend-architecture/SKILL.md`、`.agents/skills/layers.md` |
-| 交代码前 | `pnpm exec tsc --noEmit`、`pnpm check:deps`、`pnpm check:unused`（与 `build` 的 `--strict` 一致） |
+| 交代码前 | `pnpm exec tsc --noEmit`、`pnpm check:deps`、`pnpm check:unused`（与 `build` 的 `--strict` 一致）、`pnpm test` |
+| 测试 | vitest。测试文件放 `packages/*/tests/` 或 `packages/*/*/tests/`，**不放 `src/` 旁边** |
 
 ## 硬约束摘要
 
@@ -39,6 +40,14 @@ alwaysApply: false
     要转换用 `asNumber`）；数组先整体再逐元素（所以 `isArray(x, fb)` 是「x 本身是不是数组」）；
     输入已声明为数组类型时不用 `isArray`。
     普通的二选一分支（JSX 条件渲染、`x ?? y`）不属于这个模式，仍用 `if` / 三元
+13. **测试放包的 `tests/`，不放 `src/` 旁边**。原因不是偏好：`vitest` 与
+    `typescript` / `vite` 同级，属**工作区级工具、只在根 `package.json` 声明**；
+    而 `check:deps` 只扫 `src/**` 与包根 `*.config.*`。测试放进 `src/` 会让
+    「用了没声明」硬失败，逼着每个包都声明 vitest。测试由 vitest 按 glob 发现，
+    `check-unused` 已把 `*.test.ts` 排除出「孤立文件」（但仍算它的消费方）
+14. **纯逻辑优先**。能抽成不依赖 React / DOM 的纯函数就抽出来 —— 那样才测得了。
+    `chat/schedule.ts`、`agent-output.ts`、`runtime/guards.ts` 都是这个形状。
+    组件层只做「把数据变成 DOM」，不承载可测的逻辑
 
 **架构与依赖方向不在本规范**，见 `.agents/skills/frontend-architecture/SKILL.md`。
 

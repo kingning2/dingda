@@ -116,6 +116,35 @@ pnpm check:unused:strict   # 有发现就退出码 1，CI 用
 `beforeDevCommand` / `beforeBuildCommand` 走同样两条链，因此一并覆盖。
 临时跳过：`SKIP_UNUSED_CHECK=1 pnpm dev`。
 
+## 测试
+
+```bash
+pnpm test         # vitest run（一次性）
+pnpm test:watch   # 监听模式
+```
+
+**测试文件放包的 `tests/`，不放 `src/` 旁边。** 原因不是偏好：
+
+- `vitest` 与 `typescript` / `vite` 同级，属**工作区级工具，只在根 `package.json` 声明**
+- 而 `check:deps` 只扫 `src/**` 与包根 `*.config.*`
+
+测试放进 `src/` 会让「用了没声明」硬失败，逼着每个包都声明 vitest。放 `tests/` 则
+依赖关系清楚：**工具在根，测试在包的 `tests/`**。
+
+配套约定：
+
+- 测试由 vitest 按 glob 发现（`vitest.config.ts` 的 `include`），所以没人 import 它们 ——
+  `check:unused` 已把 `*.test.ts` 排除出「孤立文件」；但它们**仍算消费方**，
+  只被测试引用的导出不算死代码
+- **不配 `resolve.alias`**：`@v2/*` 走 pnpm 工作区软链解析，与 `vite.config.ts`
+  同一条约定（那里写了「加别名会掩盖工作区是否真的接通」）
+- `environment: "node"`：目前测的都是纯函数。要测组件再按需换 jsdom
+
+**为什么优先抽纯函数**：能脱离 React / DOM 的才测得了。`chat/schedule.ts`、
+`agent-output.ts`、`runtime/guards.ts` 都是这个形状 —— 组件层只负责「把数据变成 DOM」。
+这套测试第一次跑就抓到 `isArray` 的数组语义缺陷（商品 / 比价 / comments 会被静默清空），
+而 `tsc`、`check:unused`、`check:deps` 三层门禁一个都没拦住。
+
 ## 工程机制
 
 **源码直出**：每个包的 `exports` 直接指向 `./src/*`，不产出 `lib/`，全仓库仍是单次

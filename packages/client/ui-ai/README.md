@@ -12,6 +12,10 @@ AI 消息渲染：消息块、Markdown、思考过程。
 **这里不再维护文件清单** —— 原来那份是手工生成的全量列表，改一次目录就要改两处，
 而且已经过期（列着 `src/scheduler.tsx`，该文件已拆入 `src/chat/` 与 `src/send.ts`）。
 
+## 测试
+
+[`tests/`](tests/README.md) —— `schedule` 与 `agent-output` 的行为测试（纯函数，`pnpm test`）。
+
 ## 依赖
 
 - 工作区：@v2/app-state / @v2/contracts / @v2/runtime / @v2/ui-agent / @v2/ui-composer / @v2/ui-crawler / @v2/ui-primitives
