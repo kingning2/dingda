@@ -150,7 +150,13 @@ export const config: WebdriverIO.Config = {
     // 超时（@wdio/utils 的 testFrameworkFnWrapper），不读 mocha 的 this.timeout。
     // 所以只能在这里按最长的那条用例设。
     // desktop-smoke 不受影响：它的断言各自带 15s 级显式等待，不会因此变慢。
-    timeout: 420_000,
+    //
+    // 2026-09-14 新增 ai-product-search：真实的「一句话找商品」= opencode 调
+    // dingda-crawl skill 起浏览器爬平台，skill 文档写明单次 1~5 分钟，叠加上下文与
+    // 多轮工具后一轮常见 3~10 分钟。其等待上限由 `DINGDA_E2E_RUN_TIMEOUT_MS`
+    // （默认 600_000）控制，故这里必须留足余量。
+    // 注意改成更大值只会让「真卡死」的失败等得更久，不改正常用例的速度。
+    timeout: 920_000,
   },
 
   reporters: ["spec"],

@@ -175,6 +175,36 @@ cargo test -p python
 `_PLATFORM_TIMEOUT["xianyu"] = 120`），超时后还会转一次风控恢复。所以扫码前请先
 把手机和对应 App 准备好。
 
+**`specs/ai-product-search.spec.ts` —— AI 找商品（业务链路）：**
+
+- ✅ 首页用 opencode 发一句「去找商品」→ 跳工作页自动开跑 → 右侧「爬取结果」出商品
+- ✅ 全程点页面控件（Agent 下拉 → 输入框 → 发送），**不直接打 `/v1/agent/runtimes/{id}/run`**
+- ✅ 跑完用 `GET /v1/agent/works/{work_id}` 独立取证：落库 `products.total` 与页面一致
+- ✅ 断言「确实是用目标 Agent 跑的」（`composer_agent_id` 等于 opencode）
+
+驱动原则同 agent-runtimes：测试进程只做旁证。**不写用户偏好**（首页选 Agent 只改组件
+内 state，不碰 `app_settings`），但**会新增一条 AI 工作记录**（`work-<时间戳>` 写进
+`~/.dingda/v2/dingda.db`，后端无删除接口，不清理，会出现在「最近项目」）。
+
+时间预算：真实找商品 = opencode 调 `dingda-crawl` skill 起浏览器爬平台，skill 文档写明
+单次 1~5 分钟，一轮常见 3~10 分钟。所以等运行结束默认给 600s（环境变量
+`DINGDA_E2E_RUN_TIMEOUT_MS`），且 `wdio.conf.ts` 的 `mochaOpts.timeout` 已抬到 920s 覆盖它。
+干跑只验「发得出去、跑起来了、取消得掉」，不等结果：
+
+```bash
+DINGDA_E2E_SEARCH_DRY_RUN=1 pnpm --filter @v2/e2e exec wdio run wdio.conf.ts --spec ./specs/ai-product-search.spec.ts
+```
+
+可选环境变量：`DINGDA_E2E_AGENT_ID`（默认 `opencode`）、`DINGDA_E2E_MODEL_ID`（默认沿用该
+Agent 的首选模型，即用户偏好）、`DINGDA_E2E_PROMPT`（默认闲鱼搜露营椅，并限定只调一次
+search、不补详情、不比价）、`DINGDA_E2E_MIN_PRODUCTS`（默认 1）。
+
+**跑之前先看模型**：这条用例的成败首先取决于模型上下文，不是用例写得对不对。找商品要先
+读 4 个 skill 正文再叠多轮工具结果，实测约需 66k tokens；免费小模型（如
+`openrouter/liquid/lfm-2.5-2.6b:free`，上限 65536）会直接报 context length 超限、
+`exitCode=1`。用 `DINGDA_E2E_MODEL_ID` 显式指定一个上下文足够的模型；不指定时会沿用
+`app_settings` 里的用户偏好，同一用例在不同机器上结论可能不同。
+
 **`specs/agent-runtimes.spec.ts` —— Agent 检测与模型选择：**
 
 - ✅ 点侧栏导航「Agent」进页面，页面「已检测到（N）」与 `GET /v1/agent/runtimes` 一致
