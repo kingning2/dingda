@@ -107,7 +107,7 @@ const RESERVED = [
     why: "双 rAF 后再移除启动屏的变体（等 React 提交到 DOM，避免闪白）。dismissBootSplash 被 boot-gate.tsx 直接调用；本变体是预留的更稳妥时序。",
   },
   {
-    file: "packages/client/ui-ai/src/session.ts",
+    file: "packages/client/ui-ai/src/work/session.ts",
     name: "clearWorkSnapshot",
     why: "清除会话快照。与 stashWorkSnapshot / peekWorkSnapshot（均在用）同属一个活跃机制。",
   },
@@ -144,16 +144,6 @@ const RESERVED = [
     file: "packages/client/ui-account/src/mock-data.ts",
     name: "mockAccountAfterQrLogin",
     why: "【待定性·倾向删除】已标 @deprecated（改用 accountFromQrLogin），且无调用方。",
-  },
-  {
-    file: "packages/client/ui-crawler/src/crawler-api.ts",
-    name: "searchCrawlerProducts",
-    why: "【待定性·倾向删除】非流式搜品，已被 searchCrawlerProductsLive（SSE 版，在用）取代。",
-  },
-  {
-    file: "packages/client/ui-crawler/src/crawler-api.ts",
-    name: "fetchCrawlerProductLive",
-    why: "【待定性·倾向删除】直播拉详情，从未接线；UI 走的是非流式的 fetchCrawlerProduct（在用）。",
   },
 ];
 
