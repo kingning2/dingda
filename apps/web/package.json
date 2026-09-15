@@ -24,10 +24,10 @@
     "@v2/ui-account": "workspace:*",
     "@v2/ui-agent": "workspace:*",
     "@v2/ui-ai": "workspace:*",
-    "@v2/ui-crawler": "workspace:*",
     "@v2/ui-feedback": "workspace:*",
     "@v2/ui-home": "workspace:*",
     "@v2/ui-layout": "workspace:*",
+    "@v2/ui-monitor": "workspace:*",
     "@v2/ui-primitives": "workspace:*",
     "@v2/ui-theme": "workspace:*"
   },

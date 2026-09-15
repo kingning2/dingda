@@ -3,8 +3,8 @@ import { createHashRouter } from "react-router-dom";
 import { AccountsPage } from "@web/pages/accounts-page";
 import { AgentsPage } from "@web/pages/agents-page";
 import { AssetsPage } from "@web/pages/assets-page";
-import { CrawlerPage } from "@web/pages/crawler-page";
 import { IntegrationsPage } from "@web/pages/integrations-page";
+import { MonitorPage } from "@web/pages/monitor-page";
 import { PluginsPage } from "@web/pages/plugins-page";
 import { AppLayout } from "@web/routes/layouts/app-layout";
 import { EntryLayout } from "@web/routes/layouts/entry-layout";
@@ -67,9 +67,9 @@ export const router = createHashRouter([
               },
               { path: "integrations", element: <IntegrationsPage /> },
               {
-                path: "crawler",
-                element: <CrawlerPage />,
-                handle: entry("自主爬虫"),
+                path: "monitor",
+                element: <MonitorPage />,
+                handle: entry("商品监控"),
               },
               {
                 path: "work/:workId",
