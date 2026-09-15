@@ -80,6 +80,30 @@ describe("extractProducts", () => {
     expect(extractProducts([])).toEqual([]);
   });
 
+  // 【回归】2026-09-09 引入 headroom 后，工具首次做内容检测会往 stderr 打一行
+  // warning；Agent 侧拿到的是 stdout+stderr 合并文本，整段不再是合法 JSON，
+  // 于是抓取明明成功、结果面板却恒为 0 条。
+  it("工具输出混入 stderr 日志行时仍能提取", () => {
+    const noisy =
+      "Content detection using pure-Python backend (native Magika/ONNX detector is unsafe " +
+      "by default on Windows; override with HEADROOM_DETECT_BACKEND=rust).\n" +
+      JSON.stringify({ platform: "xianyu", items: [{ item_id: "1", title: "A" }] });
+    const out = extractProducts(noisy);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.title).toBe("A");
+  });
+
+  it("日志在前后各占一行、JSON 为多行时也能提取", () => {
+    const noisy = [
+      "WARNING something",
+      JSON.stringify({ platform: "xianyu", items: [{ item_id: "2", title: "B" }] }, null, 2),
+      "done",
+    ].join("\n");
+    const out = extractProducts(noisy);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.title).toBe("B");
+  });
+
   it("id 或标题缺失的条目被丢掉（渲染出来是点不开的空壳）", () => {
     const out = extractProducts({
       platform: "xianyu",

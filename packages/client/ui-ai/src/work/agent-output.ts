@@ -26,15 +26,53 @@ import type {
 import type { CrawlProductItem } from "@v2/contracts/crawler";
 import { isArray, isObject, isString } from "@v2/runtime/guards";
 
-/** 把 output 归一成对象；字符串先尝试 JSON.parse。 */
+/**
+ * 从可能混入日志的文本里捞出 JSON。
+ *
+ * 为什么要容错：工具侧约定「stdout 只有 JSON，日志走 stderr」（见 `tools/cli.py`），
+ * 但 Agent 拿到的往往是**合并后**的输出 —— 例如 headroom 首次做内容检测时会往
+ * stderr 打一行 warning，于是整段变成「日志 + JSON」。直接 `JSON.parse` 会把整批
+ * 商品一起丢掉：症状是抓取其实成功、聊天里也有商品，结果面板却恒为 0 条
+ * （2026-09-09 引入 headroom 后即为此症状）。
+ *
+ * 退两步找 JSON：① 第一个 `{` 到最后一个 `}`；② 逐行试（日志在 JSON 前后各占一行）。
+ * 都失败才返回 null —— 仍不抛错，与本模块「不假定外部形状」的约定一致。
+ */
+function parseLooseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    /* 继续放宽 */
+  }
+
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try {
+      return JSON.parse(text.slice(start, end + 1));
+    } catch {
+      /* 继续放宽 */
+    }
+  }
+
+  for (const line of text.split("\n")) {
+    const candidate = line.trim();
+    if (!candidate.startsWith("{") && !candidate.startsWith("[")) continue;
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      /* 试下一行 */
+    }
+  }
+  return null;
+}
+
+/** 把 output 归一成对象；字符串先尝试 JSON.parse（容忍混入的日志行）。 */
 function outputRecord(output: unknown): Record<string, unknown> | null {
   const text = isString(output, null);
   if (text !== null) {
-    try {
-      return outputRecord(JSON.parse(text));
-    } catch {
-      return null;
-    }
+    const parsed = parseLooseJson(text);
+    return parsed === null ? null : outputRecord(parsed);
   }
   return isObject(output, null);
 }
