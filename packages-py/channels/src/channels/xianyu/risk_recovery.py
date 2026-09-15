@@ -9,6 +9,9 @@
     - 平台特例留在本包；不进 Browser adapter
     - 人工等待要求正向证据：风控 UI 消失 + 目标正文真的渲染 + 稳定保持。
       只用"没看到滑块就算过"会在 goto 后页面还没渲染时误判，等于没等人
+    - 后台轮询（商品监控定时任务）必须走 ``background_mode()``：那种场景没人
+      盯着屏幕，弹有头窗口 + 阻塞 180s 只会吓到用户并拖垮调度。用 ContextVar
+      而不是环境变量，因为同一进程里前台抓取仍要保留人工兜底
 """
 
 from __future__ import annotations
@@ -17,6 +20,9 @@ import asyncio
 import logging
 import os
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from browser.manager import BrowserManager
 from contracts.browser_port import Cookie, LaunchOptions, Page
@@ -29,6 +35,28 @@ from channels.xianyu.slider import (
 from core.errors import AppError, risk_control_error
 
 logger = logging.getLogger("dingda.channel.xianyu.risk_recovery")
+
+_BACKGROUND: ContextVar[bool] = ContextVar("dingda_risk_background", default=False)
+
+
+@contextmanager
+def background_mode() -> Iterator[None]:
+    """标记当前上下文为后台轮询：风控只走自动滑块，失败直接报错，不弹窗等人。
+
+    使用示例：
+        with background_mode():
+            await run_product(...)
+    """
+    token = _BACKGROUND.set(True)
+    try:
+        yield
+    finally:
+        _BACKGROUND.reset(token)
+
+
+def in_background_mode() -> bool:
+    """当前上下文是否处于后台轮询模式。"""
+    return _BACKGROUND.get()
 
 _MANUAL_TIMEOUT_S = float(os.getenv("DINGDA_MANUAL_SLIDER_TIMEOUT_S", "180") or "180")
 _MANUAL_POLL_S = 1.2
@@ -70,6 +98,14 @@ class XianyuRiskRecovery:
             logger.info("risk auto slider where=%s ok=%s detail=%s", where, ok, detail)
             if ok:
                 return
+
+        if in_background_mode():
+            logger.warning(
+                "后台轮询不做人工滑块，直接判失败 where=%s url=%s",
+                where,
+                target[:120],
+            )
+            raise risk_control_error(f"{where} 触发风控且自动滑块未通过（后台轮询不弹窗等人）")
 
         cookies = await _cookies_from_page(page)
         fresh = await _wait_manual_headed(

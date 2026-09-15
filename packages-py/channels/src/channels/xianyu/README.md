@@ -80,6 +80,12 @@ IM 用的 `accessToken`：`mtop.taobao.idlemessage.pc.login.token`。按 unb 缓
 判过要求风控 UI 消失 + 正文渲染 + 稳定保持（只看"没看到滑块"会在页面渲染前误判），
 过完把窗口里的新 Cookie 写回原 page 再让调用方重试。
 
+`background_mode()` / `in_background_mode()`：标记当前上下文是**后台轮询**。
+商品监控的定时任务会包上它——那种场景没人盯屏幕，弹有头窗口再阻塞 180s 只会吓到用户
+并拖垮调度，所以后台模式撞风控只走自动滑块，失败直接抛 `channel.risk`。
+用 ContextVar 而非环境变量，因为同一进程里前台抓取（AI 选品、爬虫页）仍要保留人工兜底。
+调用方见 [api/watch_feed.py](../../../../../api/src/api/README.md)。
+
 ### `ws.py`
 
 闲鱼 IM WebSocket（`wss-goofish.dingtalk.com`，LWP JSON）：
