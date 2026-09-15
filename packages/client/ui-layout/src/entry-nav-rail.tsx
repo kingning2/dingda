@@ -5,7 +5,7 @@ import {
   Home,
   LogOut,
   PanelLeftClose,
-  ScanSearch,
+  Radar,
   Search,
   Settings,
   UserRound,
@@ -33,7 +33,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   folder: Folder,
   bot: Bot,
   "user-round": UserRound,
-  spider: ScanSearch,
+  radar: Radar,
 };
 
 interface EntryNavRailProps {

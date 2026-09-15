@@ -27,5 +27,5 @@ export const NAV_ITEMS = [
     requiresExternalAgents: true,
   },
   { id: "accounts" as const, label: "账号", icon: "user-round" as const },
-  { id: "crawler" as const, label: "爬虫", icon: "spider" as const },
+  { id: "monitor" as const, label: "监控", icon: "radar" as const },
 ] as const;

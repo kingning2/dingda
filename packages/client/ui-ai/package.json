@@ -19,6 +19,7 @@
     "@v2/ui-agent": "workspace:*",
     "@v2/ui-composer": "workspace:*",
     "@v2/ui-crawler": "workspace:*",
+    "@v2/ui-monitor": "workspace:*",
     "@v2/ui-primitives": "workspace:*"
   },
   "peerDependencies": {

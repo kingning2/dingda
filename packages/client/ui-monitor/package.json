@@ -1,0 +1,20 @@
+{
+  "name": "@v2/ui-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "商品监控：监控列表、价格历史与变更事件",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "lucide-react": "^1.38.0",
+    "@v2/contracts": "workspace:*",
+    "@v2/runtime": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

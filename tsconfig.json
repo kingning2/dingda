@@ -93,9 +93,6 @@
       "@v2/ui-agent/*": [
         "./packages/client/ui-agent/src/*"
       ],
-      "@v2/ui-crawler": [
-        "./packages/client/ui-crawler/src/index.ts"
-      ],
       "@v2/ui-crawler/*": [
         "./packages/client/ui-crawler/src/*"
       ],
@@ -104,6 +101,12 @@
       ],
       "@v2/ui-home/*": [
         "./packages/client/ui-home/src/*"
+      ],
+      "@v2/ui-monitor": [
+        "./packages/client/ui-monitor/src/index.ts"
+      ],
+      "@v2/ui-monitor/*": [
+        "./packages/client/ui-monitor/src/*"
       ],
       "@v2/app-web": [
         "./apps/web/src/index.ts"

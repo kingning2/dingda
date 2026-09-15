@@ -1,35 +1,41 @@
 # packages/client/ui-crawler
 
-采集域：采集台、结果展示、商品预览。
+采集域：商品详情拉取与商品预览浮层。
 
 包名 `@v2/ui-crawler`。
 
+> 这个包原先还有一套「爬虫搜索台」（`CrawlerHub` 平台标签 + 关键词搜索 + 结果卡片）。
+> 该页已被商品监控页（`@v2/ui-monitor`）取代，组件与配套的 SSE 搜品接口一并删除。
+> 详见下方「曾经住在这里、现已迁出」。
+
 ## 文件
 
-- `src/index.ts` — 包入口，暴露 `CrawlerHub` / `CrawlerPanel` / `CrawlerResults` / `CrawlerStatusBanner`。
-- `src/crawler-api.ts` — HTTP API：搜品、详情、直播流（SSE）。
-  - 搜品/详情走统一 http-client；直播流必须裸 `fetch`（统一客户端做不了 SSE）。
-- `src/crawler-hub.tsx` — 页面级装配：`CrawlerHub`（平台标签切换）+ `CrawlerPanel`（单平台搜索）。
-- `src/crawler-results.tsx` — 结果展示：`CrawlerResults`（商品卡片列表）+ `CrawlerStatusBanner`（状态横幅）。
-- `src/product-preview.ts` — 商品预览状态机：订阅/打开/关闭 + 浏览器外链。
-- `src/mock-data.ts` — 支持的平台标签常量 `CRAWL_PLATFORM_TABS`。
+- `src/crawler-api.ts` — HTTP：`fetchCrawlerProduct`（单品详情，`POST /v1/crawler/product`）。
+- `src/product-preview.ts` — 商品预览状态机：订阅 / 打开 / 关闭 + 系统浏览器外链。
 
 ## 消费方式
 
-`package.json` exports 是 `{ ".": "./src/index.ts", "./*": "./src/*" }`：
+`package.json` exports 是 `{ "./*": "./src/*" }`，**没有包入口**：
+应用层不需要装配本包的任何东西（原先要装配的 `CrawlerHub` 已随爬虫页删除），
+所以不保留 `index.ts` —— 空入口和转发壳一样是债。
 
-- **包入口** `@v2/ui-crawler` — `CrawlerHub`（`apps/web/src/pages/crawler-page.tsx`）
-- **子路径** `@v2/ui-crawler/crawler-api` — `fetchCrawlerProduct`（两个 PreviewDialog）
-- **子路径** `@v2/ui-crawler/product-preview` — `subscribeProductPreview` / `openProductPreview` / `openProductInBrowserTab`（ui-ai 多处）
+- **子路径** `@v2/ui-crawler/crawler-api` — `fetchCrawlerProduct`（`ui-ai` 的两个 PreviewDialog）
+- **子路径** `@v2/ui-crawler/product-preview` — `subscribeProductPreview` / `openProductPreview` /
+  `openProductInBrowserTab` / `closeProductPreviewUi`（`ui-ai` 多处）
 
 ## 依赖
 
-- 工作区：`@v2/contracts` / `@v2/runtime` / `@v2/ui-primitives`
-- 外部：`@tauri-apps/plugin-opener` / `lucide-react`
+- 工作区：`@v2/contracts` / `@v2/runtime`
+- 外部：`@tauri-apps/plugin-opener`
 - peer：`react`
 
 ## 曾经住在这里、现已迁出
 
+- `crawler-hub.tsx` / `crawler-results.tsx` / `mock-data.ts` — 爬虫搜索台，
+  被商品监控页取代（2026-09-14）。采集仍然在（后端 `/v1/crawler/*` 与 Agent 选品都在用），
+  只是「人在页面上手输关键词搜」这条路径被「挑商品加监控」替代了。
+- `crawler-api.ts` 的 SSE 部分（`searchCrawlerProductsLive` / `fetchCrawlerProductLive`）——
+  前者唯一消费者是爬虫搜索台，后者从未接线。
 - `discovery-scan.ts` → 按归属拆开：Agent 部分进 `@v2/ui-agent/cli/scan`，
   账号部分进 `@v2/ui-account/account-discovery`，跨域的启动编排进 `apps/web/src/boot`。
 - `discovery-store.ts` → 下沉为 `@v2/app-state`。

@@ -3,19 +3,22 @@
  * 点击商品打开自绘详情 Modal。
  */
 
-import { useRef } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Radar } from "lucide-react";
 import type {
   AgentWorkComparisonView,
   AgentWorkProductItem,
   AgentWorkProductsView,
 } from "@v2/contracts/ai-work";
+import { pushAppAlert } from "@v2/runtime/app-alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
 import { Badge } from "@v2/ui-primitives/badge";
+import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
 import { openProductPreview } from "@v2/ui-crawler/product-preview";
+import { addMonitorTargets } from "@v2/ui-monitor/monitor-api";
 import { ComparisonResults } from "./comparison-results";
 
 /** 单行预估高度（含间距）。 */
@@ -35,12 +38,50 @@ function ProductRow({
   item: AgentWorkProductItem;
   onOpen: (item: AgentWorkProductItem) => void;
 }) {
+  const [watching, setWatching] = useState(false);
   const meta = [
     item.platform,
     item.seller,
     item.want_count ? `想要 ${item.want_count}` : null,
     item.browse_count ? `赞 ${item.browse_count}` : null,
   ].filter(Boolean);
+
+  /**
+   * 加入监控。
+   *
+   * 必须 `stopPropagation`：外层 Card 的 onClick 会打开商品预览弹窗，
+   * 不拦住的话点「加入监控」会同时弹预览。
+   */
+  async function handleWatch(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    if (watching) return;
+    setWatching(true);
+    try {
+      const response = await addMonitorTargets({
+        items: [
+          {
+            platform: item.platform,
+            item_id: item.id,
+            title: item.title,
+            url: item.product_url ?? "",
+            image_url: item.image_url ?? null,
+          },
+        ],
+      });
+      pushAppAlert({
+        title: response.added > 0 ? "已加入监控" : "该商品已在监控中",
+        description: "后台每 6 小时轮询一次，到「监控」页可以看到价格变化与售出状态。",
+      });
+    } catch (error) {
+      pushAppAlert({
+        title: "加入监控失败",
+        description: error instanceof Error ? error.message : "请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setWatching(false);
+    }
+  }
 
   return (
     <Card
@@ -67,10 +108,22 @@ function ProductRow({
           {meta.length > 0 ? (
             <CardDescription className="mt-0.5 truncate text-xs">{meta.join(" · ")}</CardDescription>
           ) : null}
-          <p className="mt-1 flex items-center gap-1 text-[11px] text-primary">
-            <ExternalLink className="size-3 shrink-0" />
-            查看详情
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="flex items-center gap-1 text-[11px] text-primary">
+              <ExternalLink className="size-3 shrink-0" />
+              查看详情
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 gap-1 px-1.5 text-[11px]"
+              disabled={watching}
+              onClick={(event) => void handleWatch(event)}
+            >
+              <Radar className="size-3 shrink-0" />
+              {watching ? "加入中…" : "加入监控"}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

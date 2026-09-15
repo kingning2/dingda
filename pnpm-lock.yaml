@@ -62,6 +62,9 @@ importers:
       '@v2/ui-layout':
         specifier: workspace:*
         version: link:packages/client/ui-layout
+      '@v2/ui-monitor':
+        specifier: workspace:*
+        version: link:packages/client/ui-monitor
       '@v2/ui-primitives':
         specifier: workspace:*
         version: link:packages/client/ui-primitives
@@ -168,9 +171,6 @@ importers:
       '@v2/ui-ai':
         specifier: workspace:*
         version: link:../../packages/client/ui-ai
-      '@v2/ui-crawler':
-        specifier: workspace:*
-        version: link:../../packages/client/ui-crawler
       '@v2/ui-feedback':
         specifier: workspace:*
         version: link:../../packages/client/ui-feedback
@@ -180,6 +180,9 @@ importers:
       '@v2/ui-layout':
         specifier: workspace:*
         version: link:../../packages/client/ui-layout
+      '@v2/ui-monitor':
+        specifier: workspace:*
+        version: link:../../packages/client/ui-monitor
       '@v2/ui-primitives':
         specifier: workspace:*
         version: link:../../packages/client/ui-primitives
@@ -333,6 +336,9 @@ importers:
       '@v2/ui-crawler':
         specifier: workspace:*
         version: link:../ui-crawler
+      '@v2/ui-monitor':
+        specifier: workspace:*
+        version: link:../ui-monitor
       '@v2/ui-primitives':
         specifier: workspace:*
         version: link:../ui-primitives
@@ -381,12 +387,6 @@ importers:
       '@v2/runtime':
         specifier: workspace:*
         version: link:../runtime
-      '@v2/ui-primitives':
-        specifier: workspace:*
-        version: link:../ui-primitives
-      lucide-react:
-        specifier: ^1.38.0
-        version: 1.38.0(react@19.2.8)
       react:
         specifier: ^19.1.0
         version: 19.2.8
@@ -450,6 +450,24 @@ importers:
       react-router-dom:
         specifier: ^7.18.3
         version: 7.18.3(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+
+  packages/client/ui-monitor:
+    dependencies:
+      '@v2/contracts':
+        specifier: workspace:*
+        version: link:../../contracts
+      '@v2/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@v2/ui-primitives':
+        specifier: workspace:*
+        version: link:../ui-primitives
+      lucide-react:
+        specifier: ^1.38.0
+        version: 1.38.0(react@19.2.8)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.8
 
   packages/client/ui-primitives:
     dependencies:
