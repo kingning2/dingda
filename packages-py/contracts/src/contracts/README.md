@@ -25,6 +25,12 @@ Agent HTTP：探活骨架、默认 CLI 偏好，以及 AI 工作对话快照（`
 
 调研启动请求骨架（`ResearchRunRequest`）。
 
+### `watch.py`
+
+商品监控共享词表：`SoldState`（unknown / on_sale / sold / delisted / gone）与 `WatchState`（active / paused / archived），以及 `is_finished`。
+
+crawler 产出售出态、tools 透传、domains.watch 消费，三包都依赖 contracts，所以词表放这里，避免各方各写一套字符串。**值即落库值，改值等于改数据，必须配迁移。** 售出态的关键词映射属平台知识，在 `crawler/sources/<platform>/extract.json`。
+
 ### `__init__.py`
 
 包标记。

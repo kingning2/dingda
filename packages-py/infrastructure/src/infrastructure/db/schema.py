@@ -1,4 +1,13 @@
-"""SQLite 表结构定义。"""
+"""SQLite 表结构定义。
+
+职责：
+    以 SQL 常量集中声明全部产品表：账号、应用设置、AI 工作快照、商品监控。
+    改表先改这里，再改 ``infrastructure.db`` 下对应的 repo 模块。
+
+设计说明：
+    - 只写 ``CREATE TABLE IF NOT EXISTS`` 与 ``ALTER TABLE``；不做迁移编排
+    - accounts 的补列用独立常量，由 ``accounts.ensure_schema`` 逐个 try 执行
+"""
 
 from __future__ import annotations
 
@@ -49,4 +58,48 @@ CREATE TABLE IF NOT EXISTS agent_works (
     updated_at REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_agent_works_updated ON agent_works(updated_at DESC);
+"""
+
+WATCH_TARGETS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS watch_targets (
+    target_id TEXT PRIMARY KEY,
+    platform TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT '',
+    image_url TEXT,
+    account_id TEXT,
+    state TEXT NOT NULL DEFAULT 'active',
+    sold_state TEXT NOT NULL DEFAULT 'unknown',
+    first_price REAL,
+    last_price REAL,
+    min_price REAL,
+    max_price REAL,
+    last_want_count TEXT,
+    last_status_text TEXT,
+    poll_interval_seconds INTEGER NOT NULL,
+    next_poll_at REAL NOT NULL,
+    last_poll_at REAL,
+    last_error TEXT,
+    fail_count INTEGER NOT NULL DEFAULT 0,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    UNIQUE(platform, item_id)
+);
+CREATE INDEX IF NOT EXISTS idx_watch_targets_due ON watch_targets(state, next_poll_at);
+"""
+
+WATCH_POINTS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS watch_points (
+    point_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_id TEXT NOT NULL,
+    price REAL,
+    price_text TEXT,
+    want_count TEXT,
+    browse_count TEXT,
+    status_text TEXT,
+    sold_state TEXT NOT NULL,
+    observed_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_watch_points_target ON watch_points(target_id, observed_at DESC);
 """

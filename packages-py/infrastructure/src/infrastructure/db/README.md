@@ -26,6 +26,20 @@
 
 `agent_works` 对话快照：`get_work` / `list_works` / `upsert_work`。列表给 `GET /v1/agent/works`（首页最近项目），详情给 `/v1/agent/works/{work_id}`。
 
+### `watch.py`
+
+商品监控两张表：`watch_targets`（被监控商品的最新快照：首价/现价/最低价/最高价/售出态/下次轮询时间）与 `watch_points`（只增不改的价格历史点）。
+
+- `upsert_target` 加入监控（按 `(platform, item_id)` 去重；原行若是 paused/archived 顺手恢复 active）
+- `list_targets` / `get_target` / `list_due_targets` / `count_active` 给列表接口与调度器
+- `set_target_state` / `set_poll_interval` / `set_next_poll_at` / `delete_target`（删除会连带清掉该目标全部历史点）
+- `save_poll_snapshot` 轮询成功后写回快照并推进首价/最低/最高聚合（`title` 只在为空时回填）；`record_poll_failure` 只累计失败次数与错误
+- `add_point` / `list_points` 价格历史读写
+
+`state` 本层只当落库值筛选（`TARGET_ACTIVE`），语义与取值词表在 `contracts.watch.WatchState`。
+
+只做 SQL 与聚合，不做轮询、不做价格文本解析、不做结论推导（那三件事在 `domains.watch`）。
+
 ### `__init__.py`
 
 包标记。

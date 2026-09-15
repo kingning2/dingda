@@ -31,10 +31,12 @@ async def init_db() -> None:
     from infrastructure.db import accounts as account_repo
     from infrastructure.db import agent_works as agent_works_repo
     from infrastructure.db import settings as settings_repo
+    from infrastructure.db import watch as watch_repo
 
     account_repo.ensure_schema()
     settings_repo.ensure_schema()
     agent_works_repo.ensure_schema()
+    watch_repo.ensure_schema()
     logger.info("database ready: %s", db_path())
 
 

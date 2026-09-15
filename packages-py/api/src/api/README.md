@@ -8,7 +8,7 @@
 
 ### `router.py`
 
-唯一聚合点。按顺序 `include_router`：health → bootstrap → runtime → channel → account → agent → crawler → research。新增 HTTP 模块必须在这里挂上，否则 `create_app` 看不到。
+唯一聚合点。按顺序 `include_router`：health → bootstrap → runtime → channel → account → agent → crawler → research → watch。新增 HTTP 模块必须在这里挂上，否则 `create_app` 看不到。
 
 ### `health.py`
 
@@ -16,7 +16,7 @@
 
 ### `bootstrap.py`
 
-`GET /v1/bootstrap`。立刻返回壳首屏快照（runtime + warmup phase），并用 `BackgroundTasks` 调 `ensure_warmed()` 做完整预热（含闲鱼 token 探活调度）。
+`GET /v1/bootstrap`。立刻返回壳首屏快照（runtime + warmup phase），并用 `BackgroundTasks` 调 `ensure_warmed()` 做完整预热（含闲鱼 token 探活调度与商品监控轮询调度）。
 
 ### `runtime.py`
 
@@ -62,7 +62,36 @@ CLI PATH 探测 / 下载仍在 Tauri；启动与流式事件在本模块。实�
 
 ### `crawler.py`
 
-`/v1/crawler` 前缀，**目前是空骨架**。产品页爬虫任务应调 [../crawler/README.md](../../../crawler/src/crawler/README.md)，不要从这里 import Playwright。
+`/v1/crawler`：手动搜品与单品详情。
+
+- `POST /search` — 一次性搜品，返回列表 + 搜索页 URL
+- `POST /search/live` — SSE：`frame` / `result` / `error` / `done`
+- `POST /product` — 单品详情（闲鱼：价格、想要人数、留言、`sold_state`）
+- `POST /product/live` — SSE 同上
+
+实现在 [../tools/README.md](../../../tools/src/tools/README.md) 与 [../crawler/README.md](../../../crawler/src/crawler/README.md)，不要从这里 import Playwright。
+
+### `watch.py`
+
+`/v1/watch`：商品监控——把一批商品长期盯着，看卖不卖得掉、降没降价。
+
+- `POST /targets` — 批量加入监控（同 `platform+item_id` 幂等）
+- `GET /targets` — 列表，带涨跌额与售出态
+- `GET /targets/{target_id}` — 单条：完整价格历史点 + 变更事件
+- `PATCH /targets/{target_id}` — 改状态（active/paused/archived）或轮询间隔
+- `DELETE /targets/{target_id}` — 彻底移除（含历史）；想留历史改用 PATCH 归档
+- `GET /summary` — 概览：多少还在卖、多少卖掉了、多少降价了
+- `POST /poll` — 立刻轮询几条（手动验证用，最多 5 条）
+
+后台定时轮询由 [boot/warmup.py](boot/warmup.py) 在 `init_db` 之后挂 `domains.watch.scheduler`，不在本层。业务见 [../domains/watch/README.md](../../../domains/src/domains/watch/README.md)。
+
+### `watch_feed.py`
+
+商品监控**取数插头**：用 `tools.product` 实现 `domains.watch.base.ProductFetcher` 插座。
+
+`domains` 不依赖 `tools`，而本层是唯一同时依赖两者的地方，所以插头放这里。
+必须传 `allow_login_recovery=False`——后台轮询不能弹扫码窗，会话过期就让这次轮询失败、
+由 token 调度器去静默续期。
 
 ### `research.py`
 
@@ -70,4 +99,6 @@ CLI PATH 探测 / 下载仍在 Tauri；启动与流式事件在本模块。实�
 
 ## 子目录
 
-无。DTO 在 [../contracts/README.md](../../../contracts/src/contracts/README.md)。
+- [boot/](boot/warmup.py) — 渐进式预热：先响应壳层探活，再后台加载 DB 与挂调度器
+
+DTO 在 [../contracts/README.md](../../../contracts/src/contracts/README.md)。
