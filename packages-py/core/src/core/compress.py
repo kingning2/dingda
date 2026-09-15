@@ -7,6 +7,8 @@
 设计说明：
     - ``DINGDA_HEADROOM=0`` 关闭；未安装 headroom-ai 时透传并打 warning
     - 不启动独立 proxy，避免与 Server ``8787`` 冲突
+    - 工具 payload 压完会把身份字段还原（见 ``_IDENTITY_KEYS``）：工具 stdout 同时是
+      给前端解析的机器契约，被换成占位符就等于商品数据丢了
 
 使用示例：
     messages = compress_messages(messages, model="gpt-4o")
@@ -83,6 +85,50 @@ def compress_text(text: str, *, model: str | None = None) -> str:
     return text
 
 
+# 身份字段：删了或换了，下游就没法把这条商品认出来 / 显示出来。
+#
+# 为什么需要这份名单：压缩会把长字符串换成 `<<ccr:...>>` 占位符（不可逆）。这对
+# 「给 LLM 省 token」是好事，但工具 stdout 同时是**机器契约** —— 前端要靠它把商品
+# 渲染进结果面板。实测（2026-09-15）：`search` 返回 3 条商品，`title` 全变成
+# `<<ccr:8150d6b866ad,string,499B>>`，抓取成功却面板恒为 0 条。
+# 所以只压正文类大字段（desc / comments / content_text / ocr_text），身份字段原样保留。
+_IDENTITY_KEYS = frozenset(
+    {
+        "item_id",
+        "id",
+        "title",
+        "price",
+        "url",
+        "product_url",
+        "platform",
+        "seller_nick",
+        "location",
+        "image_url",
+        "xsec_token",
+    }
+)
+
+
+def _restore_identity(original: Any, compressed: Any) -> Any:
+    """把被压缩替换掉的身份字段，从原文按同名键还原回去。
+
+    headroom 只替换**字符串的值**、不动结构，所以两边可以并行遍历。结构对不上
+    （比如条目数被改动）就原样返回压缩结果 —— 退化成压缩前的行为，不会更糟。
+    """
+    if isinstance(original, dict) and isinstance(compressed, dict):
+        for key, value in original.items():
+            if key in _IDENTITY_KEYS:
+                compressed[key] = value
+            elif key in compressed:
+                compressed[key] = _restore_identity(value, compressed[key])
+        return compressed
+    if isinstance(original, list) and isinstance(compressed, list) and len(original) == len(compressed):
+        for index, item in enumerate(original):
+            compressed[index] = _restore_identity(item, compressed[index])
+        return compressed
+    return compressed
+
+
 def compress_tool_payload(
     payload: dict[str, Any],
     *,
@@ -129,6 +175,6 @@ def compress_tool_payload(
             logger.warning("headroom tool payload 非 JSON，保留原文 tool=%s", tool_name)
             return payload
         if isinstance(parsed, dict):
-            return parsed
+            return _restore_identity(payload, parsed)
         return payload
     return payload

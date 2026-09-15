@@ -73,3 +73,74 @@ def test_compress_text_uses_messages(monkeypatch) -> None:
 
     monkeypatch.setitem(sys.modules, "headroom", SimpleNamespace(compress=fake_compress))
     assert compress_mod.compress_text("long skill text") == "compressed-skill"
+
+
+def _tool_result(content: str):
+    out = MagicMock()
+    out.tokens_saved = 100
+    out.tokens_before = 500
+    out.tokens_after = 400
+    out.messages = [{"role": "tool", "tool_call_id": "call_dingda", "content": content}]
+    return out
+
+
+def test_compress_tool_payload_restores_identity_fields(monkeypatch) -> None:
+    """【回归】压缩把长字符串换成 ``<<ccr:...>>`` 占位符后，身份字段必须还原。
+
+    工具 stdout 同时是**前端解析商品用的机器契约**：2026-09-15 实测 `search` 返回的
+    3 条商品 `title` 全变成 ``<<ccr:8150d6b866ad,string,499B>>``，症状是抓取成功、
+    聊天里也有商品，结果面板却恒为 0 条。正文大字段可以压，身份字段不能。
+    """
+    monkeypatch.setenv("DINGDA_HEADROOM", "1")
+    payload = {
+        "ok": True,
+        "platform": "xianyu",
+        "items": [
+            {
+                "item_id": "1067057484474",
+                "title": "【8.99元一把包邮】户外折叠椅月亮椅",
+                "price": "¥8.90",
+                "location": "江苏",
+                "desc": "正文占位" * 700,
+            }
+        ],
+    }
+
+    def fake_compress(messages, *, model="x"):
+        import json
+
+        raw = json.loads(messages[-1]["content"])
+        for item in raw["items"]:
+            item["title"] = "<<ccr:8150d6b866ad,string,499B>>"
+            item["desc"] = "<<ccr:deadbeef,string,2KB>>"
+        return _tool_result(json.dumps(raw, ensure_ascii=False))
+
+    monkeypatch.setitem(sys.modules, "headroom", SimpleNamespace(compress=fake_compress))
+    out = compress_mod.compress_tool_payload(payload, tool_name="search")
+
+    item = out["items"][0]
+    assert item["title"] == "【8.99元一把包邮】户外折叠椅月亮椅"
+    assert item["item_id"] == "1067057484474"
+    assert item["price"] == "¥8.90"
+    assert item["location"] == "江苏"
+    # 正文仍是被压过的占位符 —— 压缩的 token 收益要保住
+    assert item["desc"] == "<<ccr:deadbeef,string,2KB>>"
+
+
+def test_compress_tool_payload_tolerates_structure_change(monkeypatch) -> None:
+    """压缩把条目数改了时，还原退化为「不还原」，不抛错也不丢整体结构。"""
+    monkeypatch.setenv("DINGDA_HEADROOM", "1")
+    payload = {
+        "ok": True,
+        "platform": "xianyu",
+        "items": [{"item_id": "1", "title": "A", "desc": "x" * 5000}],
+    }
+
+    def fake_compress(messages, *, model="x"):
+        import json
+
+        return _tool_result(json.dumps({"ok": True, "platform": "xianyu", "items": []}))
+
+    monkeypatch.setitem(sys.modules, "headroom", SimpleNamespace(compress=fake_compress))
+    out = compress_mod.compress_tool_payload(payload, tool_name="search")
+    assert out["items"] == []
