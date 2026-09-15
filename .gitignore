@@ -13,8 +13,17 @@ __pycache__/
 # Desktop bundled runtime（prepare-desktop-runtime 产出；Camoufox zip 很大）
 packages-rs/client/resources/runtime/
 
+# E2E 的 msedgedriver（按 WebView2 版本下载，单份约 23MB，不进版本库）
+e2e/.drivers/
+
 # Rust
 target/
+
+# E2E 备用构建目录：dev 会话锁住 target/debug/client.exe 时的替代（见 e2e/README.md）
+target-e2e/
+
+# E2E 运行产物（扫码二维码快照等）
+e2e/artifacts/
 
 # Logs
 logs
@@ -42,3 +51,11 @@ _tmp_*
 *.njsproj
 *.sln
 *.sw?
+
+.workbuddy-ai/*
+.codegraph/*
+
+# 本地环境变量（可能含 LLM / 服务端密钥）；需要模板时用 .env.example
+.env
+.env.*
+!.env.example

@@ -1,18 +1,22 @@
 /**
  * 思考块：Foldable + 100ms 合并 + ~2s CharReveal；历史挂载不重播。
+ *
+ * 职责：
+ *   渲染助手推理过程（thinking 块）：流式期间不显示正文，结束后折叠成一行
+ *   「Thought for Ns」摘要，展开才看内容。
+ *
+ * 设计说明：
+ *   - streaming 时返回 null 是有意的：活动阶段由 ChatPane 的 Codex 状态行承担反馈，
+ *     推理正文只在结束后保留为可展开摘要，避免同一信息出现两处。
+ *   - 文件末尾自注册，Chat 通过注册表取用，不认识本组件。
  */
 
 import { useEffect, useState } from "react";
-import { Collapse } from "../Collapse";
+import { Collapse } from "./collapse";
 import { MarkdownRenderer } from "../markdown";
-import { useRevealText } from "../useRevealText";
-
-export interface ThinkingBlockProps {
-  text: string;
-  streaming: boolean;
-  startedAt?: string | null;
-  durationSec?: number | null;
-}
+import { useRevealText } from "./use-reveal-text";
+import { registerBlock } from "../chat/registry";
+import type { ChatBlockProps } from "../chat/types";
 
 function formatDuration(sec: number): string {
   if (sec < 60) return `${sec}s`;
@@ -34,12 +38,9 @@ function elapsedSeconds(startedAt: string | null | undefined): number {
   return Math.max(0, Math.floor((Date.now() - start) / 1000));
 }
 
-export function ThinkingBlock({
-  text,
-  streaming,
-  startedAt = null,
-  durationSec = null,
-}: ThinkingBlockProps) {
+/** 思考块：Codex / Claude 的推理过程，默认折叠。 */
+export function ThinkingBlock({ block }: ChatBlockProps<"thinking">) {
+  const { text, streaming, startedAt = null, durationSec = null } = block;
   const [liveSec, setLiveSec] = useState(() => elapsedSeconds(startedAt));
   const display = useRevealText(text, streaming);
 
@@ -76,3 +77,5 @@ export function ThinkingBlock({
     </Collapse>
   );
 }
+
+registerBlock("thinking", ThinkingBlock);

@@ -1,5 +1,12 @@
 /**
  * 工具/页面块：标题用后端 label；展开区只展示 url / 截图 / 商品，不解析平台。
+ *
+ * 职责：
+ *   渲染一个执行步骤（step 块）：工具调用或浏览器抓取，含页面截图与已采集商品。
+ *
+ * 设计说明：
+ *   - 不解析平台：kind / page / status 全部来自后端下发的 step，前端只决定怎么摆。
+ *   - 文件末尾自注册，Chat 通过注册表取用，不认识本组件。
  */
 
 import { ExternalLink, Globe, Loader2, Lock, Radio } from "lucide-react";
@@ -7,16 +14,10 @@ import type { AgentWorkProductItem, AgentWorkStepView } from "@v2/contracts/ai-w
 import { Badge } from "@v2/ui-primitives/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
 import { openProductPreview } from "@v2/ui-crawler/product-preview";
-import { Collapse } from "../Collapse";
-import { CodexActivityIndicator } from "../ThinkingOrb";
-
-export interface StepBlockProps {
-  step: AgentWorkStepView;
-  pageUrl?: string | null;
-  products?: AgentWorkProductItem[];
-  selected?: boolean;
-  onSelect?: (step: AgentWorkStepView) => void;
-}
+import { Collapse } from "./collapse";
+import { CodexActivityIndicator } from "./thinking-orb";
+import { registerBlock } from "../chat/registry";
+import type { ChatBlockProps } from "../chat/types";
 
 function isRunning(state: string): boolean {
   return state === "running" || state === "browsing" || state === "pending";
@@ -140,12 +141,9 @@ function PagePreview({
   );
 }
 
-export function StepBlock({
-  step,
-  pageUrl = null,
-  products = [],
-  onSelect,
-}: StepBlockProps) {
+/** 步骤块：工具调用结果（浏览/爬取/搜索/比对）的可折叠卡片。 */
+export function StepBlock({ block }: ChatBlockProps<"step">) {
+  const { step, pageUrl = null, products = [] } = block;
   const running = isRunning(step.status.state);
   const page = step.page;
   const linkUrl = page?.url || pageUrl || null;
@@ -195,8 +193,7 @@ export function StepBlock({
   ) : null;
 
   return (
-    <div onClick={() => onSelect?.(step)}>
-      <Collapse
+    <Collapse
         title={title}
         trailing={trailing}
         defaultOpen={Boolean(body)}
@@ -204,7 +201,8 @@ export function StepBlock({
         lifecycleOpen={running && Boolean(body) ? true : undefined}
       >
         {body}
-      </Collapse>
-    </div>
+    </Collapse>
   );
 }
+
+registerBlock("step", StepBlock);

@@ -16,7 +16,7 @@ pnpm preview   # vite preview
 ```
 
 类型检查不在本包：根 `pnpm build` 是
-`check-workspace-deps → tsc → pnpm --filter @v2/app-web build`，
+`check-workspace-deps → check-unused → tsc → pnpm --filter @v2/app-web build`，
 `tsc` 在仓库根跑全量（`apps` + `packages`），所以 `typescript` 声明在根。
 
 构建工具（`vite` / `@vitejs/plugin-react` / `@tailwindcss/vite`）声明在**本包**的
@@ -69,7 +69,7 @@ src/
 
 ## 依赖
 
-- 工作区：@v2/app-state / @v2/contracts / @v2/routes / @v2/runtime / @v2/ui-account / @v2/ui-agent / @v2/ui-ai / @v2/ui-crawler / @v2/ui-feedback / @v2/ui-home / @v2/ui-layout / @v2/ui-primitives / @v2/ui-theme
+- 工作区：@v2/app-state / @v2/contracts / @v2/routes / @v2/runtime / @v2/ui-account / @v2/ui-agent / @v2/ui-ai / @v2/ui-feedback / @v2/ui-home / @v2/ui-layout / @v2/ui-monitor / @v2/ui-primitives / @v2/ui-theme
 - dependencies：lucide-react / react / react-dom / react-router-dom
 - devDependencies：@tailwindcss/vite / @vitejs/plugin-react / vite
 

@@ -1,6 +1,6 @@
 # packages/client/runtime
 
-运行时基座：HTTP 传输、能力开关、Server 状态、错误上报。
+运行时基座：HTTP 传输、能力开关、Server 状态、错误上报、值类型判定。
 
 包名 `@v2/runtime`。
 
@@ -11,6 +11,7 @@
 - `src/capabilities.ts`
 - `src/dismiss-boot-splash.ts`
 - `src/error-reporting.ts`
+- `src/guards.ts`
 - `src/http-client.ts`
 - `src/server-provider.tsx`
 - `src/server.ts`

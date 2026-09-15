@@ -24,6 +24,7 @@ from crawler.extraction.config import (
     path_list,
     section,
 )
+from contracts.watch import SoldState
 
 logger = logging.getLogger("dingda.crawler.xianyu.extractor")
 
@@ -128,6 +129,28 @@ def limits_meta() -> dict[str, int]:
 def session_expired_markers() -> tuple[str, ...]:
     """页内 mtop 会话过期标记。"""
     return tuple(path_list(_sec("signals"), "session_expired"))
+
+
+def sold_state_from_status(status: str) -> str:
+    """闲鱼状态文案 → ``contracts.watch.SoldState`` 取值。
+
+    关键词表在 extract.json ``sold_state``；未命中一律 ``unknown``，
+    并保留原文在 ``CrawlItem.raw['status']``，便于看真实文案后补关键词。
+    """
+    text = (status or "").strip()
+    if not text:
+        return SoldState.UNKNOWN
+    cfg = _sec("sold_state")
+    for state, key in (
+        (SoldState.SOLD, "sold"),
+        (SoldState.DELISTED, "delisted"),
+        (SoldState.ON_SALE, "on_sale"),
+    ):
+        for keyword in cfg.get(key) or []:
+            if str(keyword) in text:
+                return state
+    logger.info("sold_state unmatched status=%s", text[:60])
+    return SoldState.UNKNOWN
 
 
 def build_list_request(*, page: int, query: str, rows: int) -> dict[str, Any]:
@@ -734,6 +757,7 @@ def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
     desc = str(payload.get("description") or payload.get("desc") or "").strip() or None
     location = str(payload.get("location") or "").strip() or None
     param = str(_URLS.get("item_id_param") or "")
+    status = str(payload.get("status") or "").strip()
     return CrawlItem(
         item_id=resolved_id,
         title=title,
@@ -741,7 +765,8 @@ def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
         price=str(price) if price not in (None, "") else None,
         raw={
             "seller_nick": payload.get("seller_name", ""),
-            "status": payload.get("status", ""),
+            "status": status,
+            "sold_state": sold_state_from_status(status),
             "want_count": want or None,
             "browse_count": str(payload.get("browse_count") or "").strip() or None,
             "collect_count": str(payload.get("collect_count") or "").strip() or None,
@@ -795,6 +820,7 @@ def item_from_mtop_detail(raw: dict[str, Any], item_id: str) -> CrawlItem:
         raw={
             "seller_nick": seller,
             "status": status,
+            "sold_state": sold_state_from_status(status),
             "want_count": want_count,
             "browse_count": str(browse) if browse not in (None, "") else None,
             "collect_count": str(collect) if collect not in (None, "") else None,

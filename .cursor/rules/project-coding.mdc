@@ -88,8 +88,15 @@ Agent → Tool → Crawler → BrowserPort → Adapter
 
 - Python（`packages-py/**/*.py`）→ 读 `.agents/skills/python-coding/SKILL.md` **照抄示例**
 - Rust（`packages-rs/**/*.rs`）→ 读 `.agents/skills/rust-coding/SKILL.md` **照抄示例**
+- 前端（`apps/web/**`、`packages/client/**`）→ 读 `.agents/skills/frontend-coding/SKILL.md` **照抄示例**
+  （该 Skill 是**通用模板**、不含本项目路径；叮答落点见 `.cursor/rules/frontend-coding.mdc`）
 
-规则入口：`.cursor/rules/python-coding.mdc`、`.cursor/rules/rust-coding.mdc`。
+规则入口：`.cursor/rules/python-coding.mdc`、`.cursor/rules/rust-coding.mdc`、
+`.cursor/rules/frontend-coding.mdc`。
+
+**前端文件粒度硬约束**：一个功能块 = 一个文件（文件头「职责：」一句话说不完且不含「和」）；
+同类归文件夹，文件夹名必须是业务概念或机制名，**禁止 `utils/` `helpers/` `services/` `common/`**
+（与「禁止垃圾桶包」同一条纪律，只是下移到了文件层）。
 
 ## 动手前
 

@@ -1,22 +1,18 @@
 export type EntryView =
   | "home"
   | "projects"
-  | "community"
   | "plugins"
-  | "design-systems"
   | "agents"
   | "accounts"
-  | "crawler";
+  | "monitor";
 
 const ENTRY_PATHS: Record<EntryView, string> = {
   home: "/",
   projects: "/projects",
-  community: "/community",
   plugins: "/plugins",
-  "design-systems": "/design-systems",
   agents: "/agents",
   accounts: "/accounts",
-  crawler: "/crawler",
+  monitor: "/monitor",
 };
 
 const PATH_TO_ENTRY = new Map<string, EntryView>(
@@ -26,14 +22,12 @@ const PATH_TO_ENTRY = new Map<string, EntryView>(
 export const paths = {
   home: "/",
   projects: "/projects",
-  community: "/community",
   plugins: "/plugins",
-  designSystems: "/design-systems",
   agents: "/agents",
   accounts: "/accounts",
   /** @deprecated 使用 /agents 或 /accounts */
   assets: "/assets",
-  crawler: "/crawler",
+  monitor: "/monitor",
   work: (workId: string) => `/work/${encodeURIComponent(workId)}`,
   errorTest: "/error-test",
   notImplemented: "/501",

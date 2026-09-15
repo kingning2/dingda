@@ -1,3 +1,9 @@
+/**
+ * Markdown 正文渲染：把助手消息里的 Markdown 转成 React。
+ *
+ * 职责：封装 `react-markdown` + `remark-gfm`，并把本包自定义的
+ * 代码块 / 链接 / 表格组件注册进去。
+ */
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -46,6 +52,7 @@ const markdownComponents: Components = {
   h3: ({ node: _node, ...props }) => <h3 className="mb-1.5 text-sm font-semibold" {...props} />,
   hr: ({ node: _node, ...props }) => <hr className="my-3 border-border/80" {...props} />,
 };
+/** Markdown 正文渲染器：react-markdown + 自定义组件映射。 */
 
 interface MarkdownRendererProps {
   content: string;

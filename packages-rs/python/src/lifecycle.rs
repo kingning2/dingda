@@ -17,6 +17,11 @@ use tokio::sync::Mutex;
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8787;
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+/// 单次 `/health` 请求超时。
+///
+/// 端口被别的进程占住但不回 HTTP 时，不设超时会让 `wait_until_healthy` 卡在
+/// 一次 `send()` 上，连 `startup_timeout` 兜底都进不去。
+const HEALTH_TIMEOUT: Duration = Duration::from_secs(3);
 /// Python 入口模块：仓库根跑 `python -m api`（`packages-py/api/src/api/__main__.py`）。
 const SERVER_MODULE: &str = "api";
 
@@ -69,16 +74,37 @@ impl PythonConfig {
     }
 }
 
+/// 事件出口插座：把「往前端发事件」从 Tauri `AppHandle` 上摘下来。
+///
+/// 生产侧是 `AppHandle`，测试侧换成记录器，就能在 `cargo test` 里断言
+/// `server-starting` / `server-ready` / `server-error` 的序列，不必起 WebView。
+pub trait EventSink: Send + Sync {
+    /// 发一个事件，`payload` 已是待序列化的字符串。
+    fn emit_event(&self, event: &str, payload: String);
+}
+
+impl EventSink for AppHandle {
+    fn emit_event(&self, event: &str, payload: String) {
+        let _ = self.emit(event, payload);
+    }
+}
+
 pub struct PythonLifecycle {
     config: PythonConfig,
+    client: Client,
     child: Mutex<Option<Child>>,
     ready: AtomicBool,
 }
 
 impl PythonLifecycle {
     pub fn new(config: PythonConfig) -> Self {
+        let client = Client::builder()
+            .timeout(HEALTH_TIMEOUT)
+            .build()
+            .expect("reqwest client");
         Self {
             config,
+            client,
             child: Mutex::new(None),
             ready: AtomicBool::new(false),
         }
@@ -93,8 +119,16 @@ impl PythonLifecycle {
     }
 
     /// 后台启动 Server：sync → spawn → 探活 → emit ready/error。
-    pub async fn start_background(&self, app: AppHandle) -> Result<(), PythonLifecycleError> {
+    ///
+    /// 每个终局都发且只发一个终态事件（`server-ready` 或 `server-error`），
+    /// 前端据此离开启动屏；spawn 失败也要发，否则前端会永远停在 warming。
+    pub async fn start_background(&self, events: &dyn EventSink) -> Result<(), PythonLifecycleError> {
         self.ready.store(false, Ordering::Relaxed);
+        logging::log(
+            Scope::Shell,
+            "python server starting",
+            Some(self.api_base_url().as_str()),
+        );
 
         if self.health_check().await.unwrap_or(false) {
             logging::log(
@@ -105,18 +139,27 @@ impl PythonLifecycle {
             self.stop().await?;
         }
 
-        self.spawn().await?;
+        if let Err(error) = self.spawn().await {
+            logging::log(
+                Scope::Shell,
+                "python server spawn failed",
+                Some(&error.to_string()),
+            );
+            events.emit_event("server-error", error.to_string());
+            return Err(error);
+        }
+
         let api_base_url = self.api_base_url();
-        let _ = app.emit("server-starting", api_base_url.clone());
+        events.emit_event("server-starting", api_base_url.clone());
 
         match self.wait_until_healthy().await {
             Ok(()) => {
                 self.ready.store(true, Ordering::Relaxed);
-                let _ = app.emit("server-ready", api_base_url);
+                events.emit_event("server-ready", api_base_url);
                 Ok(())
             }
             Err(error) => {
-                let _ = app.emit("server-error", error.to_string());
+                events.emit_event("server-error", error.to_string());
                 Err(error)
             }
         }
@@ -157,6 +200,8 @@ impl PythonLifecycle {
             let mut sync = Command::new(&uv);
             sync.args(["sync", "--frozen"])
                 .current_dir(&self.config.server_dir)
+                // stdin 不给：Server 是后台进程，继承壳的 stdin 会在父进程交互时卡住
+                .stdin(Stdio::null())
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .env_remove("VIRTUAL_ENV");
@@ -211,6 +256,7 @@ impl PythonLifecycle {
 
         command
             .current_dir(&self.config.server_dir)
+            .stdin(Stdio::null())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .kill_on_drop(true)
@@ -259,7 +305,7 @@ impl PythonLifecycle {
 
     async fn health_check(&self) -> Result<bool, reqwest::Error> {
         let url = format!("{}/health", self.api_base_url());
-        let response = Client::new().get(url).send().await?;
+        let response = self.client.get(url).send().await?;
         Ok(response.status().is_success())
     }
 }
@@ -328,24 +374,7 @@ fn listeners_on_port(port: u16) -> HashSet<u32> {
             Err(_) => return HashSet::new(),
         };
 
-        let text = String::from_utf8_lossy(&output.stdout);
-        let needle = format!(":{port}");
-        let mut pids = HashSet::new();
-
-        for line in text.lines() {
-            if !line.contains("LISTENING") || !line.contains(&needle) {
-                continue;
-            }
-            if let Some(pid) = line.split_whitespace().last() {
-                if let Ok(pid) = pid.parse::<u32>() {
-                    if pid > 0 {
-                        pids.insert(pid);
-                    }
-                }
-            }
-        }
-
-        pids
+        parse_netstat_listeners(&String::from_utf8_lossy(&output.stdout), port)
     }
 
     #[cfg(not(windows))]
@@ -355,9 +384,119 @@ fn listeners_on_port(port: u16) -> HashSet<u32> {
     }
 }
 
+/// 从 `netstat -ano` 输出里挑出在 `port` 上 LISTENING 的 PID。
+///
+/// 按第 2 列本地地址的端口号做**全等**比较：子串匹配会让 `80` 命中 `8080`，
+/// 而 `kill_listeners_on_port` 拿到的 PID 是直接 `taskkill /F` 的，会误杀无关进程。
+#[cfg(windows)]
+fn parse_netstat_listeners(text: &str, port: u16) -> HashSet<u32> {
+    let mut pids = HashSet::new();
+
+    for line in text.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() < 5 || fields[3] != "LISTENING" {
+            continue;
+        }
+        let listening_port = fields[1]
+            .rsplit(':')
+            .next()
+            .and_then(|value| value.parse::<u16>().ok());
+        if listening_port != Some(port) {
+            continue;
+        }
+        if let Ok(pid) = fields[4].parse::<u32>() {
+            if pid > 0 {
+                pids.insert(pid);
+            }
+        }
+    }
+
+    pids
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex as StdMutex;
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    /// 事件记录器：把 `start_background` 的状态机变成可断言的事件序列。
+    struct RecordingSink {
+        events: StdMutex<Vec<(String, String)>>,
+    }
+
+    impl RecordingSink {
+        fn new() -> Self {
+            Self {
+                events: StdMutex::new(Vec::new()),
+            }
+        }
+
+        fn names(&self) -> Vec<String> {
+            self.events
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|(name, _)| name.clone())
+                .collect()
+        }
+    }
+
+    impl EventSink for RecordingSink {
+        fn emit_event(&self, event: &str, payload: String) {
+            self.events
+                .lock()
+                .unwrap()
+                .push((event.to_string(), payload));
+        }
+    }
+
+    /// 借内核分配的空闲端口：不碰本机的 8787（dev）和 8799（E2E）。
+    async fn free_port() -> u16 {
+        TcpListener::bind("127.0.0.1:0")
+            .await
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port()
+    }
+
+    fn test_config(port: u16) -> PythonConfig {
+        PythonConfig {
+            host: "127.0.0.1".into(),
+            port,
+            server_dir: std::env::temp_dir(),
+            use_uv: false,
+            uv_bin: PathBuf::from("uv"),
+            extra_env: Vec::new(),
+            startup_timeout: Duration::from_millis(600),
+        }
+    }
+
+    /// 假 `/health` 服务：`reply` 为 `None` 时接受连接后不回，模拟端口被占死。
+    async fn spawn_fake_health(reply: Option<&'static str>) -> u16 {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut buffer = [0u8; 1024];
+                let _ = socket.read(&mut buffer).await;
+                match reply {
+                    Some(body) => {
+                        let response = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\n\r\n{}",
+                            body.len(),
+                            body
+                        );
+                        let _ = socket.write_all(response.as_bytes()).await;
+                    }
+                    None => tokio::time::sleep(Duration::from_secs(30)).await,
+                }
+            }
+        });
+        port
+    }
 
     #[test]
     fn resolves_server_dir_to_repo_workspace_root() {
@@ -365,5 +504,77 @@ mod tests {
         assert_eq!(config.server_dir, resolve_server_dir());
         assert!(config.server_dir.join("pyproject.toml").is_file());
         assert!(config.server_dir.join("packages-py").is_dir());
+    }
+
+    #[tokio::test]
+    async fn health_check_returns_true_on_200() {
+        let port = spawn_fake_health(Some("ok")).await;
+        let lifecycle = PythonLifecycle::new(test_config(port));
+
+        assert!(lifecycle.health_check().await.unwrap_or(false));
+    }
+
+    #[tokio::test]
+    async fn health_check_gives_up_when_server_never_replies() {
+        let port = spawn_fake_health(None).await;
+        let lifecycle = PythonLifecycle::new(test_config(port));
+
+        let started = Instant::now();
+        assert!(!lifecycle.health_check().await.unwrap_or(false));
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "/health 必须有请求超时，否则 wait_until_healthy 会永久卡住"
+        );
+    }
+
+    #[tokio::test]
+    async fn spawn_failure_still_emits_server_error() {
+        let mut config = test_config(free_port().await);
+        config.server_dir = PathBuf::from("D:/dingda-no-such-server-dir");
+        let lifecycle = PythonLifecycle::new(config);
+        let sink = RecordingSink::new();
+
+        let error = lifecycle.start_background(&sink).await.unwrap_err();
+
+        assert!(matches!(
+            error,
+            PythonLifecycleError::ServerDirNotFound(_)
+        ));
+        // spawn 就失败时不发 server-starting，但必须发 server-error，
+        // 否则前端停在 warming 没有任何出口
+        assert_eq!(sink.names(), vec!["server-error".to_string()]);
+        assert!(!lifecycle.is_ready());
+    }
+
+    #[tokio::test]
+    async fn startup_timeout_leaves_lifecycle_not_ready() {
+        let lifecycle = PythonLifecycle::new(test_config(free_port().await));
+
+        let error = lifecycle.wait_until_healthy().await.unwrap_err();
+
+        assert!(matches!(error, PythonLifecycleError::StartupTimeout(_)));
+        assert!(!lifecycle.is_ready());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn parses_netstat_listeners_by_exact_port() {
+        let output = [
+            "  Proto  Local Address          Foreign Address        State           PID",
+            "  TCP    0.0.0.0:80             0.0.0.0:0              LISTENING       111",
+            "  TCP    127.0.0.1:8080         0.0.0.0:0              LISTENING       222",
+            "  TCP    [::]:8787              [::]:0                 LISTENING       333",
+            "  TCP    0.0.0.0:8787           0.0.0.0:0              LISTENING       333",
+            "  TCP    10.0.0.5:8787          10.0.0.9:54321         ESTABLISHED     444",
+            "  UDP    0.0.0.0:5353           *:*                                    555",
+        ]
+        .join("\n");
+
+        assert_eq!(
+            parse_netstat_listeners(&output, 8787),
+            HashSet::from([333])
+        );
+        // 80 不能靠子串命中 8080 —— 命中的 PID 会被直接 taskkill
+        assert_eq!(parse_netstat_listeners(&output, 80), HashSet::from([111]));
     }
 }

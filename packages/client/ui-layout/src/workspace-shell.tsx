@@ -6,7 +6,7 @@ interface WorkspaceShellProps {
   className?: string;
 }
 
-/** 工作区主体容器。多 Tab 顶栏（WorkspaceTabsBar）留到打开项目页时再接入。 */
+/** 工作区主体容器（纯布局）。 */
 export function WorkspaceShell({ children, className }: WorkspaceShellProps) {
   return <div className={cn("h-full w-full overflow-hidden", className)}>{children}</div>;
 }

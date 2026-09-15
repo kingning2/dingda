@@ -1,0 +1,54 @@
+---
+description: 叮答前端（apps/web/ 与 packages/client/）编码规范。编辑其中的 .ts/.tsx 时必须先读通用规范模板并照抄结构：一个功能块一个文件、同类归文件夹、文件头与符号注释。本文件只写叮答特有的落点。
+globs: apps/web/**/*.{ts,tsx},packages/client/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# 前端编码规范（叮答落点）
+
+**规范本体是通用模板**：`.agents/skills/frontend-coding/SKILL.md`
+—— 那份与项目无关，可以直接复制到其他项目用，所以**不要往里加叮答路径**。
+本文件只写叮答特有的落点 + 硬约束摘要。
+
+## 本项目落点
+
+| 项 | 值 |
+|----|----|
+| 源码根 | `apps/web/`（应用装配层）、`packages/client/*/`（业务域与机制包） |
+| 包名 | 一律 `@v2/*`；工作区清单见 `pnpm-workspace.yaml` |
+| 字段判定器 | `@v2/runtime/guards` —— `isString` / `isNumber` / `isBoolean` / `isObject` / `isArray` / `isFunction` |
+| 架构与依赖方向 | `.agents/skills/frontend-architecture/SKILL.md`、`.agents/skills/layers.md` |
+| 交代码前 | `pnpm exec tsc --noEmit`、`pnpm check:deps`、`pnpm check:unused`（与 `build` 的 `--strict` 一致）、`pnpm test` |
+| 测试 | vitest。测试文件放 `packages/*/tests/` 或 `packages/*/*/tests/`，**不放 `src/` 旁边** |
+
+## 硬约束摘要
+
+1. **一个功能块 = 一个文件**。判定：文件头「职责：」能否用一句话说完且不含「和」。
+   阈值：> 250 行 或 > 8 个顶层导出 → 检查是否混装（单一职责的大文件须在 `设计说明：` 写明为何不拆）
+2. **同类归文件夹**，文件夹只在同类文件 ≥ 2 个时建立；只有 1 个文件的类别放包根
+3. **文件夹名 = 类别名**（`cli/` `run/` `ui/`）；禁止 `utils/` `helpers/` `services/` `common/` `misc/` `shared/` `lib/`
+4. **文件头块注释**：一行总述 + `职责：` +（按需）`设计说明：`。只有一行总述 = 不合格
+5. **每个导出符号有注释**，写「解决什么问题」；常量表 / 映射表写清「新增时只改这里」
+6. 注释只写**为什么**与故障场景推理，不复述代码、不写「本函数用于处理…」套话
+7. 文件名 kebab-case 且不重复文件夹名（`run/run.ts` ✗ → `run/stream.ts` ✓）；禁止 `data2` / `resultFinal` / `handleClick2`
+8. **不建包内桶文件**（`cli/index.ts`）；包入口 `index.ts` 只暴露应用层要装配的东西，内部引用走相对路径
+9. 拆 / 改名后**直接改调用方**，不留 `export { ... } from "./old"` 转发壳
+10. 每个有代码的目录有 `README.md`（树形：上层只链下层；本层每个文件写清职责、关键符号、谁调用，「谁调用」须 Grep 实证）
+11. 交代码前跑上表「交代码前」那三条命令
+12. **字段级容错用 `@v2/runtime/guards`**（`isString(x, fb)` / `isString([a, b], fb)`），
+    不写 `typeof x === "string" ? x : ""`。注意判定器**不转换**（`isNumber("12")` 是 false，
+    要转换用 `asNumber`）；数组先整体再逐元素（所以 `isArray(x, fb)` 是「x 本身是不是数组」）；
+    输入已声明为数组类型时不用 `isArray`。
+    普通的二选一分支（JSX 条件渲染、`x ?? y`）不属于这个模式，仍用 `if` / 三元
+13. **测试放包的 `tests/`，不放 `src/` 旁边**。原因不是偏好：`vitest` 与
+    `typescript` / `vite` 同级，属**工作区级工具、只在根 `package.json` 声明**；
+    而 `check:deps` 只扫 `src/**` 与包根 `*.config.*`。测试放进 `src/` 会让
+    「用了没声明」硬失败，逼着每个包都声明 vitest。测试由 vitest 按 glob 发现，
+    `check-unused` 已把 `*.test.ts` 排除出「孤立文件」（但仍算它的消费方）
+14. **纯逻辑优先**。能抽成不依赖 React / DOM 的纯函数就抽出来 —— 那样才测得了。
+    `chat/schedule.ts`、`agent-output.ts`、`runtime/guards.ts` 都是这个形状。
+    组件层只做「把数据变成 DOM」，不承载可测的逻辑
+
+**架构与依赖方向不在本规范**，见 `.agents/skills/frontend-architecture/SKILL.md`。
+
+未按规范模板的示例形状写的补丁视为不合格。

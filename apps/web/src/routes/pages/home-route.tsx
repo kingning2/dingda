@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { stashWorkDraft } from "@v2/ui-ai/session";
+import { stashWorkDraft } from "@v2/ui-ai/work/session";
 import { HomeView } from "@v2/ui-home/home-view";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { workSummariesToProjects } from "@v2/ui-home/work-projects";

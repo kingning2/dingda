@@ -15,3 +15,4 @@
 - [channel/](channel/README.md) — 扫码 session 表 + 调 `channels.registry`；另有未接线的 WSS 服务骨架
 - [knowledge/](knowledge/README.md) — RAG/知识库骨架
 - [runtime/](runtime/README.md) — Python 进程 uptime 快照
+- [watch/](watch/README.md) — 商品监控：价格历史、售出判定、定时轮询调度

@@ -1,4 +1,12 @@
+/**
+ * Markdown 代码块：内联代码与 fenced code block 两种形态。
+ *
+ * 职责：
+ *   - 内联代码：`<code>` 带 muted 背景与等宽字体。
+ *   - 块级代码：语言标签 + 圆角卡片 + 横向滚动，与正文拉开层级。
+ */
 import type { ComponentProps } from "react";
+/** Markdown 代码元素：内联或块级。 */
 
 import { cn } from "@v2/ui-primitives/utils";
 

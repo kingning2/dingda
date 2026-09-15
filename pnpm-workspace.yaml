@@ -10,3 +10,6 @@ packages:
   - "packages/*/*"
   # 应用装配层（web 端）
   - "apps/*"
+  # 桌面端 E2E（WebdriverIO + 应用内嵌 WebDriver，不经 tauri-driver）；
+  # 不参与 scripts/check-workspace-deps.mjs 的依赖检查——那个脚本只扫 packages/ 与 apps/
+  - "e2e"

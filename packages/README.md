@@ -9,7 +9,7 @@
 ```text
 apps/web ─────────────────────────────────────┐
                                               ↓
-ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
+ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-monitor
                                               ↓
         ui-layout · ui-feedback ──→ ui-primitives ──→ ui-theme
 
@@ -30,7 +30,7 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
 | [contracts/](contracts/README.md) | 与 Python 的线协议类型（纯类型） | `server/` 改字段时同步 |
 | [client/routes/](client/routes/README.md) | 路由契约：路径常量与解析 | 加页面时改 `paths.ts` |
 | [client/app-state/](client/app-state/README.md) | 跨域共享 UI 状态（zustand） | 启动探测结果存哪 |
-| [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、Server 状态、错误上报 | 连不上 Server / 判断是否桌面端 |
+| [client/runtime/](client/runtime/README.md) | HTTP 传输、能力开关、Server 状态、错误上报、值类型判定 | 连不上 Server / 判断是否桌面端 / 判定外部数据字段类型 |
 | [client/ui-theme/](client/ui-theme/README.md) | 设计令牌与全局样式 | 改颜色、圆角、字体 |
 | [client/ui-primitives/](client/ui-primitives/README.md) | 无业务的原子组件 + `cn()` | 按钮/输入框长什么样 |
 | [client/ui-layout/](client/ui-layout/README.md) | 外壳、标题栏、导航栏、主区域、路由出口 | 窗口骨架、侧栏、页面切换动效 |
@@ -39,7 +39,8 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler
 | [client/ui-composer/](client/ui-composer/README.md) | 输入区、附件、Agent 选择 | 打字框 |
 | [client/ui-account/](client/ui-account/README.md) | 账号、扫码登录、登录态告警 | 账号相关 |
 | [client/ui-agent/](client/ui-agent/README.md) | 外部 CLI Runtime 探测与运行态 | Agent 探测 |
-| [client/ui-crawler/](client/ui-crawler/README.md) | 采集台、结果展示、商品预览 | 采集相关 |
+| [client/ui-crawler/](client/ui-crawler/README.md) | 商品详情拉取与商品预览浮层 | 商品预览 |
+| [client/ui-monitor/](client/ui-monitor/README.md) | 商品监控：监控列表、价格历史、变更事件 | 商品卖不卖得掉 / 有没有降价 |
 | [client/ui-home/](client/ui-home/README.md) | 首屏、项目条、类型入口 | 首页 |
 
 应用装配层在 [`apps/web/`](../apps/web/README.md)（Vite 根）。**启动编排**
@@ -89,6 +90,62 @@ pnpm check:deps      # node scripts/check-workspace-deps.mjs
 CI 能过，直到换个安装方式或挪个目录才炸。`ui-theme` 就是例子 —— 它的 `index.css`
 `@import` 了四个外部包，包清单里却一个依赖都没写。
 
+## 死代码检查
+
+拆包之后「定义了但没人引用」也是静默问题：`tsconfig` 的 `noUnusedLocals` /
+`noUnusedParameters` 只管**单文件内的局部变量**，跨文件的未使用导出、以及完全没人
+import 的孤立文件，它看不见。
+
+```bash
+pnpm check:unused          # 默认只警告（退出码 0）
+pnpm check:unused:strict   # 有发现就退出码 1，CI 用
+```
+
+它用 **TypeScript Compiler API** 做真正的引用分析，不是文本匹配 —— 正则/字符串计数
+会把 `index.ts` 的 re-export 全部误判成死代码（实测正则法报 25.5%、真实值 0.2%，
+高估约 100 倍）；re-export 链还须经 `getAliasedSymbol` 解析到原始符号才对得上号。
+
+组件库（`ui-primitives`）与跨语言契约（`contracts`）天然有未使用导出，走脚本内的
+`ALLOWLIST` 豁免。
+
+**它分不清「死代码」与「预留件」。** 明确标注的预留件（已声明、故意未接线）不是死代码：
+要么在文件里写清预留意图，要么加进 `ALLOWLIST`。反之，若某符号已被真实数据源取代
+（如 mock 常量被 store 取代），那就是真死代码，应删掉而不是豁免。
+
+已接进 `pnpm dev`（警告，不阻塞开发循环）与 `pnpm build`（`--strict`，拦住上线）；
+`pnpm tauri dev` / `pnpm tauri build` 经 `tauri.conf.json` 的
+`beforeDevCommand` / `beforeBuildCommand` 走同样两条链，因此一并覆盖。
+临时跳过：`SKIP_UNUSED_CHECK=1 pnpm dev`。
+
+## 测试
+
+```bash
+pnpm test         # vitest run（一次性）
+pnpm test:watch   # 监听模式
+```
+
+**测试文件放包的 `tests/`，不放 `src/` 旁边。** 原因不是偏好：
+
+- `vitest` 与 `typescript` / `vite` 同级，属**工作区级工具，只在根 `package.json` 声明**
+- 而 `check:deps` 只扫 `src/**` 与包根 `*.config.*`
+
+测试放进 `src/` 会让「用了没声明」硬失败，逼着每个包都声明 vitest。放 `tests/` 则
+依赖关系清楚：**工具在根，测试在包的 `tests/`**。
+
+配套约定：
+
+- 测试由 vitest 按 glob 发现（`vitest.config.ts` 的 `include`），所以没人 import 它们 ——
+  `check:unused` 已把 `*.test.ts` 排除出「孤立文件」；但它们**仍算消费方**，
+  只被测试引用的导出不算死代码
+- **不配 `resolve.alias`**：`@v2/*` 走 pnpm 工作区软链解析，与 `vite.config.ts`
+  同一条约定（那里写了「加别名会掩盖工作区是否真的接通」）
+- `environment: "node"`：目前测的都是纯函数。要测组件再按需换 jsdom
+
+**为什么优先抽纯函数**：能脱离 React / DOM 的才测得了。`chat/schedule.ts`、
+`agent-output.ts`、`runtime/guards.ts` 都是这个形状 —— 组件层只负责「把数据变成 DOM」。
+这套测试第一次跑就抓到 `isArray` 的数组语义缺陷（商品 / 比价 / comments 会被静默清空），
+而 `tsc`、`check:unused`、`check:deps` 三层门禁一个都没拦住。
+
 ## 工程机制
 
 **源码直出**：每个包的 `exports` 直接指向 `./src/*`，不产出 `lib/`，全仓库仍是单次
@@ -96,9 +153,10 @@ Vite 构建。这样既有 pnpm 的真实包边界（依赖显式声明、越界
 编排的成本。
 
 ```bash
-pnpm dev         # → check:deps + pnpm --filter @v2/app-web dev
-pnpm build       # → check:deps + tsc（全仓库类型检查）+ vite build
-pnpm check:deps  # → node scripts/check-workspace-deps.mjs
+pnpm dev          # → check:deps + check:unused（警告）+ pnpm --filter @v2/app-web dev
+pnpm build        # → check:deps + check:unused --strict + tsc（全仓库类型检查）+ vite build
+pnpm check:deps   # → node scripts/check-workspace-deps.mjs
+pnpm check:unused # → node scripts/check-unused.mjs
 ```
 
 ## 新增一个包

@@ -13,4 +13,4 @@ mod env;
 mod lifecycle;
 
 pub use env::desktop_runtime_env;
-pub use lifecycle::{PythonConfig, PythonLifecycle};
+pub use lifecycle::{EventSink, PythonConfig, PythonLifecycle, PythonLifecycleError};

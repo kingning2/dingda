@@ -1,34 +1,23 @@
 /**
  * AI 工作页：唯一 Layout — 左聊天（调度器）/ 右结果|设置。
+ *
+ * 职责：页面装配。所有业务逻辑已抽到 `useWorkDetail`（加载/发送/持久化）与
+ * `useSidePanel`（侧边栏/分栏），本组件只剩 JSX 组合。
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft, Loader2, Package, Settings2 } from "lucide-react";
-import type { ComposerSubmitPayload } from "@v2/contracts/composer";
-import type { AgentWorkDetailView, AgentWorkStepView } from "@v2/contracts/ai-work";
-import { putAgentWorkDetail } from "@v2/ui-agent/agent-api";
-import type { AgentRunPhase } from "@v2/ui-agent/agent-run-phase";
+import type { ReactNode } from "react";
 import { useServer } from "@v2/runtime/server-provider";
 import { useComposerAgentOptions } from "@v2/ui-composer/composer-agents";
 import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
-import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "./session";
-import { ChatPane, send, type SendHandle } from "./scheduler";
-import { Products } from "./Products";
-import { ProductPreviewHost } from "./ProductPreviewHost";
-import { Settings } from "./Settings";
-import { truncateBeforeUserMessage } from "@v2/ui-agent/agent-event-reducer";
-
-export type SideTab = "results" | "settings";
-
-const MIN_CHAT_WIDTH = 360;
-const MAX_CHAT_WIDTH = 720;
-const DEFAULT_CHAT_WIDTH = 520;
-const PERSIST_DEBOUNCE_MS = 800;
-
-const autoSendByWork = new Map<string, SendHandle>();
-const mountCountByWork = new Map<string, number>();
+import { Chat } from "./chat/chat";
+import { useSidePanel } from "./chat/use-side-panel";
+import { useWorkDetail } from "./chat/use-work-detail";
+import { ProductPreviewHost } from "./preview/product-preview-host";
+import { Products } from "./panel/products";
+import { Settings } from "./panel/settings";
 
 interface LayoutProps {
   workId: string;
@@ -39,278 +28,24 @@ interface LayoutProps {
 export function Layout({ workId, onBack }: LayoutProps) {
   const server = useServer();
   const liveAgents = useComposerAgentOptions();
-  const [detail, setDetail] = useState<AgentWorkDetailView | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [runPhase, setRunPhase] = useState<AgentRunPhase | null>(null);
-  const activeSendRef = useRef<SendHandle | null>(null);
-  const [sideTab, setSideTab] = useState<SideTab | null>("results");
-  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const detailRef = useRef<AgentWorkDetailView | null>(null);
-  const persistTimerRef = useRef<number | null>(null);
-  const loadGenerationRef = useRef(0);
-  const applyRef = useRef<
-    (
-      next: AgentWorkDetailView,
-      options?: { hydrate?: boolean; runPhase?: AgentRunPhase | null },
-    ) => void
-  >(() => undefined);
-
-  const splitRef = useRef<HTMLDivElement>(null);
-  const [chatWidth, setChatWidth] = useState(DEFAULT_CHAT_WIDTH);
-  const [resizing, setResizing] = useState(false);
-  const sideOpen = sideTab != null;
-
-  const schedulePersist = useCallback((_next: AgentWorkDetailView) => {
-    if (persistTimerRef.current !== null) {
-      window.clearTimeout(persistTimerRef.current);
-    }
-    persistTimerRef.current = window.setTimeout(() => {
-      persistTimerRef.current = null;
-      const snapshot = detailRef.current;
-      if (!snapshot) return;
-      stashWorkSnapshot(snapshot);
-      void putAgentWorkDetail(snapshot).catch(() => {});
-    }, PERSIST_DEBOUNCE_MS);
-  }, []);
-
-  const flushPersist = useCallback((next?: AgentWorkDetailView | null, keepalive = false) => {
-    const snapshot = next ?? detailRef.current;
-    if (!snapshot) return;
-    if (persistTimerRef.current !== null) {
-      window.clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
-    stashWorkSnapshot(snapshot);
-    void putAgentWorkDetail(snapshot, { keepalive }).catch(() => {});
-  }, []);
-
-  const applyDetailUpdate = useCallback(
-    (
-      next: AgentWorkDetailView,
-      options?: { hydrate?: boolean; runPhase?: AgentRunPhase | null },
-    ) => {
-      detailRef.current = next;
-      setDetail(next);
-      if (options?.runPhase !== undefined) setRunPhase(options.runPhase);
-      setLoading(false);
-      stashWorkSnapshot(next);
-      if (options?.hydrate) return;
-      if (next.can_send) {
-        flushPersist(next, false);
-      } else {
-        schedulePersist(next);
-      }
-    },
-    [schedulePersist, flushPersist],
-  );
-  applyRef.current = applyDetailUpdate;
-
-  useEffect(() => {
-    const onPageHide = () => {
-      flushPersist(undefined, true);
-    };
-    window.addEventListener("pagehide", onPageHide);
-    window.addEventListener("beforeunload", onPageHide);
-    return () => {
-      window.removeEventListener("pagehide", onPageHide);
-      window.removeEventListener("beforeunload", onPageHide);
-    };
-  }, [flushPersist]);
-
-  useEffect(() => {
-    if (!server.ready) return;
-
-    const generation = ++loadGenerationRef.current;
-    let cancelled = false;
-    mountCountByWork.set(workId, (mountCountByWork.get(workId) ?? 0) + 1);
-    setLoading(true);
-    setError(null);
-    setDetail(null);
-    detailRef.current = null;
-    setRunPhase(null);
-    setSideTab("results");
-    setSelectedStepId(null);
-
-    void loadAgentWorkDetail(workId)
-      .then(async (result) => {
-        if (cancelled || generation !== loadGenerationRef.current) return;
-        applyRef.current(result.detail, { hydrate: true });
-        if (!result.pendingSend) return;
-
-        clearWorkDraft(workId);
-        let handle = autoSendByWork.get(workId);
-        if (!handle) {
-          handle = send(result.detail, result.pendingSend, (next, nextPhase) => {
-            if (generation !== loadGenerationRef.current) return;
-            applyRef.current(next, { runPhase: nextPhase });
-          });
-          autoSendByWork.set(workId, handle);
-          void handle.promise.finally(() => {
-            if (autoSendByWork.get(workId) === handle) {
-              autoSendByWork.delete(workId);
-            }
-          });
-        }
-        activeSendRef.current = handle;
-        try {
-          await handle.promise;
-        } catch (err) {
-          if (!cancelled && generation === loadGenerationRef.current) {
-            setError(err instanceof Error ? err.message : "发送失败，请重试");
-          }
-        } finally {
-          if (activeSendRef.current === handle) {
-            activeSendRef.current = null;
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled && generation === loadGenerationRef.current) {
-          setError("加载 AI 工作详情失败");
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      const handle = autoSendByWork.get(workId) ?? activeSendRef.current;
-      const nextCount = (mountCountByWork.get(workId) ?? 1) - 1;
-      if (nextCount <= 0) mountCountByWork.delete(workId);
-      else mountCountByWork.set(workId, nextCount);
-
-      queueMicrotask(() => {
-        if ((mountCountByWork.get(workId) ?? 0) > 0) return;
-        void handle?.cancel();
-        if (autoSendByWork.get(workId) === handle) {
-          autoSendByWork.delete(workId);
-        }
-        if (activeSendRef.current === handle) {
-          activeSendRef.current = null;
-        }
-      });
-    };
-  }, [workId, server.ready]);
-
-  const handleSideTabChange = useCallback((tab: SideTab) => {
-    setSideTab((current) => (current === tab ? null : tab));
-  }, []);
-
-  const handleSettingsChange = useCallback(
-    (agentId: string, modelId: string | null) => {
-      const current = detailRef.current;
-      if (!current) return;
-      const sameRuntime =
-        Boolean(current.cli_session_id) &&
-        (current.cli_session_runtime_id ?? current.composer_agent_id) === agentId;
-      applyDetailUpdate({
-        ...current,
-        composer_agent_id: agentId,
-        composer_model_id: modelId,
-        cli_session_id: sameRuntime ? current.cli_session_id : null,
-        cli_session_runtime_id: sameRuntime ? agentId : null,
-      });
-    },
-    [applyDetailUpdate],
-  );
-
-  const handleSend = useCallback(
-    async (payload: ComposerSubmitPayload) => {
-      const current = detailRef.current;
-      if (!current || activeSendRef.current) return;
-      setError(null);
-      setSelectedStepId(null);
-      const merged: ComposerSubmitPayload = {
-        ...payload,
-        agent_id: current.composer_agent_id ?? payload.agent_id,
-        model_id: current.composer_model_id ?? payload.model_id,
-      };
-      const handle = send(current, merged, (next, nextPhase) => {
-        applyDetailUpdate(next, { runPhase: nextPhase });
-      });
-      activeSendRef.current = handle;
-      try {
-        await handle.promise;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "发送失败，请重试");
-      } finally {
-        if (activeSendRef.current === handle) {
-          activeSendRef.current = null;
-        }
-      }
-    },
-    [applyDetailUpdate],
-  );
-
-  const handleResubmitUser = useCallback(
-    async (messageId: string, content: string) => {
-      const current = detailRef.current;
-      if (!current) return;
-      const truncated = truncateBeforeUserMessage(current, messageId);
-      if (!truncated) return;
-
-      const active = activeSendRef.current;
-      if (active) {
-        await active.cancel();
-        activeSendRef.current = null;
-      }
-
-      applyDetailUpdate(truncated);
-      setError(null);
-      setSelectedStepId(null);
-
-      const payload: ComposerSubmitPayload = {
-        message: content,
-        agent_id: truncated.composer_agent_id ?? "",
-        model_id: truncated.composer_model_id,
-        attachments: [],
-      };
-      const handle = send(truncated, payload, (next, nextPhase) => {
-        applyDetailUpdate(next, { runPhase: nextPhase });
-      });
-      activeSendRef.current = handle;
-      try {
-        await handle.promise;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "发送失败，请重试");
-      } finally {
-        if (activeSendRef.current === handle) {
-          activeSendRef.current = null;
-        }
-      }
-    },
-    [applyDetailUpdate],
-  );
-
-  const handleCancel = useCallback(() => {
-    void activeSendRef.current?.cancel();
-  }, []);
-
-  const clampWidth = useCallback((width: number) => {
-    const splitWidth = splitRef.current?.clientWidth ?? window.innerWidth;
-    const max = Math.min(MAX_CHAT_WIDTH, splitWidth - 8 - 320);
-    return Math.max(MIN_CHAT_WIDTH, Math.min(width, max));
-  }, []);
-
-  const handlePointerDown = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      const startX = event.clientX;
-      const startWidth = chatWidth;
-      setResizing(true);
-      const onMove = (moveEvent: globalThis.PointerEvent) => {
-        setChatWidth(clampWidth(startWidth + (moveEvent.clientX - startX)));
-      };
-      const onUp = () => {
-        setResizing(false);
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    },
-    [chatWidth, clampWidth],
-  );
+  const {
+    detail,
+    loading,
+    error,
+    runPhase,
+    handleSend,
+    handleResubmitUser,
+    handleCancel,
+    handleSettingsChange,
+  } = useWorkDetail(workId, server.ready);
+  const {
+    sideTab,
+    chatWidth,
+    resizing,
+    sideOpen,
+    handleSideTabChange,
+    handlePointerDown,
+  } = useSidePanel();
 
   if (loading && !detail) {
     return (
@@ -334,7 +69,9 @@ export function Layout({ workId, onBack }: LayoutProps) {
             <CardTitle className="text-sm font-medium text-foreground">
               {error ? "加载失败" : "未找到该 AI 工作"}
             </CardTitle>
-            <CardDescription className="mt-2">{error ?? "请返回重试或选择其他任务"}</CardDescription>
+            <CardDescription className="mt-2">
+              {error ?? "请返回重试或选择其他任务"}
+            </CardDescription>
           </CardContent>
         </Card>
       </div>
@@ -343,9 +80,10 @@ export function Layout({ workId, onBack }: LayoutProps) {
 
   const composerAgents =
     detail.composer_agents.length > 0 ? detail.composer_agents : liveAgents;
+
   const sidePanel =
     sideTab === "results" ? (
-      <Products products={detail.products} comparison={detail.comparison} />
+      <Products products={detail.products} comparison={detail.comparison ?? null} />
     ) : (
       <Settings
         agents={composerAgents}
@@ -358,72 +96,70 @@ export function Layout({ workId, onBack }: LayoutProps) {
 
   return (
     <>
-    <div
-      ref={splitRef}
-      className={cn(
-        "flex h-full min-h-0 min-w-0 overflow-hidden bg-[color-mix(in_srgb,var(--bg-panel)_72%,transparent)]",
-        resizing && "cursor-col-resize select-none",
-      )}
-    >
-      <aside className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-border/70 bg-card py-3">
-        <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="返回首页">
-          <ArrowLeft className="size-4" />
-        </Button>
-        <div className="mt-3 flex flex-col items-center gap-1">
-          <RailTab
-            label="结果"
-            active={sideTab === "results"}
-            onClick={() => handleSideTabChange("results")}
-            icon={<Package className="size-4" />}
-          />
-          <RailTab
-            label="设置"
-            active={sideTab === "settings"}
-            onClick={() => handleSideTabChange("settings")}
-            icon={<Settings2 className="size-4" />}
-          />
-        </div>
-      </aside>
-
       <div
         className={cn(
-          "flex min-h-0 min-w-0 flex-col overflow-hidden bg-card",
-          sideOpen ? "shrink-0 border-r border-border/70" : "flex-1",
+          "flex h-full min-h-0 min-w-0 overflow-hidden bg-[color-mix(in_srgb,var(--bg-panel)_72%,transparent)]",
+          resizing && "cursor-col-resize select-none",
         )}
-        style={sideOpen ? { width: chatWidth } : undefined}
       >
-        <ChatPane
-          detail={detail}
-          busy={!detail.can_send}
-          runPhase={runPhase}
-          error={error}
-          selectedStepId={selectedStepId}
-          onSend={(payload) => void handleSend(payload)}
-          onCancel={handleCancel}
-          onSelectStep={(step: AgentWorkStepView) => setSelectedStepId(step.id)}
-          onResubmitUser={(messageId, content) => void handleResubmitUser(messageId, content)}
-        />
-      </div>
-
-      {sideOpen ? (
-        <>
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="调整聊天面板宽度"
-            className={cn(
-              "relative z-10 min-h-0 w-2 shrink-0 cursor-col-resize bg-transparent",
-              "before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-border",
-              "hover:before:bg-foreground/25",
-            )}
-            onPointerDown={handlePointerDown}
-          />
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
-            {sidePanel}
+        <aside className="flex h-full w-14 shrink-0 flex-col items-center gap-1 border-r border-border/70 bg-card py-3">
+          <Button variant="ghost" size="icon-sm" onClick={onBack} aria-label="返回首页">
+            <ArrowLeft className="size-4" />
+          </Button>
+          <div className="mt-3 flex flex-col items-center gap-1">
+            <RailTab
+              label="结果"
+              active={sideTab === "results"}
+              onClick={() => handleSideTabChange("results")}
+              icon={<Package className="size-4" />}
+            />
+            <RailTab
+              label="设置"
+              active={sideTab === "settings"}
+              onClick={() => handleSideTabChange("settings")}
+              icon={<Settings2 className="size-4" />}
+            />
           </div>
-        </>
-      ) : null}
-    </div>
+        </aside>
+
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-col overflow-hidden bg-card",
+            sideOpen ? "shrink-0 border-r border-border/70" : "flex-1",
+          )}
+          style={sideOpen ? { width: chatWidth } : undefined}
+        >
+          <Chat
+            detail={detail}
+            agents={composerAgents}
+            busy={!detail.can_send}
+            runPhase={runPhase}
+            error={error}
+            onSend={(payload) => void handleSend(payload)}
+            onCancel={handleCancel}
+            onResubmitUser={(messageId, content) => void handleResubmitUser(messageId, content)}
+          />
+        </div>
+
+        {sideOpen ? (
+          <>
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="调整聊天面板宽度"
+              className={cn(
+                "relative z-10 min-h-0 w-2 shrink-0 cursor-col-resize bg-transparent",
+                "before:absolute before:inset-y-0 before:left-1/2 before:w-px before:-translate-x-1/2 before:bg-border",
+                "hover:before:bg-foreground/25",
+              )}
+              onPointerDown={handlePointerDown}
+            />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+              {sidePanel}
+            </div>
+          </>
+        ) : null}
+      </div>
       <ProductPreviewHost />
     </>
   );
@@ -458,6 +194,6 @@ function RailTab({
   );
 }
 
-/** @deprecated 使用 Layout */
 export const View = Layout;
+/** AI 工作页视图别名（供路由装配用）。 */
 export const AiWorkView = Layout;

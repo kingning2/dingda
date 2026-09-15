@@ -58,9 +58,10 @@ apps/web → ui-* → ui-layout/ui-feedback → ui-primitives → ui-theme
 
 ```bash
 pnpm check:deps      # 环 / 跨层引用 / 用了没声明 / 自依赖 = 硬失败；声明没用 = 警告
+pnpm check:unused    # 跨文件未使用导出 / 孤立文件（--strict 让 CI 拦截）
 ```
 
-已接进 `pnpm dev` 与 `pnpm build` 前置。违规在运行时是**静默正常**的
+已接进 `pnpm dev` 与 `pnpm build` 前置（`dev` 警告、`build` 严格）。违规在运行时是**静默正常**的
 （靠根级 hoisting 兜着），所以不能靠自觉。
 
 ## 能力表
@@ -95,5 +96,5 @@ pnpm check:deps      # 环 / 跨层引用 / 用了没声明 / 自依赖 = 硬失
 ✅ 客户端注入 externalAgents 后才扫描 CLI
 ✅ 资产页 Web 只显示账号
 ✅ 需要跨域编排 → apps/web/src/boot/
-✅ 改完结构跑 pnpm check:deps
+✅ 改完结构跑 pnpm check:deps 与 pnpm check:unused
 ```

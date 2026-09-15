@@ -5,12 +5,10 @@ import {
   Home,
   LogOut,
   PanelLeftClose,
-  Palette,
-  ScanSearch,
+  Radar,
   Search,
   Settings,
   UserRound,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -32,12 +30,10 @@ import { cn } from "@v2/ui-primitives/utils";
 
 const ICON_MAP: Record<string, LucideIcon> = {
   home: Home,
-  community: Users,
   folder: Folder,
-  palette: Palette,
   bot: Bot,
   "user-round": UserRound,
-  spider: ScanSearch,
+  radar: Radar,
 };
 
 interface EntryNavRailProps {

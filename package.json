@@ -4,9 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/check-workspace-deps.mjs && pnpm --filter @v2/app-web dev",
-    "build": "node scripts/check-workspace-deps.mjs && tsc && pnpm --filter @v2/app-web build",
+    "dev": "node scripts/check-workspace-deps.mjs && node scripts/check-unused.mjs && pnpm --filter @v2/app-web dev",
+    "build": "node scripts/check-workspace-deps.mjs && node scripts/check-unused.mjs --strict && tsc && pnpm --filter @v2/app-web build",
     "check:deps": "node scripts/check-workspace-deps.mjs",
+    "check:unused": "node scripts/check-unused.mjs",
+    "check:unused:strict": "node scripts/check-unused.mjs --strict",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "pnpm --filter @v2/app-web preview",
     "prepare:python": "uv sync --frozen",
     "prepare:desktop-runtime": "node scripts/prepare-desktop-runtime.mjs",
@@ -31,6 +35,7 @@
     "@v2/ui-feedback": "workspace:*",
     "@v2/ui-home": "workspace:*",
     "@v2/ui-layout": "workspace:*",
+    "@v2/ui-monitor": "workspace:*",
     "@v2/ui-primitives": "workspace:*",
     "@v2/ui-theme": "workspace:*",
     "class-variance-authority": "^0.7.1",
@@ -58,6 +63,7 @@
     "@types/react-transition-group": "^4.4.12",
     "@vitejs/plugin-react": "^4.6.0",
     "typescript": "~5.8.3",
-    "vite": "^7.0.4"
+    "vite": "^7.0.4",
+    "vitest": "^5.0.0"
   }
 }
