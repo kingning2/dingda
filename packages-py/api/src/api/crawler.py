@@ -69,6 +69,10 @@ class CrawlerProductItem(BaseModel):
     want_count: str | None = None
     browse_count: str | None = None
     desc: str | None = None
+    sold_state: str = Field(
+        default="unknown",
+        description="商品售出态：unknown / on_sale / sold / delisted / gone",
+    )
     comments: list[CrawlerProductComment] = Field(default_factory=list)
     ocr_text: str | None = None
     content_text: str | None = None
@@ -285,6 +289,7 @@ def _to_product_item(platform: str, row: Any) -> CrawlerProductItem:
         want_count=row.want_count,
         browse_count=row.browse_count,
         desc=row.desc,
+        sold_state=row.sold_state,
         comments=comments,
         ocr_text=row.ocr_text,
         content_text=row.content_text,

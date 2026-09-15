@@ -13,6 +13,7 @@
 - `list_api` / `detail_api` / `comment_api` — mtop 名与字段路径
 - `dom` / `view` / `detail_dom` — 搜索 DOM、页内详情 mtop、详情 DOM 兜底
 - `signals` — 登录墙 / 风控 / 空结果文案
+- `sold_state` — 商品状态文案 → 售出态的关键词表（sold / delisted / on_sale）
 
 ### `DOM_PROBE.md`
 
@@ -25,6 +26,11 @@
 ### `extractor.py`
 
 脚本骨架 + 标准化；不写死平台选择器/字段。
+
+`sold_state_from_status(status)` 把详情状态文案映射成 `contracts.watch.SoldState`，结果写进
+`CrawlItem.raw['sold_state']`，同时原文留在 `raw['status']`。**关键词未命中时返回 `unknown`
+并打一条 `sold_state unmatched status=…` 日志——看到这条日志说明真实文案变了，按日志原文补
+`extract.json` 的 `sold_state` 小节即可，不用改代码。**
 
 ### `__init__.py`
 

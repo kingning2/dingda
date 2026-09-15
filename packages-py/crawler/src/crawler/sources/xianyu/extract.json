@@ -143,6 +143,31 @@
       ]
     }
   },
+  "sold_state": {
+    "sold": [
+      "已售出",
+      "已卖出",
+      "交易成功",
+      "卖掉了",
+      "已成交",
+      "已被拍下"
+    ],
+    "delisted": [
+      "已下架",
+      "已删除",
+      "已失效",
+      "已过期",
+      "商品不存在",
+      "已下架或删除"
+    ],
+    "on_sale": [
+      "在卖",
+      "在售",
+      "上架中",
+      "出售中",
+      "可购买"
+    ]
+  },
   "comment_api": {
     "api": "mtop.taobao.idlemtopsearch.pc.item.comment.list",
     "version": "1.0",

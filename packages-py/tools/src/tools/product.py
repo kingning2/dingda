@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 
 from browser.manager import get_browser_manager
 from contracts.browser_port import LaunchOptions
+from contracts.watch import SoldState
 from tools.account_cookie import resolve_crawl_cookie
 from crawler.core.base import BrowserSessionOptions
 from crawler.core.live import META_LIVE_CALLBACK, META_LIVE_ENABLED
@@ -44,6 +45,8 @@ TOOL_DESCRIPTION = (
     "读笔记在说什么优先看 content_text。视频笔记暂不处理 OCR。"
     "小红书详情可传 xsec_token（若搜索结果里有）。"
     "不支持 ali1688（无独立详情 API）；1688 请用 search 或 compare。"
+    "返回的 sold_state 是平台状态文案映射出的售出态（unknown / on_sale / sold / delisted / gone）；"
+    "sold_state=unknown 时要看 status 原文判断，不要臆断。"
 )
 DEFAULT_TIMEOUT_S = 45.0
 
@@ -84,6 +87,13 @@ class ProductItem(BaseModel):
     price: str | None = Field(default=None, description="价格，可能为空")
     seller_nick: str | None = Field(default=None, description="卖家昵称，可能为空")
     status: str | None = Field(default=None, description="状态文案，可能为空")
+    sold_state: str = Field(
+        default="unknown",
+        description=(
+            "商品售出态（由平台状态文案映射）：unknown / on_sale / sold / delisted / gone。"
+            "unknown 表示平台文案未命中已知关键词，需看 status 原文。"
+        ),
+    )
     want_count: str | None = Field(default=None, description="想要人数（闲鱼），可能为空")
     browse_count: str | None = Field(default=None, description="浏览量，可能为空")
     image_url: str | None = Field(default=None, description="封面图，可能为空")
@@ -119,8 +129,13 @@ async def run_product(
     *,
     on_live_frame: Any | None = None,
     live_frame_enabled: bool | None = None,
+    allow_login_recovery: bool = True,
 ) -> ProductOutput:
-    """执行商品详情；可选推送直播截图帧。"""
+    """执行商品详情；可选推送直播截图帧。
+
+    ``allow_login_recovery=False`` 关掉「登录失效 → 弹扫码 → 重试」这条链。
+    后台定时轮询必须传 False：否则会话过期时会在用户毫无预期的情况下弹出扫码窗口。
+    """
     task_id = f"mcp-{uuid.uuid4().hex[:12]}"
     cookie = resolve_crawl_cookie(inp.platform, inp.cookie)
     push_live = (
@@ -176,6 +191,7 @@ async def run_product(
                 price=row.price,
                 seller_nick=str(raw.get("seller_nick") or "") or None,
                 status=str(raw.get("status") or "") or None,
+                sold_state=str(raw.get("sold_state") or SoldState.UNKNOWN),
                 want_count=str(raw.get("want_count") or "") or None,
                 browse_count=str(raw.get("browse_count") or "") or None,
                 image_url=str(raw.get("image_url") or "") or None,
@@ -202,6 +218,7 @@ async def run_product(
             _execute,
             cookie=cookie,
             on_live_frame=on_live_frame,
+            max_auth=2 if allow_login_recovery else 0,
         )
     except AppError as exc:
         logger.warning("tool failed name=product code=%s", exc.code)
