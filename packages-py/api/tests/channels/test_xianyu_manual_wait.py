@@ -88,6 +88,8 @@ class _FakeManager:
 
     def __init__(self, headed: _FakeHeaded) -> None:
         self._headed = headed
+        self.released = False
+        self.stopped = False
 
     def __call__(self, *args: Any, **kwargs: Any) -> _FakeManager:
         return self
@@ -96,9 +98,11 @@ class _FakeManager:
         return _FakePort(self._headed)
 
     async def release(self, port: Any = None) -> None:
+        self.released = True
         return None
 
     async def stop(self) -> None:
+        self.stopped = True
         return None
 
 
@@ -142,6 +146,66 @@ def test_manual_wait_keeps_waiting_until_content_renders() -> None:
         assert headed.polls > 1
         assert headed.closed is True
         assert origin.added == []
+
+    asyncio.run(_case())
+
+
+class _ClearingRaw(_FakeRaw):
+    """先卡在风控页、随后切回商品页；正文始终很短（详情页常见）。
+
+    切换靠读 URL 的次数而不是 evaluate：`page_is_risk_block` 命中 punish URL 时
+    会直接返回，根本走不到取正文那一步。
+    """
+
+    def __init__(self) -> None:
+        super().__init__(body="商品详情")
+        self.url_reads = 0
+
+    @property
+    def url(self) -> str:
+        self.url_reads += 1
+        # 前几轮仍在风控页，之后用户过掉滑块、URL 回到商品页
+        if self.url_reads <= 3:
+            return "https://passport.goofish.com/_____tmd_____/punish"
+        return _ITEM_URL
+
+
+class _HangingHeaded(_FakeHeaded):
+    """close() 卡死的有头窗口：用来验证关闭链路不会连带卡住。"""
+
+    async def close(self) -> None:
+        await asyncio.sleep(60)
+
+
+def test_manual_wait_passes_once_risk_ui_clears() -> None:
+    """见过风控后，风控 UI 消失即判过 —— 详情页正文常常不到 120 字。
+
+    旧实现还要求「正文渲染 ≥120 字」，于是用户过完滑块程序仍在干等 180s，
+    表现就是「窗口一直不关」。
+    """
+
+    async def _case() -> None:
+        headed = _FakeHeaded(_ClearingRaw())
+        origin = _FakeOrigin()
+        await _recover(headed, origin)
+
+        assert headed.closed is True
+        assert [cookie.name for cookie in origin.added] == ["x5sec"]
+
+    asyncio.run(_case())
+
+
+def test_shutdown_keeps_going_when_close_hangs() -> None:
+    """关页卡死也要继续走完还槽位 + 停池，否则窗口会留在用户桌面上。"""
+
+    async def _case() -> None:
+        headed = _HangingHeaded(_FakeRaw(body=""))
+        manager = _FakeManager(headed)
+        with patch.object(recovery, "_CLOSE_TIMEOUT_S", 0.05):
+            await recovery._shutdown_headed(manager, None, headed, where="detail")
+
+        # close 被 wait_for 掐断，但池必须被停掉
+        assert manager.stopped is True
 
     asyncio.run(_case())
 

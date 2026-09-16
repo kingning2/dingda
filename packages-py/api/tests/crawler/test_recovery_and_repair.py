@@ -129,7 +129,7 @@ def test_repair_feeds_last_failure_into_next_round(tmp_path: Path) -> None:
                 "crawler.extraction.repair.orchestrator.relocate_section",
                 return_value=None,
             ),
-            patch("cli.repair.propose.propose_dom_patch", _propose),
+            patch("cli.repair.propose_dom_patch", _propose),
         ):
             return await repair_detail_dom(page, adapter, item_id="7")
 
@@ -211,7 +211,7 @@ def test_repair_survives_invalid_selector(tmp_path: Path) -> None:
                 return_value={"title": "[class*=t]", "price": "[class*=p]"},
             ),
             patch(
-                "cli.repair.propose.propose_dom_patch",
+                "cli.repair.propose_dom_patch",
                 _AsyncMock(return_value=None),
             ),
         ):

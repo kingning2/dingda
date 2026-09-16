@@ -7,6 +7,7 @@ from crawler.sources.xianyu.extractor import (
     item_from_view,
     item_id_from_url,
     items_from_payload,
+    normalize_price,
 )
 
 
@@ -66,6 +67,38 @@ def test_item_from_mtop_detail() -> None:
     assert item.raw["want_count"] == "15"
     assert item.raw["browse_count"] == "200"
     assert item.raw["image_url"] == "https://gw.test/cam.jpg"
+
+
+def test_normalize_price_range_takes_low_bound() -> None:
+    """多规格商品 soldPrice 是区间串；展示价取下限，区间原文单独留档。"""
+    assert normalize_price("10 - 18") == ("¥10", "10 - 18")
+    assert normalize_price("¥8.9 - 15.5") == ("¥8.9", "¥8.9 - 15.5")
+    assert normalize_price("8.9-15.5") == ("¥8.9", "8.9-15.5")
+    assert normalize_price("10~18") == ("¥10", "10~18")
+
+
+def test_normalize_price_single_and_empty() -> None:
+    assert normalize_price("88") == ("¥88", None)
+    assert normalize_price("¥12") == ("¥12", None)
+    assert normalize_price("") == (None, None)
+    assert normalize_price(None) == (None, None)
+    assert normalize_price("¥") == (None, None)
+
+
+def test_item_from_mtop_detail_range_price() -> None:
+    raw = {
+        "ret": ["SUCCESS::调用成功"],
+        "data": {"itemDO": {"itemId": "1", "title": "月亮椅", "soldPrice": "10 - 18"}},
+    }
+    item = item_from_mtop_detail(raw, "1")
+    assert item.price == "¥10"
+    assert item.raw["price_range"] == "10 - 18"
+
+
+def test_item_from_view_range_price() -> None:
+    item = item_from_view({"item_id": "2", "title": "椅子", "price": "¥8.9 - 15.5"}, "2")
+    assert item.price == "¥8.9"
+    assert item.raw["price_range"] == "¥8.9 - 15.5"
 
 
 def test_item_from_view() -> None:

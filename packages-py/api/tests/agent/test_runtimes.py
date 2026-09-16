@@ -6,9 +6,10 @@ import json
 import os
 from pathlib import Path
 
-from cli.prompts import compose_agent_prompt
-from cli.registry import get_runtime, list_runtime_ids
-from cli.stream.parse import parse_lines
+from cli.agents import get_runtime, list_runtime_ids
+from cli.prompts import compose_role_prompt
+from cli.skill import WORKER_SKILL_NAMES
+from cli.stream import parse_lines
 
 
 def test_list_runtime_ids() -> None:
@@ -34,26 +35,45 @@ def test_codex_resume_args() -> None:
 
 
 def test_compose_prompt_resume_skips_system(monkeypatch) -> None:
-    monkeypatch.setattr("cli.prompts._skill_prompt", lambda _workdir=None: "## Skills\n")
+    monkeypatch.setattr(
+        "cli.prompts._skill_prompt",
+        lambda _workdir, _ids: "## Skills\n",
+    )
     monkeypatch.setenv("DINGDA_HEADROOM", "0")
-    first = compose_agent_prompt("搜露营椅", platform_hint="xianyu", resume=False)
+    first = compose_role_prompt(
+        "搜露营椅",
+        persona="worker",
+        skill_ids=WORKER_SKILL_NAMES,
+        platform_hint="xianyu",
+        resume=False,
+    )
     assert "用户请求" in first
     assert "搜露营椅" in first
-    resumed = compose_agent_prompt("继续", resume=True)
+    resumed = compose_role_prompt(
+        "继续",
+        persona="worker",
+        skill_ids=WORKER_SKILL_NAMES,
+        resume=True,
+    )
     assert "继续" in resumed
     assert "用户请求" not in resumed
     assert "本轮优先平台" not in resumed
 
 
 def test_compose_prompt_cold_start_injects_prior_context(monkeypatch) -> None:
-    monkeypatch.setattr("cli.prompts._skill_prompt", lambda _workdir=None: "## Skills\n")
+    monkeypatch.setattr(
+        "cli.prompts._skill_prompt",
+        lambda _workdir, _ids: "## Skills\n",
+    )
     monkeypatch.setenv("DINGDA_HEADROOM", "0")
     prior = [
         {"role": "user", "content": "先搜闲鱼键盘"},
         {"role": "assistant", "content": "已找到 3 条候选"},
     ]
-    cold = compose_agent_prompt(
+    cold = compose_role_prompt(
         "换个 Agent 继续比价",
+        persona="worker",
+        skill_ids=WORKER_SKILL_NAMES,
         resume=False,
         context_messages=prior,
     )
@@ -61,8 +81,10 @@ def test_compose_prompt_cold_start_injects_prior_context(monkeypatch) -> None:
     assert "先搜闲鱼键盘" in cold
     assert "换个 Agent 继续比价" in cold
 
-    resumed = compose_agent_prompt(
+    resumed = compose_role_prompt(
         "继续",
+        persona="worker",
+        skill_ids=WORKER_SKILL_NAMES,
         resume=True,
         context_messages=prior,
     )
@@ -152,7 +174,7 @@ def test_parse_opencode_tool_use() -> None:
 
 
 def test_parse_opencode_tool_error_emits_result() -> None:
-    """参数写错等 MCP 失败：state.error + status=error，必须结束步骤。"""
+    """参数写错等工具调用失败：state.error + status=error，必须结束步骤。"""
     line = json.dumps(
         {
             "type": "tool_use",
@@ -178,13 +200,13 @@ def test_parse_opencode_tool_error_emits_result() -> None:
 
 
 def test_resolve_binary_prefers_managed(tmp_path: Path, monkeypatch) -> None:
-    from cli.registry import resolve_binary
+    from cli.agents import resolve_binary
 
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", lambda: home)
     monkeypatch.delenv("DINGDA_OPENCODE_PATH", raising=False)
     monkeypatch.setattr(
-        "cli.registry.shutil.which",
+        "cli.agents.shutil.which",
         lambda *_a, **_k: None,
     )
 
@@ -197,17 +219,17 @@ def test_resolve_binary_prefers_managed(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_resolve_binary_finds_opencode_home_bin(tmp_path: Path, monkeypatch) -> None:
-    from cli.registry import resolve_binary
+    from cli.agents import resolve_binary
 
     home = tmp_path / "home"
     monkeypatch.setattr(Path, "home", lambda: home)
     monkeypatch.delenv("DINGDA_OPENCODE_PATH", raising=False)
     monkeypatch.setattr(
-        "cli.registry.shutil.which",
+        "cli.agents.shutil.which",
         lambda *_a, **_k: None,
     )
     monkeypatch.setattr(
-        "cli.registry._windows_registry_path",
+        "cli.agents._windows_registry_path",
         lambda: "",
     )
 
@@ -220,7 +242,7 @@ def test_resolve_binary_finds_opencode_home_bin(tmp_path: Path, monkeypatch) -> 
 
 
 def test_resolve_binary_preferred_strips_extended_prefix(tmp_path: Path) -> None:
-    from cli.registry import resolve_binary
+    from cli.agents import resolve_binary
 
     binary = tmp_path / ("opencode.exe" if os.name == "nt" else "opencode")
     binary.write_bytes(b"x")

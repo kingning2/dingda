@@ -587,6 +587,7 @@ def main() -> None:
         os.environ.pop("DINGDA_DOM_REPAIR_RUNTIME", None)
     os.environ["DINGDA_DOM_REPAIR_ROUNDS"] = str(args.rounds)
     os.environ.setdefault("DINGDA_DOM_REPAIR", "1")
+    os.environ["DINGDA_REPAIR_OWNER"] = "crawler"
 
     code = asyncio.run(_run(args))
     sys.exit(code)

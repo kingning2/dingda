@@ -55,6 +55,8 @@ _PROXY_URL_KEYS = (
 )
 # 本机回环必须绕开代理，否则验收脚本自己的 SSE 也会被坏代理带死
 _NO_PROXY_VALUE = "127.0.0.1,localhost,::1"
+# 各 runtime 的「执行一条 shell」工具名；工具调用落在这些名字上才算真跑了命令取证
+_SHELL_TOOL_NAMES = frozenset({"bash", "shell", "command_execution", "exec", "command", "terminal"})
 # 连接类故障特征：命中即说明卡在网络 / 代理层，不是 Agent 链路本身
 _CONNECT_SYMPTOM = re.compile(
     r"cannot connect to api|unable to connect|is the computer able to access"
@@ -330,8 +332,8 @@ def _error_row(
 
 def _check_compression() -> CheckResult:
     """验证 Skill 注入和换 Agent 历史都经过 Headroom。"""
-    from cli.prompts import compose_agent_prompt
-    from tools.skill import SKILLS_CWD_ALIAS
+    from cli.prompts import compose_role_prompt
+    from cli.skill import SKILLS_CWD_ALIAS, WORKER_SKILL_NAMES
 
     logger = logging.getLogger("dingda.agent.compress")
     records: list[str] = []
@@ -347,8 +349,10 @@ def _check_compression() -> CheckResult:
     try:
         with tempfile.TemporaryDirectory(prefix="dingda-agent-compress-") as temp:
             workdir = Path(temp)
-            prompt = compose_agent_prompt(
+            prompt = compose_role_prompt(
                 "继续处理",
+                persona="worker",
+                skill_ids=WORKER_SKILL_NAMES,
                 workdir=workdir,
                 context_messages=[
                     {"role": "user", "content": "先记住商品编号 731。"},
@@ -474,7 +478,10 @@ async def _check_search(api_base: str, targets: list[RuntimeTarget], timeout_s: 
         row.get("completed") is True
         and int(row.get("frame_count") or 0) > 0
         and any("xiaohongshu.com" in str(url) for url in row.get("frame_urls") or [])
-        and any("run_tool.py" in str(name) or "Bash" in str(name) for name in row.get("tool_calls") or [])
+        and any(
+            str(name).strip().lower() in _SHELL_TOOL_NAMES
+            for name in row.get("tool_calls") or []
+        )
         for row in rows
     )
     return CheckResult(name="browser-live-search", ok=ok, details={"targets": rows})

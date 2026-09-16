@@ -28,7 +28,9 @@ def test_render_skills_includes_multi_round_compare() -> None:
         "dingda-source-evidence",
         "dingda-price-compare",
         "dingda-offer-verification",
+        "dingda-orchestrate",
     }
+    assert "child_run" in rendered["dingda-orchestrate"]
     crawl = rendered["dingda-crawl"]
     assert "## Resource map" in crawl
     assert "## Workflow" in crawl
@@ -36,7 +38,8 @@ def test_render_skills_includes_multi_round_compare() -> None:
     assert "search --platform xianyu" in crawl
     assert "compare --image" in crawl
     assert "references/examples.md" in crawl
-    assert '"python"' in crawl
+    # 入口收敛成裸 `tool`：skill 里不再拼解释器路径
+    assert "tool search --platform xianyu" in crawl
     assert "{{ENTRY}}" not in crawl
     assert "{{PYTHON}}" not in crawl
     compare = rendered["dingda-price-compare"]
@@ -44,7 +47,7 @@ def test_render_skills_includes_multi_round_compare() -> None:
     assert "--rounds 1" in compare
     assert "{{ENTRY}}" not in compare
     assert "{{PYTHON}}" not in compare
-    assert '"python" -m tools.cli' in compare
+    assert "tool compare --image" in compare
 
 
 def test_install_copies_skill_metadata(tmp_path: Path) -> None:
@@ -56,10 +59,9 @@ def test_install_copies_skill_metadata(tmp_path: Path) -> None:
     assert cli_reference.is_file()
     reference_text = cli_reference.read_text(encoding="utf-8")
     assert "{{ENTRY}}" not in reference_text
-    assert "run_tool.py" in reference_text
-    runner = root / "dingda-crawl" / "scripts" / "run_tool.py"
-    assert runner.is_file()
-    assert "{{SERVER_DIR}}" not in runner.read_text(encoding="utf-8")
+    # 入口渲染成裸 `tool`；解释器与脚本路径不许再出现在引用里
+    assert "tool search --platform xianyu" in reference_text
+    assert "run_tool.py" not in reference_text
     examples = root / "dingda-crawl" / "references" / "examples.md"
     assert examples.is_file()
     assert "爬取闲鱼搜索" in examples.read_text(encoding="utf-8")
@@ -179,21 +181,15 @@ def test_offer_scorer_script() -> None:
     assert result["counts"]["reject"] == 1
 
 
-def test_crawl_runner_delegates_to_tool_cli(tmp_path: Path) -> None:
+def test_install_uses_bare_tool_entry(tmp_path: Path) -> None:
+    """入口收敛成裸 `tool`：不再装 run_tool.py，skill 也不写解释器路径。"""
     install("python", home=tmp_path)
-    runner = tmp_path / ".codex" / "skills" / "dingda-crawl" / "scripts" / "run_tool.py"
-    proc = subprocess.run(
-        [sys.executable, str(runner), "--help"],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        env=_UTF8_ENV,
-        check=False,
-    )
-    assert proc.returncode == 0, proc.stderr
-    assert "SyntaxWarning" not in proc.stderr
-    assert "search" in proc.stdout
-    assert "compare" in proc.stdout
+    root = tmp_path / ".codex" / "skills" / "dingda-crawl"
+    assert not (root / "scripts" / "run_tool.py").exists()
+    skill_text = (root / "SKILL.md").read_text(encoding="utf-8")
+    assert "tool search --platform" in skill_text
+    assert "run_tool.py" not in skill_text
+    assert "{{ENTRY}}" not in skill_text
 
 
 def test_install_replaces_stale_skill_files(tmp_path: Path) -> None:

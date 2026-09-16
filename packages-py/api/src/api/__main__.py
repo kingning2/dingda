@@ -8,11 +8,13 @@ import sys
 import uvicorn
 
 from api.app import create_app
-from core.config import Settings
+from core.config import Settings, load_env
 from core.logging import configure_logging, error, uvicorn_log_config
 
 
 def main(argv: list[str] | None = None) -> None:
+    # 先读仓库根的 .env（幂等；真实环境变量优先），再解析参数与配置
+    load_env()
     parser = argparse.ArgumentParser(description="DingDa v2 FastAPI server")
     parser.add_argument("--host", default=None)
     parser.add_argument("--port", type=int, default=None)

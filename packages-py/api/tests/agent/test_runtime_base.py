@@ -7,8 +7,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from cli.base import COMPRESS_MIN_BYTES, CliRuntime
-from cli.registry import get_runtime, list_runtime_ids
+from cli.agents import get_runtime, list_runtime_ids
+from cli.base import CliRuntime
+from core.compress import DEFAULT_BYTE_THRESHOLD
 
 
 def test_get_runtime_returns_socket_instance() -> None:
@@ -62,7 +63,7 @@ def test_compress_payload_uses_headroom(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setitem(sys.modules, "headroom", MagicMock(compress=MagicMock(return_value=result)))
 
     payload = {"trees": [{"classes": ["x" * 5000]}]}
-    assert len(str(payload)) > COMPRESS_MIN_BYTES
+    assert len(str(payload)) > DEFAULT_BYTE_THRESHOLD
     assert get_runtime("codex").compress_payload(payload, label="dom_tree") == {"a": 1}
 
 

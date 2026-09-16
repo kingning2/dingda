@@ -32,6 +32,23 @@ class _FakePage:
         q = (params or {}).get("q", "")
         self.url = f"{url}?q={q}" if q else url
 
+    async def wait_for_load_state(
+        self,
+        state: str = "domcontentloaded",
+        *,
+        timeout_ms: int = 30_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_function(
+        self,
+        expression: str,
+        arg: Any = None,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        return True
+
     async def close(self) -> None:
         self.closed = True
 

@@ -24,7 +24,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from agent.core.agent import AgentService
-from cli.live import hub as live_hub
+from cli import live as live_hub
 from cli.spawn import cancel_run, run_cli
 from cli.steps import page_from_live_frame
 from contracts.agent import (
@@ -84,7 +84,7 @@ class AgentRuntimeRunRequest(BaseModel):
 
 
 class AgentLiveFrameRequest(BaseModel):
-    """MCP preview 投递的一帧截图。"""
+    """preview 工具投递的一帧截图。"""
 
     url: str = ""
     title: str = ""
@@ -286,7 +286,7 @@ async def post_agent_runtime_live_frame(
     run_id: str,
     body: AgentLiveFrameRequest,
 ) -> dict[str, Any]:
-    """接收 MCP preview 推送的直播帧，供 SSE 侧 drain。"""
+    """接收 preview 工具推送的直播帧，供 SSE 侧 drain。"""
     key = run_id.strip()
     if not key:
         raise AppError("agent.run_invalid_id", "run_id 不能为空", status_code=400)

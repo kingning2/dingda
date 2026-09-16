@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, ClassVar, Mapping, Sequence
+from typing import Any, Callable, ClassVar, Mapping, Sequence
 
 import pytest
 
 from browser.context import normalize_cookies
 from browser.manager import BrowserManager
-from contracts.browser_port import BrowserPort, Cookie, LaunchOptions, Page
+from contracts.browser_port import (
+    BrowserPort,
+    Cookie,
+    LaunchOptions,
+    Page,
+    PageEvent,
+    PageEventInfo,
+    PageEventHandler,
+)
 from browser.registry import create_browser, list_engines
 from browser.session import BrowserSession
 from core.errors import AppError
@@ -24,6 +32,18 @@ class _FakePage(Page):
     def url(self) -> str:
         return self._url
 
+    def on(self, event: PageEvent, handler: PageEventHandler) -> Callable[[], None]:
+        return lambda: None
+
+    async def wait_for_event(
+        self,
+        event: PageEvent,
+        *,
+        url_contains: str = "",
+        timeout_ms: int = 15_000,
+    ) -> PageEventInfo | None:
+        return None
+
     async def goto(self, url: str, **kwargs: Any) -> None:
         self._url = url
 
@@ -31,6 +51,40 @@ class _FakePage(Page):
         return "<html></html>"
 
     async def evaluate(self, expression: str, arg: Any = None) -> Any:
+        return None
+
+    async def wait_for_selector(
+        self,
+        selector: str,
+        *,
+        state: str = "visible",
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_load_state(
+        self,
+        state: str = "domcontentloaded",
+        *,
+        timeout_ms: int = 30_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_function(
+        self,
+        expression: str,
+        arg: Any = None,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_response(
+        self,
+        url_contains: str,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> Any | None:
         return None
 
     async def click(self, selector: str, **kwargs: Any) -> None:
@@ -98,6 +152,8 @@ def test_create_browser_unknown_raises() -> None:
 def test_create_browser_returns_adapter() -> None:
     port = create_browser("camoufox")
     assert port.engine == "camoufox"
+
+
 
 
 def test_normalize_cookies_dict_requires_domain() -> None:

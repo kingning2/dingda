@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from cli.repair import propose as repair_spawn
+from cli import repair as repair_spawn
 from crawler.extraction.repair.types import DomSnapshot
 
 
@@ -131,7 +131,7 @@ def test_extract_json_none_when_absent() -> None:
 def test_propose_dom_patch_merges_over_current(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: dict[str, bool] = {}
 
-    async def _fake_cli(runtime: str, prompt: str, *, role=None, mcp_env=None, model_id=None):
+    async def _fake_cli(runtime: str, prompt: str, *, role=None, run_env=None, model_id=None):
         seen["role"] = role
         yield {"type": "thinking", "text": "先看 { 结构，用语义片段更稳。"}
         yield {
@@ -159,7 +159,7 @@ def test_propose_dom_patch_merges_over_current(monkeypatch: pytest.MonkeyPatch) 
     assert patch is not None
     assert patch.source == "ai"
     assert patch.section == "detail_dom"
-    # 修复子 agent 走「子 agent 角色」：不注入 MCP、不拼父提示词、cwd 隔离
+    # 修复子 agent 走「子 agent 角色」：不注入工具总线、不拼父提示词、cwd 隔离
     assert seen["role"] == "child"
     assert patch.selectors["price"] == '[class*="price"]'
     assert patch.selectors["desc"] == '[class*="desc"]'
@@ -171,43 +171,35 @@ def test_propose_dom_patch_merges_over_current(monkeypatch: pytest.MonkeyPatch) 
 
 def test_child_role_workdir_lives_outside_repo(monkeypatch: pytest.MonkeyPatch) -> None:
     """子 agent 的 cwd 必须在仓库外：否则它能读到现成的选择器。"""
-    import shutil
     from pathlib import Path
 
-    from cli.roles import child as child_mod
+    from cli.roles import ChildRole, scratch_workdir
 
-    monkeypatch.setattr(child_mod, "_WORKDIR", None)
-    workdir = child_mod.scratch_workdir()
-    try:
-        assert workdir.is_dir()
-        assert "dingda-child-agent-" in workdir.name
-        repo = Path(__file__).resolve().parents[2]
-        assert workdir != repo
-        assert repo not in workdir.parents
-    finally:
-        shutil.rmtree(workdir, ignore_errors=True)
-        monkeypatch.setattr(child_mod, "_WORKDIR", None)
+    monkeypatch.setattr("cli.roles._WORKDIRS", {})
+    workdir = ChildRole().workdir(str(Path(__file__).resolve().parents[2]))
+    assert "dingda-child-agent-" in workdir.name
+    repo = Path(__file__).resolve().parents[2]
+    assert workdir != repo
+    assert repo not in workdir.parents
+    assert scratch_workdir("dingda-child-agent-") is workdir
 
 
 def test_session_log_reports_tool_surface() -> None:
-    """日志要如实写：工具走 skill 注入、拼不拼父前言。"""
-    from cli.base import _mcp_config_line
+    """日志要如实写：工具走 skill 注入、拼不拼人设。"""
+    from cli.base import _session_config_line
 
-    narrow = _mcp_config_line(
-        "codex-mcp", tools=["validate_selectors"], uses_system_prompt=False
-    )
+    narrow = _session_config_line(uses_system_prompt=False)
     assert "skill" in narrow
     assert "仅本次 prompt" in narrow
-    assert "system.md" not in narrow
 
-    wide = _mcp_config_line("none", uses_system_prompt=True)
-    assert "system.md" in wide
+    wide = _session_config_line(uses_system_prompt=True, persona="orchestrator")
+    assert "角色人设" in wide
 
 
 def test_propose_dom_patch_returns_none_on_error_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def _fake_cli(runtime: str, prompt: str, *, role=None, mcp_env=None, model_id=None):
+    async def _fake_cli(runtime: str, prompt: str, *, role=None, run_env=None, model_id=None):
         yield {"type": "textDelta", "text": '{"price": "[class*=\\"price\\"]"}'}
         yield {"type": "error", "message": "cli 崩了"}
 

@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, ClassVar, Mapping, Sequence
+from typing import Any, Callable, ClassVar, Mapping, Sequence
 from unittest.mock import patch
 
 import pytest
 
-from contracts.browser_port import BrowserPort, Cookie, LaunchOptions, Page
+from contracts.browser_port import (
+    BrowserPort,
+    Cookie,
+    LaunchOptions,
+    Page,
+    PageEvent,
+    PageEventInfo,
+    PageEventHandler,
+)
 from crawler.core.base import BrowserSessionOptions
 from crawler.core.types import CrawlContext
 from crawler.registry import (
@@ -87,6 +95,18 @@ class _FakePage(Page):
     def url(self) -> str:
         return self._url
 
+    def on(self, event: PageEvent, handler: PageEventHandler) -> Callable[[], None]:
+        return lambda: None
+
+    async def wait_for_event(
+        self,
+        event: PageEvent,
+        *,
+        url_contains: str = "",
+        timeout_ms: int = 15_000,
+    ) -> PageEventInfo | None:
+        return None
+
     async def goto(self, url: str, **kwargs: Any) -> None:
         self.goto_calls.append((url, kwargs.get("params")))
         self._url = url
@@ -96,6 +116,40 @@ class _FakePage(Page):
 
     async def evaluate(self, expression: str, arg: Any = None) -> Any:
         return await self.raw.evaluate(expression, arg)
+
+    async def wait_for_selector(
+        self,
+        selector: str,
+        *,
+        state: str = "visible",
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_load_state(
+        self,
+        state: str = "domcontentloaded",
+        *,
+        timeout_ms: int = 30_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_function(
+        self,
+        expression: str,
+        arg: Any = None,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        return True
+
+    async def wait_for_response(
+        self,
+        url_contains: str,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> Any | None:
+        return None
 
     async def click(self, selector: str, **kwargs: Any) -> None:
         return None
