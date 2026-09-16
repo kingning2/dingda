@@ -25,7 +25,7 @@ from typing import Any
 logger = logging.getLogger("dingda.agent.compress")
 
 DEFAULT_MODEL = os.getenv("DINGDA_LLM_MODEL", "gpt-4o").strip() or "gpt-4o"
-# MCP / tool JSON 超过该字节数才压
+# 工具 JSON 超过该字节数才压
 DEFAULT_BYTE_THRESHOLD = 4096
 
 
