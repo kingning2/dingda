@@ -37,7 +37,17 @@ export type AgentEvent =
   | { type: "fileChanged"; path: string }
   | { type: "session"; sessionId: string }
   | { type: "error"; message: string }
-  | { type: "runCompleted"; exitCode: number };
+  | { type: "runCompleted"; exitCode: number }
+  | {
+      type: "agentPhase";
+      runId: string;
+      role: "parent" | "worker" | "child" | string;
+      phase: string;
+      parentRunId?: string | null;
+      sessionId?: string | null;
+      step?: string | null;
+      errorCode?: string | null;
+    };
 
 export type AgentEventEnvelope = { runId: string } & AgentEvent;
 

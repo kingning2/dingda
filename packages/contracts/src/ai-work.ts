@@ -62,6 +62,13 @@ export interface AgentWorkStepView {
   browser_frame_id?: string | null;
   /** 页面爬取步骤携带的直播/结果页快照。 */
   page?: AgentWorkStepPageView | null;
+  /**
+   * 原始命令行（仅命令执行类步骤）。不参与 label / hint 推导 ——
+   * 那是给用户看的，这里只落进「查看原始调用」折叠区供排查。
+   */
+  command?: string | null;
+  /** 该步的完整原始输出，不截断；同样只进折叠区。 */
+  output?: string | null;
 }
 
 export interface AgentWorkMessageView {

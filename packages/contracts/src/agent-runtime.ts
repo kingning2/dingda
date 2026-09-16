@@ -94,16 +94,6 @@ export interface AgentRuntimeItem {
 
   preferred_model_id?: string | null;
 
-  /**
-
-   * 叮答向该 Agent 注入 MCP 的方式（由 daemon 定义，如 claude-mcp-json）。
-
-   * null / 省略表示尚未接入原生注入。
-
-   */
-
-  external_mcp_injection?: string | null;
-
   /** CLI 鉴权状态；仅 available=true 且已探测时有值。 */
 
   auth?: AgentRuntimeAuthView | null;

@@ -9,7 +9,6 @@ agent-runtime.ts   外部 CLI Runtime（探测结果、安装进度）
 ai-work.ts         AI 工作台
 composer.ts        输入区
 crawler.ts         采集
-mcp.ts             MCP catalog
 ```
 
 ## 为什么单独成包
