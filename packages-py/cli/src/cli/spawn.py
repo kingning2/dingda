@@ -7,7 +7,7 @@
 
 设计说明：
     - 调用方（api/agent.py、repair_spawn）不需要知道插头长什么样
-    - 加新 CLI：写 ``runtimes/<id>.py`` 插头 + 在 registry 登记一行
+    - 加新 CLI：写 ``agents.py`` 插头 + 登记一行
 
 使用示例：
     async for event in run_cli("codex", "搜闲鱼露营椅", run_id="run-1"):
@@ -19,9 +19,9 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
+from cli.agents import get_runtime, list_runtime_ids
 from cli.base import cancel_run
-from cli.registry import get_runtime, list_runtime_ids
-from cli.roles.base import AgentRole
+from cli.roles import AgentRole
 from core.errors import AppError
 
 __all__ = ["run_cli", "cancel_run"]
@@ -41,12 +41,12 @@ async def run_cli(
     platform_hint: str | None = None,
     context_messages: list[dict[str, Any]] | None = None,
     role: str | AgentRole | None = None,
-    mcp_env: dict[str, str] | None = None,
+    run_env: dict[str, str] | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """按 id 取插头，起一次 CLI 会话并 yield AgentEvent dict。
 
     ``role``：``"parent"``（默认，选品父 agent）或 ``"child"``（单一职责子 agent）。
-    ``mcp_env``：本次运行才有的 MCP 追加环境，叠在角色之上。
+    ``run_env``：本次运行才有的追加环境，叠在角色之上。
     ``context_messages``：换 Agent 冷启动时由叮答注入的先前对话（有 session 时忽略）。
     """
     try:
@@ -71,6 +71,6 @@ async def run_cli(
         platform_hint=platform_hint,
         context_messages=context_messages,
         role=role,
-        mcp_env=mcp_env,
+        run_env=run_env,
     ):
         yield event

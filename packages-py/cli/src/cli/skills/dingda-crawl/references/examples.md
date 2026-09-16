@@ -1,11 +1,11 @@
 # Crawler Examples
 
-所有示例统一调用 `scripts/run_tool.py`。复制命令后只替换业务参数、URL、图片地址和 `item_id`。
+所有示例统一调用 `{{ENTRY}}`。复制命令后只替换业务参数、URL、图片地址和 `item_id`。
 
 ## 1. 爬取闲鱼搜索
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search \
+{{ENTRY}} search \
   --platform xianyu --query "露营椅" --limit 30
 ```
 
@@ -14,7 +14,7 @@
 ## 2. 爬取闲鱼单条详情
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" product \
+{{ENTRY}} product \
   --platform xianyu --item-id "FROM_SEARCH"
 ```
 
@@ -23,7 +23,7 @@
 ## 3. 爬取小红书搜索
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search \
+{{ENTRY}} search \
   --platform xiaohongshu --query "露营椅" --limit 30
 ```
 
@@ -32,7 +32,7 @@
 ## 4. 爬取小红书图文详情
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" product \
+{{ENTRY}} product \
   --platform xiaohongshu --item-id "FROM_SEARCH" --xsec-token "FROM_SEARCH"
 ```
 
@@ -41,14 +41,14 @@
 ## 5. 爬取 1688 文本搜货
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search \
+{{ENTRY}} search \
   --platform ali1688 --query "折叠露营椅" --limit 30
 ```
 
 ## 6. 爬取 1688 以图搜货
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search \
+{{ENTRY}} search \
   --platform ali1688 --image "SOURCE_IMAGE_URL" --limit 30
 ```
 
@@ -57,14 +57,14 @@
 ## 7. 爬取 1688 链接找同款
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search \
+{{ENTRY}} search \
   --platform ali1688 --url "SOURCE_PRODUCT_URL" --limit 30
 ```
 
 ## 8. 执行 1688 图像比价轮
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" compare \
+{{ENTRY}} compare \
   --image "SOURCE_IMAGE_URL" --source 'SOURCE_CARD_JSON' --limit 20 --rounds 1
 ```
 
@@ -73,7 +73,7 @@
 ## 9. 执行 1688 文本比价轮
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" compare \
+{{ENTRY}} compare \
   --query "折叠露营椅 承重120kg 带收纳袋" \
   --source 'SOURCE_CARD_JSON' --limit 20 --rounds 1
 ```
@@ -83,7 +83,7 @@
 ## 10. 拉起平台扫码登录
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" login \
+{{ENTRY}} login \
   --platform xianyu
 ```
 
@@ -92,7 +92,7 @@
 ## 11. 预览网页
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" preview \
+{{ENTRY}} preview \
   --url "https://example.com/product" --title "商品预览"
 ```
 

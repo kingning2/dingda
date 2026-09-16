@@ -10,7 +10,7 @@
     - 父 / 子 agent 的差异（提示词怎么拼 / 工具注入方式 / cwd 落哪）全在 ``roles/``
       的角色插头里；本文件只按 ``role`` 取那几条策略，不写「是不是子 agent」
     - **工具注入统一走 skill**：宿主把 Skill 正文拼进 prompt，并把资源复制到
-      ``.dingda-skills/``；角色 ``mcp_mode()`` 恒返回 ``"none"``，不再注入 MCP
+      ``.dingda-skills/``；工具注入只有这一条路径
     - 压缩是插座上的一个方法（``compress_payload``），不另立插座
 
 使用示例：
@@ -25,50 +25,61 @@ import asyncio
 import json
 import logging
 import os
+import sys
 import uuid
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Mapping
 from pathlib import Path
 from typing import Any, ClassVar
 
-from cli.live import hub as live_hub
-from cli.prompts import system_prompt
-from cli.roles.base import AgentRole
-from cli.roles.registry import get_role
-from cli.stream.parse import parse_lines
+from cli import live as live_hub
+from cli.prompts import load_persona
+from cli.roles import AgentRole, get_role
+from cli.stream import parse_lines
 from crawler.ocr import warm_ocr
+from core.config import api_base_url
 from core.errors import AppError
 
 logger = logging.getLogger("dingda.cli.base")
 
 _RUNS: dict[str, asyncio.subprocess.Process] = {}
 _TEXT_FLUSH_CHARS = 120
-# 载荷超过该字节数才压缩
-COMPRESS_MIN_BYTES = 2048
 
 
 def _api_base() -> str:
-    return (
-        os.getenv("DINGDA_API_BASE", "").strip() or "http://127.0.0.1:8787"
-    ).rstrip("/")
+    """当前 Server 的 HTTP 基址（解析规则见 ``core.config.api_base_url``）。"""
+    return api_base_url()
 
 
-def _mcp_config_line(
-    mcp_mode: str,
-    *,
-    tools: list[str] | None = None,
-    uses_system_prompt: bool = True,
-) -> str:
-    """会话日志里的「当前配置」行。
+def _tool_entry_dirs() -> list[str]:
+    """``tool`` 入口可能所在的目录（当前解释器 → DINGDA_PYTHON 指定解释器）。
 
-    工具注入统一为 skill：工具由 runtime 读 ``.dingda-skills/`` 里的 SKILL.md 得到，
-    不再注入 MCP。``tools`` / ``mcp_mode`` 参数保留只为兼容旧调用形状。
+    解释器同级的 ``Scripts`` / ``bin`` 就是 console script 落地处。子进程继承的 PATH
+    未必包含它（server 不一定从已激活的 venv 启动），而 skill 命令写的是裸 ``tool``，
+    所以显式前置。
     """
-    prompt_note = (
-        f"system.md（{len(system_prompt())} 字）"
-        if uses_system_prompt
-        else "仅本次 prompt（不拼父提示词）"
-    )
+    dirs: list[str] = []
+    for raw in (sys.executable, (os.getenv("DINGDA_PYTHON") or "").strip()):
+        if not raw:
+            continue
+        path = str(Path(raw).resolve().parent)
+        if path not in dirs:
+            dirs.append(path)
+    return dirs
+
+
+def _session_config_line(
+    *,
+    uses_system_prompt: bool = True,
+    persona: str | None = None,
+) -> str:
+    """会话日志里的「当前配置」行。"""
+    if uses_system_prompt and persona:
+        prompt_note = f"角色人设（{len(load_persona(persona))} 字）"
+    elif uses_system_prompt:
+        prompt_note = "角色人设"
+    else:
+        prompt_note = "仅本次 prompt（不拼人设）"
     return f"工具注入：skill；提示词：{prompt_note}"
 
 
@@ -116,16 +127,14 @@ class _RunSessionLog:
         runtime_id: str,
         model: str,
         user_prompt: str,
-        mcp_mode: str,
-        tools: list[str] | None = None,
         uses_system_prompt: bool = True,
+        persona: str | None = None,
     ) -> None:
         self._runtime_id = runtime_id
         self._model = model.strip() or "default"
         self._user_prompt = (user_prompt or "").strip() or "(空)"
-        self._mcp_mode = mcp_mode
-        self._tools = tools
         self._uses_system_prompt = uses_system_prompt
+        self._persona = persona
         self._kind: str | None = None
         self._parts: list[str] = []
         self._closed = False
@@ -135,10 +144,9 @@ class _RunSessionLog:
         logger.info("输入： %s", self._user_prompt)
         logger.info(
             "当前配置： %s",
-            _mcp_config_line(
-                self._mcp_mode,
-                tools=self._tools,
+            _session_config_line(
                 uses_system_prompt=self._uses_system_prompt,
+                persona=self._persona,
             ),
         )
         logger.info("输出：")
@@ -164,7 +172,7 @@ class _RunSessionLog:
         if kind == "toolCall":
             name = str(event.get("name") or "tool").strip() or "tool"
             task = _describe_tool_task(name, event.get("input"))
-            logger.info("mcp工具： %s， %s", name, task)
+            logger.info("工具： %s， %s", name, task)
         elif kind == "error":
             logger.info("错误： %s", event.get("message") or "未知错误")
         elif kind == "runCompleted":
@@ -203,7 +211,6 @@ class CliRuntime(ABC):
     name: ClassVar[str]
     binary: ClassVar[str]
     path_env: ClassVar[str]
-    mcp_mode: ClassVar[str]
     stream_format: ClassVar[str] = "codex-json"
     # prompt 写 stdin 的编码：plain=纯文本；claude-stream-json=一条 stream-json 消息
     stdin_format: ClassVar[str] = "plain"
@@ -217,9 +224,9 @@ class CliRuntime(ABC):
         """本 CLI 的命令行参数（含 sandbox / 模型 / 续聊）。"""
 
     def resolve_binary(self, *, preferred: str | None = None) -> Path | None:
-        """解析可执行文件；探测顺序见 registry.resolve_binary。"""
-        # 局部 import：registry 要 import 插头，插头 import 本模块
-        from cli.registry import resolve_binary
+        """解析可执行文件；探测顺序见 agents.resolve_binary。"""
+        # 局部 import：agents 要 import 插头，插头 import 本模块
+        from cli.agents import resolve_binary
 
         return resolve_binary(self, preferred=preferred)
 
@@ -232,60 +239,11 @@ class CliRuntime(ABC):
     ) -> dict[str, Any]:
         """压要送进本 CLI 的大 JSON 载荷（目前是修复 prompt 的 dom_tree）。
 
-        ``DINGDA_HEADROOM=0`` 或未装 headroom-ai 时透传。
+        统一走 ``core.compress.compress_tool_payload``；关闭 / 未装 / 失败时透传。
         """
-        if not _headroom_enabled():
-            return payload
-        raw = json.dumps(payload, ensure_ascii=False, default=str)
-        if len(raw.encode("utf-8")) < COMPRESS_MIN_BYTES:
-            return payload
-        try:
-            from headroom import compress
-        except ImportError:
-            logger.warning("headroom-ai 未安装，跳过 CLI 载荷压缩")
-            return payload
+        from core.compress import compress_tool_payload
 
-        target = (model or _headroom_model()).strip() or _headroom_model()
-        wrapped = [
-            {
-                "role": "assistant",
-                "content": None,
-                "tool_calls": [
-                    {
-                        "id": "call_dingda",
-                        "type": "function",
-                        "function": {"name": label, "arguments": "{}"},
-                    }
-                ],
-            },
-            {"role": "tool", "tool_call_id": "call_dingda", "content": raw},
-        ]
-        try:
-            result = compress(wrapped, model=target)
-        except Exception:  # noqa: BLE001
-            logger.exception("headroom CLI 载荷压缩失败，透传原文")
-            return payload
-
-        logger.info(
-            "cli payload compress label=%s saved=%s before=%s after=%s",
-            label,
-            int(getattr(result, "tokens_saved", 0) or 0),
-            int(getattr(result, "tokens_before", 0) or 0),
-            int(getattr(result, "tokens_after", 0) or 0),
-        )
-        for msg in reversed(getattr(result, "messages", None) or []):
-            if not isinstance(msg, dict) or msg.get("role") != "tool":
-                continue
-            content = msg.get("content")
-            if not isinstance(content, str) or not content.strip():
-                continue
-            try:
-                parsed = json.loads(content)
-            except json.JSONDecodeError:
-                logger.warning("压缩结果非 JSON，保留原文 label=%s", label)
-                return payload
-            return parsed if isinstance(parsed, dict) else payload
-        return payload
+        return compress_tool_payload(payload, tool_name=label, model=model)
 
     def encode_stdin(self, prompt: str) -> bytes:
         """按本 CLI 的 stdin 约定编码 prompt。
@@ -322,12 +280,12 @@ class CliRuntime(ABC):
         platform_hint: str | None = None,
         context_messages: list[dict[str, Any]] | None = None,
         role: str | AgentRole | None = None,
-        mcp_env: dict[str, str] | None = None,
+        run_env: dict[str, str] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """起一次 CLI 会话并 yield AgentEvent dict。
 
-        ``role`` 决定提示词怎么拼、MCP 给不给（给哪些工具）、cwd 落哪（见 roles/）。
-        ``mcp_env`` 是本次运行才有的 MCP 追加环境（如校验回打地址），叠在角色之上。
+        ``role`` 决定提示词怎么拼、注入哪些 Skill、cwd 落哪（见 roles/）。
+        ``run_env`` 是本次运行才有的追加环境（如校验回打地址），叠在角色之上。
         """
         rid = (run_id or f"run-{uuid.uuid4().hex[:12]}").strip()
         # OCR 仅 Agent 选品图文用：开跑即后台预热，与思考并行，不挡首轮
@@ -354,15 +312,25 @@ class CliRuntime(ABC):
         }
         args = list(self.build_args(ctx))
         env = {**os.environ, "PYTHONUTF8": "1"}
+        # 裸 `tool` 入口要靠 PATH 找；Windows 上键名可能是 Path，按实际键名改写
+        path_key = next((key for key in env if key.upper() == "PATH"), "PATH")
+        env[path_key] = os.pathsep.join([*_tool_entry_dirs(), env.get(path_key, "")])
         # 插头自带的环境变量（对系统 node 之类是 no-op）
         env.update(self.extra_env)
-        mcp_mode = session_role.mcp_mode(self.mcp_mode)
-        session_mcp_env = {**session_role.mcp_env(), **(mcp_env or {})}
-        # 同一份会话 env 也给 CLI 进程：子 agent 可能靠 CLI 回打（不一定走 MCP）
-        env.update(session_mcp_env)
+        merged_env = {
+            **session_role.session_env(),
+            **session_role.run_env(),
+            **(run_env or {}),
+        }
+        # 同一份会话 env 也给 CLI 进程：子 agent 可能靠 CLI 回打
+        env.update(merged_env)
         # 推帧所需：search/login/preview 要把浏览器截图 POST 回来
         env.setdefault("DINGDA_AGENT_RUN_ID", rid)
         env.setdefault("DINGDA_API_BASE", _api_base())
+        # 子会话继承父 runtime / model（编排工具读这些）
+        env.setdefault("DINGDA_AGENT_RUNTIME", self.id)
+        if model_id:
+            env["DINGDA_LLM_MODEL"] = str(model_id).strip()
         has_session = bool(str(session_id or "").strip())
         full_prompt = session_role.compose_prompt(
             prompt,
@@ -376,9 +344,8 @@ class CliRuntime(ABC):
             runtime_id=self.id,
             model=str(model_id or "").strip() or "default",
             user_prompt=prompt,
-            mcp_mode=mcp_mode,
-            tools=None,
             uses_system_prompt=session_role.uses_system_prompt,
+            persona=session_role.persona,
         )
         session_log.start()
 
@@ -446,15 +413,6 @@ class CliRuntime(ABC):
         finally:
             _RUNS.pop(rid, None)
             session_log.close()
-
-
-def _headroom_enabled() -> bool:
-    value = os.getenv("DINGDA_HEADROOM", "1").strip().lower()
-    return value not in {"0", "false", "no", "off"}
-
-
-def _headroom_model() -> str:
-    return os.getenv("DINGDA_LLM_MODEL", "gpt-4o").strip() or "gpt-4o"
 
 
 async def cancel_run(run_id: str) -> None:

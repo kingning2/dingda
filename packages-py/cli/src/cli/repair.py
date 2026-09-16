@@ -4,10 +4,9 @@
     把 DomSnapshot 发给 Codex/Claude/OpenCode，解析 stdout 中的 JSON 补丁。
 
 设计说明：
-    - 走 ``run_cli(..., role="child")``：不拼 system.md / 平台提示，cwd 隔离
+    - 走 ``run_cli(..., role="child")``：不拼角色人设 / 平台提示，cwd 隔离
     - 给了 ``validate_url`` 就让它**自验**：prompt 里给出
-      ``python -m tools.validate_cli`` 这条命令（回打修复现场那一页）；
-      也顺带注入 MCP 的 ``validate_selectors``，哪个能用用哪个
+      ``python -m tools.validate_cli`` 这条命令（回打修复现场那一页）
     - 没给 ``validate_url`` 就退回「出选择器，等编排器验」
 """
 
@@ -22,7 +21,7 @@ from typing import Any, Iterator
 from cli.spawn import run_cli
 from crawler.extraction.repair.types import DomPatch, DomSnapshot
 
-logger = logging.getLogger("dingda.cli.repair.propose")
+logger = logging.getLogger("dingda.cli.repair")
 
 
 def _system_prompt(*, can_validate: bool = False) -> str:
@@ -62,7 +61,7 @@ def _system_prompt(*, can_validate: bool = False) -> str:
         text += f"""
 
 【自验】
-出完选择器**先跑这条命令**（在 shell 里执行，别找 MCP 工具）：
+出完选择器**先跑这条命令**（在 shell 里执行，不要找别的工具）：
     "{sys.executable}" -m tools.validate_cli --selectors '<JSON>'
 把 <JSON> 换成一个 JSON 对象（字段名 → 选择器）；也可以先写进文件再用 @路径 传。
 它会在**正在修的那个页面**上真实跑一遍，把平台抽取脚本的输出打回来：
@@ -103,7 +102,7 @@ def _repair_runtime() -> tuple[str, str | None]:
     模型取用户为该 agent 选的 ``default_models[agent]``；没选就不传，交给 CLI 自己的默认
     （opencode 没模型会直接报错，所以有就一定要带上）。
     """
-    from cli.registry import list_runtime_ids
+    from cli.agents import list_runtime_ids
     from infrastructure.db import settings as settings_repo
 
     runtime = (os.getenv("DINGDA_DOM_REPAIR_RUNTIME") or "").strip()
@@ -132,7 +131,7 @@ def _compress_tree(tree: dict[str, Any]) -> dict[str, Any]:
     取不到插头 / 压缩出错都透传：压缩是省 token，不能让修复挂掉。
     """
     try:
-        from cli.registry import get_runtime
+        from cli.agents import get_runtime
 
         return get_runtime(_runtime_id()).compress_payload(tree, label="dom_tree")
     except Exception:  # noqa: BLE001
@@ -269,8 +268,8 @@ async def propose_dom_patch(
 ) -> DomPatch | None:
     """调用外部 CLI，返回 DomPatch；失败返回 None。
 
-    给了 ``validate_url`` 就把子 agent 的 MCP 指到修复现场：
-    它能自己调 ``validate_selectors`` 试跑，不必等下一轮。
+    给了 ``validate_url`` 就把修复现场的地址塞进子 agent 环境：
+    它能自己跑 ``validate_cli`` 试选择器，不必等下一轮。
     """
     runtime, model_id = _repair_runtime()
     prompt = _user_prompt(snap, can_validate=bool(validate_url))
@@ -288,7 +287,7 @@ async def propose_dom_patch(
             prompt,
             role="child",
             model_id=model_id,
-            mcp_env={"DINGDA_VALIDATE_URL": validate_url} if validate_url else None,
+            run_env={"DINGDA_VALIDATE_URL": validate_url} if validate_url else None,
         ):
             kind = str(event.get("type") or "")
             if kind in {"textDelta", "thinking"}:

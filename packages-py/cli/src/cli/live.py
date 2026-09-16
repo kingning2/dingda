@@ -1,10 +1,10 @@
-"""Agent 运行直播帧总线（跨 MCP 子进程 → Server SSE）。
+"""Agent 运行直播帧总线（跨工具子进程 → Server SSE）。
 
 职责：
-    按 run_id 登记队列；MCP ``preview`` 经 HTTP 投帧，spawn 侧 drain 进 SSE。
+    按 run_id 登记队列；``preview`` 经 HTTP 投帧，spawn 侧 drain 进 SSE。
 
 设计说明：
-    - MCP 与 FastAPI 不在同进程，不能靠内存回调直连
+    - 工具子进程与 FastAPI 不在同进程，不能靠内存回调直连
     - 队列有界，丢最旧帧，避免阻塞浏览器推帧
 
 使用示例：
@@ -20,7 +20,7 @@ import logging
 from collections import defaultdict, deque
 from typing import Any
 
-logger = logging.getLogger("dingda.cli.live.hub")
+logger = logging.getLogger("dingda.cli.live")
 
 _MAX_QUEUED = 24
 

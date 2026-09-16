@@ -20,7 +20,6 @@ triggers:
 dingda-crawl/
 ├── SKILL.md
 ├── agents/openai.yaml
-├── scripts/run_tool.py
 └── references/
     ├── cli-reference.md
     ├── evidence-policy.md
@@ -52,7 +51,7 @@ dingda-crawl/
 ## Runtime contract
 
 - 工作目录：会话根目录（`.dingda-skills/` 所在处，命令中的相对路径以此为基准）
-- 工具入口：`"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py"`
+- 工具入口：`{{ENTRY}}`（已装进环境的裸命令，直接调用，不要自己拼解释器路径）
 - stdout：纯 JSON。成功先读 `ok=true`，失败先读 `error_code` 和 `message`。
 - 日志：stderr，不要把日志混入 JSON 解析。
 - 浏览器工具会真实打开页面，单次通常需要 1 到 5 分钟。
@@ -92,31 +91,31 @@ dingda-crawl/
 闲鱼：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search --platform xianyu --query "露营椅" --limit 30
+{{ENTRY}} search --platform xianyu --query "露营椅" --limit 30
 ```
 
 小红书：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search --platform xiaohongshu --query "露营椅" --limit 30
+{{ENTRY}} search --platform xiaohongshu --query "露营椅" --limit 30
 ```
 
 1688 文本找货：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search --platform ali1688 --query "折叠露营椅" --limit 30
+{{ENTRY}} search --platform ali1688 --query "折叠露营椅" --limit 30
 ```
 
 1688 以图找货：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search --platform ali1688 --image "https://example.com/product.jpg" --limit 30
+{{ENTRY}} search --platform ali1688 --image "https://example.com/product.jpg" --limit 30
 ```
 
 1688 链接找同款：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" search --platform ali1688 --url "https://detail.1688.com/offer/123456789.html" --limit 30
+{{ENTRY}} search --platform ali1688 --url "https://detail.1688.com/offer/123456789.html" --limit 30
 ```
 
 选品调研要多轮换词并累计样本。闲鱼优先看 `desc`、`comments`、`want_count` 和卖家；小红书优先看 `content_text`，视频笔记跳过详情。
@@ -126,13 +125,13 @@ dingda-crawl/
 闲鱼：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" product --platform xianyu --item-id "FROM_SEARCH"
+{{ENTRY}} product --platform xianyu --item-id "FROM_SEARCH"
 ```
 
 小红书图文：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" product --platform xiaohongshu --item-id "FROM_SEARCH" --xsec-token "FROM_SEARCH"
+{{ENTRY}} product --platform xiaohongshu --item-id "FROM_SEARCH" --xsec-token "FROM_SEARCH"
 ```
 
 `item_id` 必须来自 `search` 返回。没有详情时，不要把列表标题扩写成商品结论。
@@ -142,7 +141,7 @@ dingda-crawl/
 当输出包含 `account.session_expired` 或 `account.cookie_required`：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" login --platform xianyu
+{{ENTRY}} login --platform xianyu
 ```
 
 登录命令会阻塞并等待用户扫码。登录成功后立即重试原命令。
@@ -162,13 +161,13 @@ dingda-source-evidence
 图像轮示例：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" compare --image "SOURCE_IMAGE_URL" --source 'SOURCE_CARD_JSON' --limit 20 --rounds 1
+{{ENTRY}} compare --image "SOURCE_IMAGE_URL" --source 'SOURCE_CARD_JSON' --limit 20 --rounds 1
 ```
 
 文本轮示例：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" compare --query "折叠露营椅 承重120kg 带收纳袋" --source 'SOURCE_CARD_JSON' --limit 20 --rounds 1
+{{ENTRY}} compare --query "折叠露营椅 承重120kg 带收纳袋" --source 'SOURCE_CARD_JSON' --limit 20 --rounds 1
 ```
 
 ### Step 6: 预览网页
@@ -176,7 +175,7 @@ dingda-source-evidence
 只有已经拿到目标 URL、需要让用户看到页面时才调用：
 
 ```bash
-"{{PYTHON}}" ".dingda-skills/dingda-crawl/scripts/run_tool.py" preview --url "https://example.com/product" --title "商品预览"
+{{ENTRY}} preview --url "https://example.com/product" --title "商品预览"
 ```
 
 `preview` 只负责打开和直播截图，不能替代 `search` 或 `product`。

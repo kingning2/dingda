@@ -52,11 +52,10 @@ def _map_codex(value: dict[str, Any]) -> list[dict[str, Any]]:
         thread_id = value.get("thread_id") or value.get("threadId") or ""
         if thread_id:
             out.append({"type": "session", "sessionId": str(thread_id)})
-    elif event_type in {"item.completed", "message"}:
+    elif event_type in {"item.started", "item.completed"}:
         item = value.get("item") if isinstance(value.get("item"), dict) else {}
-        text = item.get("text") if isinstance(item, dict) else None
-        if isinstance(text, str) and text:
-            out.append({"type": "textDelta", "text": text})
+        out.extend(_codex_item(item, completed=event_type == "item.completed"))
+    elif event_type == "message":
         msg = value.get("message") if isinstance(value.get("message"), dict) else {}
         content = msg.get("content") if isinstance(msg, dict) else None
         if isinstance(content, str) and content:
@@ -116,6 +115,64 @@ def _map_codex(value: dict[str, Any]) -> list[dict[str, Any]]:
         if message:
             out.append({"type": "error", "message": str(message)})
     return out
+
+
+def _codex_item(item: dict[str, Any], *, completed: bool) -> list[dict[str, Any]]:
+    """codex 的 ``item`` → 事件。
+
+    为什么要按 ``item.type`` 分流：``codex exec --json`` 把「思考 / 正文 / 命令执行」
+    塞进同一种 ``item.started`` / ``item.completed`` 外壳里（0.152 实测）：
+
+    - ``reasoning`` —— 模型的推理正文；
+    - ``agent_message`` —— 给用户看的正文；
+    - ``command_execution`` —— 一次 shell 调用，``command`` / ``aggregated_output``
+      / ``exit_code`` 都在 item 上。
+
+    只认 ``item.text`` 会同时踩两个坑：① 把 ``reasoning`` 当正文发给前端，用户看到的是
+    模型的英文内心独白；② **整条 ``command_execution`` 被丢掉** —— 既没有 toolCall 也没有
+    toolResult，于是工具 stdout 里的商品 JSON 根本到不了前端，右侧结果面板恒为 0 条
+    （2026-09-15 实测：模型确实拿到了 20 条真实商品，页面却一条都不显示）。
+    """
+    item_type = str(item.get("type") or "")
+    item_id = str(item.get("id") or "").strip()
+
+    if item_type == "command_execution":
+        if not item_id:
+            return []
+        # 命令原文只作为 input 传给 steps 层决定展示文案，不直接渲染给用户。
+        raw_input = {"command": str(item.get("command") or "")}
+        if not completed:
+            return [
+                {
+                    "type": "toolCall",
+                    "id": item_id,
+                    "name": "command_execution",
+                    "input": raw_input,
+                    "step": step_for_tool_call(item_id, "command_execution", raw_input),
+                }
+            ]
+        output = item.get("aggregated_output")
+        exit_code = item.get("exit_code")
+        return [
+            {
+                "type": "toolResult",
+                "id": item_id,
+                "output": output,
+                "step": step_for_tool_result(
+                    item_id,
+                    output,
+                    ok=exit_code in (0, None),
+                ),
+            }
+        ]
+
+    # 其余 item 只在 completed 时产出正文；started 阶段还没有内容。
+    if not completed:
+        return []
+    text = item.get("text")
+    if not isinstance(text, str) or not text:
+        return []
+    return [{"type": "thinking" if item_type == "reasoning" else "textDelta", "text": text}]
 
 
 def _map_claude(value: dict[str, Any]) -> list[dict[str, Any]]:

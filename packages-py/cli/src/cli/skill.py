@@ -1,11 +1,11 @@
-"""由 app 生成并安装 agent skill（不走 MCP 的取证路径）。
+"""由 app 生成并安装 agent skill（工具面唯一的取证路径）。
 
 职责：
     按当前解释器 / registry 里实际启用的工具渲染 Skills，
     注入 prompt 并复制到工作目录；同时装到各 CLI runtime 的 skills 目录作 fallback。
 
 设计说明：
-    - 工具包已装进 venv：``python -m tools.cli`` 在任意目录可跑，模板不再需要 server 目录
+    - 工具包已装进 venv：``tool`` 裸入口在任意目录可跑，模板不再需要 server 目录或解释器路径
     - 四个业务 Skill 全部从静态模板渲染，工具清单由模板显式维护
     - 比价拆成来源证据 / 多轮编排 / 候选验收三个独立 Skill
     - 每次安装替换同名 Skill 目录，旧资源不会残留
@@ -23,21 +23,57 @@ import logging
 import re
 import shutil
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 logger = logging.getLogger("dingda.cli.skill")
 
-SKILL_NAME = "dingda-crawl"
-SKILL_NAMES = (
-    SKILL_NAME,
+@dataclass(frozen=True)
+class SkillSpec:
+    """一个 Skill 的静态登记项：名字 + 一句话职责。"""
+
+    name: str
+    summary: str
+
+
+# Skill 总表（map）：名字 → 登记项。渲染 / 安装都从这里取，
+# 角色只声明「我要哪几个」（下面的数组），不各抄一份清单。
+SKILLS: dict[str, SkillSpec] = {
+    "dingda-crawl": SkillSpec(
+        "dingda-crawl", "命令行取证手册：search / product / compare / login / preview"
+    ),
+    "dingda-source-evidence": SkillSpec(
+        "dingda-source-evidence", "锁定比价来源：商品、硬约束与价格口径"
+    ),
+    "dingda-price-compare": SkillSpec(
+        "dingda-price-compare", "多轮比价：换策略搜 1688 候选，每轮回传同一 source"
+    ),
+    "dingda-offer-verification": SkillSpec(
+        "dingda-offer-verification", "候选验收：同款程度 / 到手价 / 商家证据 / 供货风险"
+    ),
+    "dingda-orchestrate": SkillSpec(
+        "dingda-orchestrate", "编排：child_run / child_status / child_resume / repair_dom"
+    ),
+}
+
+# 角色按用途取数组（顺序 = 注入顺序）
+WORKER_SKILL_NAMES: tuple[str, ...] = (
+    "dingda-crawl",
     "dingda-source-evidence",
     "dingda-price-compare",
     "dingda-offer-verification",
 )
+ORCHESTRATE_SKILL_NAMES: tuple[str, ...] = ("dingda-orchestrate",)
+SKILL_NAMES: tuple[str, ...] = WORKER_SKILL_NAMES + ORCHESTRATE_SKILL_NAMES
+
 _SKILL_TEMPLATE_DIR = Path(__file__).resolve().parents[0] / "skills"
 SKILLS_CWD_ALIAS = ".dingda-skills"
 _SAFE_SKILL_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _TEXT_SUFFIXES = frozenset({".json", ".md", ".py", ".txt", ".yaml", ".yml"})
+
+# Skill 命令里的工具入口：装进 venv 的裸 console script（见 tools/pyproject.toml）。
+# 写死名字而不是解释器路径 —— 既不让模型看见开发机的仓库位置，也省得命令随解释器搬家失效。
+SKILL_TOOL_ENTRY = "tool"
 
 # 各 runtime 读 skill 的目录（相对用户主目录）
 _RUNTIME_SKILL_DIRS = (
@@ -47,13 +83,9 @@ _RUNTIME_SKILL_DIRS = (
 )
 
 
-def _entry(python: str) -> str:
-    return f'"{python}" -m tools.cli'
-
-
 def _render_text(text: str, python: str) -> str:
     """替换 Skill 模板中的运行时占位符。"""
-    return text.replace("{{ENTRY}}", _entry(python)).replace("{{PYTHON}}", python)
+    return text.replace("{{ENTRY}}", SKILL_TOOL_ENTRY).replace("{{PYTHON}}", python)
 
 
 def _render_template_skill(name: str, python: str) -> str:
@@ -158,11 +190,15 @@ def compose_skills_prompt(
         body = rendered.get(name)
         if not body:
             continue
-        source_dir = (_SKILL_TEMPLATE_DIR / name).resolve()
         lines.append(f'<skill name="{name}">')
-        lines.append(f"绝对路径 fallback：`{source_dir}`")
+        # 只暴露「工作目录相对路径」或用户主目录的安装位，**绝不**写仓库模板的
+        # 绝对路径 —— 那是开发机上的 packages-py/cli/src/cli/skills，Agent 顺着它
+        # 一路 ls 上去就翻到仓库源码，思考过程里会混进实现细节（也会把叮答的
+        # skill 与用户自己的 skill / 工程文件搅在一起）。
         if name in staged_names:
-            lines.append(f"工作目录相对路径：`{SKILLS_CWD_ALIAS}/{name}/`")
+            lines.append(f"工作目录相对路径：`{SKILLS_CWD_ALIAS}/{name}/`（优先用这个）")
+        else:
+            lines.append(f"已安装路径（若本机有）：`{Path.home() / '.codex' / 'skills' / name}`")
         lines += ["", body.strip(), "", "</skill>", ""]
     from core.compress import compress_text
 
