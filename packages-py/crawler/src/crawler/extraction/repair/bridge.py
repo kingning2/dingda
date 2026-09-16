@@ -5,8 +5,8 @@
     POST 过来，就在**同一个页面**上跑平台抽取脚本，把 payload 或失败原样回去。
 
 设计说明：
-    - live page 只存在于宿主进程（FastAPI 或 MCP stdio 子进程）；子 agent 的 MCP 是
-      另一个兄弟进程，内存不共享 —— 所以走 localhost HTTP（对齐 ``tools/live_push`` 的思路）
+    - live page 只存在于宿主进程（FastAPI）；跑工具的子进程是另一个兄弟进程，
+      内存不共享 —— 所以走 localhost HTTP（对齐 ``tools/live_push`` 的思路）
     - 绑 ``127.0.0.1`` 的临时端口，只活在一次 repair 期间
     - 页面是 async（Playwright），HTTP handler 在别的线程 → ``run_coroutine_threadsafe``
 

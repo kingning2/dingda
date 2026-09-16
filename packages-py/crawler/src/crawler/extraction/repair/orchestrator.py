@@ -114,7 +114,7 @@ async def repair_detail_dom(
                 platform,
                 item_id,
             )
-            from cli.repair.propose import propose_dom_patch
+            from cli.repair import propose_dom_patch
 
             patch = await propose_dom_patch(snap, validate_url=validate_url)
             if patch is None:

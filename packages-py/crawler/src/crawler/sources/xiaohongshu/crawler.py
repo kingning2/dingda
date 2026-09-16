@@ -17,16 +17,23 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Callable
 
-from contracts.browser_port import BrowserPort, Cookie, Page
+from contracts.browser_port import (
+    BrowserPort,
+    Cookie,
+    Page,
+    PageEvent,
+    PageEventInfo,
+    PageEventHandler,
+)
 from channels.cookie_header import parse_cookie_header
 from channels.xiaohongshu.cookies import to_browser_cookies
 from channels.xiaohongshu.risk_recovery import XiaohongshuRiskRecovery
 from crawler.core.base import BrowserCrawler, BrowserSessionOptions
 from crawler.core.recovery_hooks import run_step
 from crawler.core.types import CrawlContext, CrawlResult
-from crawler.extraction.repair import repair_detail_dom, raise_repair_error
+from crawler.extraction.repair import raise_repair_error
 from crawler.sources.xiaohongshu.repair_adapter import XiaohongshuDetailRepairAdapter
 from crawler.sources.xiaohongshu.extractor import (
     DETAIL_HINT_JS,
@@ -432,14 +439,30 @@ class XiaohongshuCrawler(BrowserCrawler):
                         "crawler.blocked",
                         "笔记暂时无法浏览，请用搜索结果里的 xsec_token 打开",
                     )
-                # DOM 选择器可能失效：走指纹/AI 修复并写回 extract.json
+                # DOM 选择器可能失效：按 RepairOwner 内联修或上抛父进程
                 await emit_live_frame(ctx, page, title=title, hint="解析无果，尝试自动修复…")
-                result = await repair_detail_dom(
-                    _RawPageView(raw_page, page),
-                    _XHS_ADAPTER,
-                    item_id=note_id,
+                page_url = ""
+                try:
+                    page_url = str(getattr(page, "url", "") or "")
+                except Exception:  # noqa: BLE001
+                    page_url = ""
+                from crawler.extraction.repair.owner import RepairContext, get_repair_owner
+                from crawler.extraction.repair.types import RepairResult
+
+                decision = await get_repair_owner().on_dom_extract_failed(
+                    RepairContext(
+                        page=_RawPageView(raw_page, page),
+                        adapter=_XHS_ADAPTER,
+                        item_id=note_id,
+                        url=page_url,
+                        platform="xiaohongshu",
+                    )
                 )
-                if result.ok and result.payload is not None:
+                if decision.action == "escalate":
+                    assert decision.error is not None
+                    raise decision.error
+                result = decision.result
+                if result is not None and result.ok and result.payload is not None:
                     repaired = item_from_detail(result.payload, note_id)
                     if repaired and repaired.title:
                         item = repaired
@@ -451,7 +474,9 @@ class XiaohongshuCrawler(BrowserCrawler):
                         )
                 # 标题拿不到才算硬失败；修好了就继续往下走
                 if not item or not item.title:
-                    raise_repair_error(result)
+                    raise_repair_error(
+                        result or RepairResult(ok=False, error="crawler.dom_repair_failed")
+                    )
                 if not str((item.raw or {}).get("seller_nick") or "").strip():
                     logger.warning(
                         "detail 作者字段仍为空 item_id=%s（选择器可能已失效）", note_id
@@ -600,6 +625,18 @@ class _RawPageView(Page):
             return str(getattr(self._source, "url", "") or "")
         return str(getattr(self._raw, "url", "") or "")
 
+    def on(self, event: PageEvent, handler: PageEventHandler) -> Callable[[], None]:
+        raise AppError("crawler.page_unsupported", "修复页视图不支持事件订阅")
+
+    async def wait_for_event(
+        self,
+        event: PageEvent,
+        *,
+        url_contains: str = "",
+        timeout_ms: int = 15_000,
+    ) -> PageEventInfo | None:
+        raise AppError("crawler.page_unsupported", "修复页视图不支持 wait_for_event")
+
     async def evaluate(self, expression: str, arg: Any = None) -> Any:
         return await self._raw.evaluate(expression, arg)
 
@@ -619,6 +656,40 @@ class _RawPageView(Page):
 
     async def content(self) -> str:
         return str(await self._raw.content())
+
+    async def wait_for_selector(
+        self,
+        selector: str,
+        *,
+        state: str = "visible",
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        raise AppError("crawler.page_unsupported", "修复页视图不支持 wait_for_selector")
+
+    async def wait_for_load_state(
+        self,
+        state: str = "domcontentloaded",
+        *,
+        timeout_ms: int = 30_000,
+    ) -> bool:
+        raise AppError("crawler.page_unsupported", "修复页视图不支持 wait_for_load_state")
+
+    async def wait_for_function(
+        self,
+        expression: str,
+        arg: Any = None,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> bool:
+        raise AppError("crawler.page_unsupported", "修复页视图不支持 wait_for_function")
+
+    async def wait_for_response(
+        self,
+        url_contains: str,
+        *,
+        timeout_ms: int = 15_000,
+    ) -> Any | None:
+        raise AppError("crawler.page_unsupported", "修复页视图不支持 wait_for_response")
 
     async def click(self, selector: str, *, timeout_ms: int = 10_000) -> None:
         raise AppError("crawler.page_unsupported", "修复页视图不支持 click")

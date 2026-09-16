@@ -34,6 +34,9 @@ ITEM_URL = str(_URLS.get("item") or "")
 SEARCH_URL = str(_URLS.get("search") or "")
 _ITEM_ID = re.compile(str(_URLS.get("item_id_pattern") or r"[?&]id=(\d+)"))
 
+# 列表/详情就绪判据的默认等待上限，与 EXTRACT_JS 内部 waitFor 的默认值同源。
+_LIST_READY_TIMEOUT_MS = 8_000
+
 
 def _sec(name: str) -> dict[str, Any]:
     """读最新缓存中的小节（写回 extract.json 后立即生效）。"""
@@ -64,6 +67,33 @@ def detail_dom_arg(item_id: str) -> dict[str, Any]:
         "itemId": str(item_id),
         "dom": _sec("detail_dom"),
         "signals": _sec("signals"),
+    }
+
+
+def list_ready_arg() -> dict[str, Any]:
+    """``page.wait_for_function(LIST_READY_JS, …)`` 的参数。
+
+    设计说明：
+        判据与 ``EXTRACT_JS`` 内部那段 waitFor 完全一致——「卡片出现 或 风控 或 登录
+        或 空结果」任一成立即算就绪。只有含后三种信号，风控页才能立刻返回，
+        否则会白等满超时，把「被拦」拖成「抽取失败」。
+        ``timeout_ms`` 供调用方取用，JS 自身不读它（轮询交给引擎）。
+    """
+    return {
+        "dom": _sec("dom"),
+        "signals": _sec("signals"),
+        "timeout_ms": _LIST_READY_TIMEOUT_MS,
+    }
+
+
+def detail_ready_arg() -> dict[str, Any]:
+    """``page.wait_for_function(DETAIL_READY_JS, …)`` 的参数（超时取自 detail_dom）。"""
+    cfg = _sec("detail_dom")
+    raw_timeout = cfg.get("ready_timeout_ms")
+    return {
+        "dom": cfg,
+        "signals": _sec("signals"),
+        "timeout_ms": int(raw_timeout) if isinstance(raw_timeout, int) else _LIST_READY_TIMEOUT_MS,
     }
 
 
@@ -266,6 +296,23 @@ EXTRACT_JS = r"""
 })()
 """
 
+# 搜索页就绪判据：给 ``page.wait_for_function`` 用。
+# 与 EXTRACT_JS 内部 waitFor 同判据，但把轮询交给引擎——页面卡住时引擎能立刻
+# 感知导航/关闭并返回，不像页面内 setTimeout 会一直挂到超时。
+LIST_READY_JS = r"""
+(opts) => {
+  const sel = opts.dom || {};
+  const signals = opts.signals || {};
+  const hit = (keys) => (keys || []).some((k) => (document.body?.innerText || '').includes(k));
+  return Boolean(
+    (sel.card && document.querySelector(sel.card))
+    || hit(signals.requires_auth)
+    || hit(signals.blocked)
+    || hit(signals.empty)
+  );
+}
+"""
+
 SCROLL_JS = """
 (times) => (async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -419,20 +466,31 @@ DETAIL_DOM_JS = r"""
   if (hit(signals.requires_auth)) return { error: 'auth-required' };
 
   const info = (sel.info && document.querySelector(sel.info)) || null;
-  const descEl = (sel.desc && document.querySelector(sel.desc)) || null;
+  // desc 选择器会同时命中「服务保障文案」的 div.desc 和「真实描述」的 span.desc，
+  // querySelector 取到的是文档里靠前的那个（实测就是保障文案），于是标题被抽成
+  // 「满足条件时，买家可退货且运费由卖家承担」。取文案最长的候选才稳定命中正文。
+  const descEls = sel.desc ? Array.from(document.querySelectorAll(sel.desc)) : [];
+  const descEl =
+    descEls.sort((a, b) => (b.innerText || '').length - (a.innerText || '').length)[0] || null;
   const priceEl = (sel.price && document.querySelector(sel.price)) || null;
   const wantEl = (sel.want && document.querySelector(sel.want)) || null;
   const nickEl = (sel.seller_nick && document.querySelector(sel.seller_nick)) || null;
   const introEl = (sel.seller_intro && document.querySelector(sel.seller_intro)) || null;
 
-  let title = '';
+  // 页面 <title> 就是商品标题（形如「标题_闲鱼」），比任何 DOM 猜测都稳，优先用。
+  const docTitle = clean(
+    String(document.title || '').replace(/\s*[|_\-–—]\s*闲鱼\s*$/, '').trim()
+  );
+  let title = docTitle.length >= 4 ? docTitle : '';
   let description = '';
   if (descEl) {
     description = clean(descEl.innerText || '');
-    const first = Array.from(descEl.querySelectorAll(':scope > span'))
-      .map((n) => clean(n.innerText || ''))
-      .find((t) => t.length >= 4);
-    title = first || description.slice(0, 80);
+    if (!title) {
+      const first = Array.from(descEl.querySelectorAll(':scope > span'))
+        .map((n) => clean(n.innerText || ''))
+        .find((t) => t.length >= 4);
+      title = first || description.slice(0, 80);
+    }
   }
   if (!title && info) {
     title = clean(info.innerText || '').slice(0, 80);
@@ -509,6 +567,25 @@ DETAIL_DOM_JS = r"""
     via: 'detail_dom',
   };
 })()
+"""
+
+# 商品详情页就绪判据：给 ``page.wait_for_function`` 用。
+# 与 DETAIL_DOM_JS 内部那段轮询同判据——风控/登录信号、或「信息块 + 价格/描述」
+# 已渲染。详情优先走页内 mtop（不依赖 DOM），这里只是让 evaluate 前页面别太早。
+DETAIL_READY_JS = r"""
+(opts) => {
+  const sel = opts.dom || {};
+  const signals = opts.signals || {};
+  const hit = (keys) => (keys || []).some((k) => (document.body?.innerText || '').includes(k));
+  if (hit(signals.blocked) || hit(signals.requires_auth)) return true;
+  const info = sel.info && document.querySelector(sel.info);
+  if (!info) return false;
+  const priceEl = sel.price && document.querySelector(sel.price);
+  const descEl = sel.desc && document.querySelector(sel.desc);
+  if (!priceEl && !descEl) return false;
+  const text = String((descEl || info).innerText || '').replace(/\s+/g, ' ').trim();
+  return text.length > 8;
+}
 """
 
 
@@ -748,11 +825,40 @@ def _first_reply_text(card: dict[str, Any], fields: dict[str, Any]) -> str | Non
     return text or None
 
 
+# 多规格商品的区间价，例如 "10 - 18" / "8.9-15.5" / "¥10~18"
+_PRICE_RANGE_RE = re.compile(
+    r"^\s*¥?\s*(?P<low>\d+(?:\.\d+)?)\s*(?:[-~—]|到)\s*¥?\s*(?P<high>\d+(?:\.\d+)?)\s*$"
+)
+
+
+def normalize_price(value: Any) -> tuple[str | None, str | None]:
+    """详情价格归一化 → ``(展示价, 区间原文或 None)``。
+
+    设计说明：
+        多规格商品的 ``soldPrice`` 是区间串（如 ``"10 - 18"``），而闲鱼商品页
+        展示的、列表接口给的，都是区间下限（起价）。把整段区间当价格往外报，
+        用户会在详情页看到一个和列表页对不上的价，直接判「价格不对」。
+        故 price 取下限，区间原文留在 ``raw.price_range`` 备查。
+    """
+    if value is None:
+        return None, None
+    text = str(value).strip()
+    if not text:
+        return None, None
+    match = _PRICE_RANGE_RE.match(text)
+    if match:
+        return f"¥{match.group('low')}", text
+    digits = text.lstrip("¥").strip()
+    if not digits:
+        return None, None
+    return (text if text.startswith("¥") else f"¥{text}"), None
+
+
 def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
     """页内 mtop 抽取结果 → CrawlItem。"""
     resolved_id = str(payload.get("item_id") or item_id)
     title = str(payload.get("title") or "")
-    price = payload.get("price") or ""
+    price, price_range = normalize_price(payload.get("price"))
     want = str(payload.get("want_count") or "").strip()
     desc = str(payload.get("description") or payload.get("desc") or "").strip() or None
     location = str(payload.get("location") or "").strip() or None
@@ -762,11 +868,12 @@ def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
         item_id=resolved_id,
         title=title,
         url=f"{ITEM_URL}?{param}={resolved_id}",
-        price=str(price) if price not in (None, "") else None,
+        price=price,
         raw={
             "seller_nick": payload.get("seller_name", ""),
             "status": status,
             "sold_state": sold_state_from_status(status),
+            "price_range": price_range,
             "want_count": want or None,
             "browse_count": str(payload.get("browse_count") or "").strip() or None,
             "collect_count": str(payload.get("collect_count") or "").strip() or None,
@@ -796,9 +903,7 @@ def item_from_mtop_detail(raw: dict[str, Any], item_id: str) -> CrawlItem:
     sold = dig_first(item_do, path_list(fields, "price"))
     if sold in (None, ""):
         sold = dig_first(track, path_list(fields, "price"))
-    price = f"¥{sold}" if sold not in (None, "") else ""
-    if price == "¥":
-        price = ""
+    price, price_range = normalize_price(sold)
     want = dig_first(item_do, path_list(fields, "want_count"))
     want_count = str(want) if want not in (None, "") else None
     seller = dig_str(seller_do, path_list(fields, "seller_nick")) or dig_str(
@@ -816,11 +921,12 @@ def item_from_mtop_detail(raw: dict[str, Any], item_id: str) -> CrawlItem:
         item_id=resolved_id,
         title=title,
         url=f"{ITEM_URL}?{param}={resolved_id}",
-        price=price or None,
+        price=price,
         raw={
             "seller_nick": seller,
             "status": status,
             "sold_state": sold_state_from_status(status),
+            "price_range": price_range,
             "want_count": want_count,
             "browse_count": str(browse) if browse not in (None, "") else None,
             "collect_count": str(collect) if collect not in (None, "") else None,
