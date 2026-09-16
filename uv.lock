@@ -484,14 +484,12 @@ source = { editable = "packages-py/cli" }
 dependencies = [
     { name = "core" },
     { name = "crawler" },
-    { name = "headroom-ai" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "core", editable = "packages-py/core" },
     { name = "crawler", editable = "packages-py/crawler" },
-    { name = "headroom-ai", specifier = ">=0.37.0" },
 ]
 
 [[package]]
@@ -529,10 +527,14 @@ version = "0.1.0"
 source = { editable = "packages-py/core" }
 dependencies = [
     { name = "headroom-ai" },
+    { name = "python-dotenv" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "headroom-ai", specifier = ">=0.37.0" }]
+requires-dist = [
+    { name = "headroom-ai", specifier = ">=0.37.0" },
+    { name = "python-dotenv", specifier = ">=1.0" },
+]
 
 [[package]]
 name = "crawler"
@@ -2678,6 +2680,7 @@ version = "0.1.0"
 source = { editable = "packages-py/tools" }
 dependencies = [
     { name = "browser" },
+    { name = "cli" },
     { name = "contracts" },
     { name = "core" },
     { name = "crawler" },
@@ -2688,6 +2691,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "browser", editable = "packages-py/browser" },
+    { name = "cli", editable = "packages-py/cli" },
     { name = "contracts", editable = "packages-py/contracts" },
     { name = "core", editable = "packages-py/core" },
     { name = "crawler", editable = "packages-py/crawler" },

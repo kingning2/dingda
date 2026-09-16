@@ -5,6 +5,7 @@ description = "DingDa Tool 边界：Agent 可调用契约 + 实现（search/prod
 requires-python = ">=3.13"
 dependencies = [
   "browser",
+  "cli",
   "contracts",
   "core",
   "crawler",
@@ -12,8 +13,14 @@ dependencies = [
   "pydantic>=2.0",
 ]
 
+# 给 CLI skill 调的裸入口：skill 命令写死 ``tool <子命令>``，不再暴露解释器路径。
+# runtime 需把本包 Scripts/bin 目录前置进子进程 PATH（见 cli/base.py）。
+[project.scripts]
+tool = "tools.cli:main"
+
 [tool.uv.sources]
 browser = { workspace = true }
+cli = { workspace = true }
 contracts = { workspace = true }
 core = { workspace = true }
 crawler = { workspace = true }
