@@ -238,7 +238,9 @@ export function reduceAgentEvent(
         const prev = steps[idx];
         steps[idx] = {
           ...prev,
-          label: page.title || prev.label,
+          // 步骤标题优先：后端已按工具还原出「搜索商品 · 闲鱼」这类动作文案，
+          // 直播帧的页面标题只该落在 page.title（页卡头部已渲染），不能反过来覆盖它。
+          label: prev.label || page.title,
           hint: page.focus_label ?? prev.hint,
           kind: "browser_crawl",
           status: prev.status.state === "running" ? prev.status : STEP_RUNNING,
@@ -253,6 +255,37 @@ export function reduceAgentEvent(
       const sid = event.sessionId?.trim();
       if (!sid) return state;
       return { ...state, sessionId: sid };
+    }
+    case "agentPhase": {
+      // 子会话阶段：挂一条简短步骤，便于看到「走到哪」
+      const label = `${event.role}:${event.phase}${event.step ? ` · ${event.step}` : ""}`;
+      const id = `agent-phase-${event.runId}`;
+      return {
+        ...state,
+        phase: state.phase === "starting" ? "executing" : state.phase,
+        steps: upsertStep(state.steps, {
+          id,
+          label,
+          kind: "tool",
+          status: {
+            state:
+              event.phase === "completed"
+                ? "ready"
+                : event.phase === "failed" || event.phase === "cancelled"
+                  ? "error"
+                  : "running",
+            label: event.phase,
+            hint: event.errorCode ?? null,
+            badge_class:
+              event.phase === "completed"
+                ? STATUS_TONE.ready
+                : event.phase === "failed" || event.phase === "cancelled"
+                  ? STATUS_TONE.failed
+                  : STATUS_TONE.active,
+          },
+        }),
+        timeline: appendStepSegment(state.timeline, id),
+      };
     }
     case "error":
       if (!event.message) return state;

@@ -29,6 +29,8 @@ export interface CollapseProps {
   /** @deprecated 使用 lifecycleOpen */
   forceOpen?: boolean;
   className?: string;
+  /** 稳定测试锚点（e2e 用），落在根 `<details>` 上。 */
+  testId?: string;
   children?: ReactNode;
   /** 正文区额外 class（可贴底滚动）。 */
   bodyClassName?: string;
@@ -43,6 +45,7 @@ export function Collapse({
   lifecycleOpen,
   forceOpen,
   className,
+  testId,
   children,
   bodyClassName,
   bodyRef,
@@ -78,6 +81,7 @@ export function Collapse({
   return (
     <details
       className={cn("min-w-0", className)}
+      data-testid={testId}
       open={hasBody ? open : false}
       onToggle={handleToggle}
     >

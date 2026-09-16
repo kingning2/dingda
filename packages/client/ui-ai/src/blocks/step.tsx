@@ -141,6 +141,37 @@ function PagePreview({
   );
 }
 
+/** 原始调用块：命令行 + 完整输出。只进折叠区，不进标题文案。 */
+function TerminalBlock({
+  command,
+  output,
+}: {
+  command?: string | null;
+  output?: string | null;
+}) {
+  return (
+    <div className="space-y-1.5 rounded-md border border-border/70 bg-muted/40 p-2">
+      {command ? (
+        <pre
+          data-testid="step-terminal-command"
+          className="font-mono text-[11px] leading-[16px] whitespace-pre-wrap break-words text-foreground/90"
+        >
+          <span className="select-none text-muted-foreground">$ </span>
+          {command}
+        </pre>
+      ) : null}
+      {output ? (
+        <pre
+          data-testid="step-terminal-output"
+          className="max-h-72 overflow-auto rounded bg-background/70 p-2 font-mono text-[11px] leading-[16px] whitespace-pre-wrap break-words text-muted-foreground"
+        >
+          {output}
+        </pre>
+      ) : null}
+    </div>
+  );
+}
+
 /** 步骤块：工具调用结果（浏览/爬取/搜索/比对）的可折叠卡片。 */
 export function StepBlock({ block }: ChatBlockProps<"step">) {
   const { step, pageUrl = null, products = [] } = block;
@@ -176,29 +207,43 @@ export function StepBlock({ block }: ChatBlockProps<"step">) {
     </span>
   );
 
-  const body = showPage && page ? (
-    <PagePreview page={page} products={products} />
-  ) : showProducts ? (
-    <ProductStrip items={products} />
-  ) : linkUrl ? (
-    <a
-      href={linkUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex max-w-full items-center gap-1 text-[11px] text-muted-foreground hover:underline"
-    >
-      <ExternalLink className="size-3 shrink-0" />
-      <span className="truncate">{linkUrl}</span>
-    </a>
-  ) : null;
+  const pageBody =
+    showPage && page ? (
+      <PagePreview page={page} products={products} />
+    ) : showProducts ? (
+      <ProductStrip items={products} />
+    ) : linkUrl ? (
+      <a
+        href={linkUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex max-w-full items-center gap-1 text-[11px] text-muted-foreground hover:underline"
+      >
+        <ExternalLink className="size-3 shrink-0" />
+        <span className="truncate">{linkUrl}</span>
+      </a>
+    ) : null;
+  const terminal =
+    step.command || step.output ? (
+      <TerminalBlock command={step.command} output={step.output} />
+    ) : null;
+  const body =
+    pageBody || terminal ? (
+      <div className="space-y-2">
+        {pageBody}
+        {terminal}
+      </div>
+    ) : null;
 
   return (
     <Collapse
+        testId="step-block"
         title={title}
         trailing={trailing}
-        defaultOpen={Boolean(body)}
+        // 页卡是给用户看的结果，默认展开；原始调用只给排查用，保持收起
+        defaultOpen={Boolean(pageBody)}
         // 跑着强制展开；结束后不强制收起，方便回看截图
-        lifecycleOpen={running && Boolean(body) ? true : undefined}
+        lifecycleOpen={running && Boolean(pageBody) ? true : undefined}
       >
         {body}
     </Collapse>

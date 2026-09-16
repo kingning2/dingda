@@ -21,7 +21,6 @@ export type RawAgentRuntimeItem = AgentRuntimeItem & {
   installUrl?: string | null;
   docsUrl?: string | null;
   isDefault?: boolean;
-  externalMcpInjection?: string | null;
   canLogin?: boolean;
   canProbe?: boolean;
   canDownload?: boolean;
@@ -59,8 +58,6 @@ export function normalizeAgentRuntimeItem(raw: RawAgentRuntimeItem): AgentRuntim
     install_url: raw.install_url ?? raw.installUrl ?? null,
     docs_url: raw.docs_url ?? raw.docsUrl ?? null,
     is_default: raw.is_default ?? raw.isDefault ?? false,
-    external_mcp_injection:
-      raw.external_mcp_injection ?? raw.externalMcpInjection ?? null,
     auth: raw.auth ?? null,
     models: raw.models ?? null,
     can_login: raw.can_login ?? raw.canLogin,
