@@ -14,4 +14,4 @@ Agent 运行生命周期。
 
 ## 子目录
 
-无。工具列表：[../../tools/README.md](../../../../tools/src/tools/README.md)。上下文压缩在 `packages-py/core/src/core/compress.py`；外部 CLI Runtime（非本包）见 [cli/runtimes](../../../../cli/src/cli/runtimes/README.md)。
+无。工具列表：[../../tools/README.md](../../../../tools/src/tools/README.md)。上下文压缩在 `packages-py/core/src/core/compress.py`；外部 CLI Runtime（非本包）见 [cli/agents.py](../../../../cli/src/cli/agents.py)。
