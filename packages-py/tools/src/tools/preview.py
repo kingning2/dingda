@@ -6,7 +6,7 @@
     不做 DOM 解析 / 搜品；不替代 search/product。
 
 设计说明：
-    - MCP 子进程通过 HTTP 把帧投到 Server（``DINGDA_API_BASE`` + run_id）
+    - 工具子进程通过 HTTP 把帧投到 Server（``DINGDA_API_BASE`` + run_id）
     - 本地回调路径（同进程）也可直接 push live_hub
     - 不 import Playwright / Camoufox
 
@@ -29,6 +29,7 @@ from contracts.browser_port import LaunchOptions
 from crawler.core.live import emit_live_frame, live_frame_pump
 from crawler.core.types import CrawlContext
 from core.errors import AppError
+from tools.headed import headless
 from tools.live_push import agent_run_id, post_live_frame
 
 logger = logging.getLogger("dingda.tools.preview")
@@ -100,7 +101,7 @@ async def run_preview(inp: PreviewInput) -> PreviewOutput:
             await post_live_frame(run_id, frame)
         else:
             try:
-                from cli.live import hub as live_hub
+                from cli import live as live_hub
 
                 live_hub.push_frame(
                     "orphan",
@@ -117,7 +118,7 @@ async def run_preview(inp: PreviewInput) -> PreviewOutput:
                 pass
 
     manager = get_browser_manager()
-    port = await manager.acquire(LaunchOptions(headless=True))
+    port = await manager.acquire(LaunchOptions(headless=headless()))
     page = None
     pump = None
     try:

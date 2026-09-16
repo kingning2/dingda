@@ -2,7 +2,7 @@
 
 职责：
     契约（Input/Output）与执行（Crawler → BrowserPort）放同一文件。
-    供 registry / MCP 注册与调用；可选推送直播截图帧。
+    供 registry 注册与调用；可选推送直播截图帧。
 
 设计说明：
     - 闲鱼详情通常需要 cookie
@@ -21,16 +21,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from browser.manager import get_browser_manager
-from contracts.browser_port import LaunchOptions
 from contracts.watch import SoldState
 from tools.account_cookie import resolve_crawl_cookie
-from crawler.core.base import BrowserSessionOptions
-from crawler.core.live import META_LIVE_CALLBACK, META_LIVE_ENABLED
-from crawler.core.types import CrawlContext
-from crawler.registry import cookies_for, create_crawler
 from core.errors import AppError
 from tools.recovery import with_crawl_recovery
+from tools.session import crawl_session
 
 logger = logging.getLogger("dingda.tools.product")
 
@@ -122,6 +117,7 @@ class ProductOutput(BaseModel):
     item: ProductItem | None = None
     error_code: str | None = None
     message: str | None = None
+    repair: dict[str, Any] | None = None
 
 
 async def run_product(
@@ -136,7 +132,7 @@ async def run_product(
     ``allow_login_recovery=False`` 关掉「登录失效 → 弹扫码 → 重试」这条链。
     后台定时轮询必须传 False：否则会话过期时会在用户毫无预期的情况下弹出扫码窗口。
     """
-    task_id = f"mcp-{uuid.uuid4().hex[:12]}"
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
     cookie = resolve_crawl_cookie(inp.platform, inp.cookie)
     push_live = (
         bool(on_live_frame)
@@ -154,26 +150,16 @@ async def run_product(
 
     async def _execute(run_cookie: str | None) -> ProductOutput:
         """一次抓取会话；登录失效由 with_crawl_recovery 扫码后整体重试。"""
-        manager = get_browser_manager()
-        port = None
-        try:
-            port = await manager.acquire(LaunchOptions(headless=True))
-            options = BrowserSessionOptions(
-                proxy_url=inp.proxy_url,
-                cookies=cookies_for(inp.platform, run_cookie),
-            )
-            crawler = create_crawler(inp.platform, port, options)
-            meta: dict[str, Any] = {
-                "cookie": run_cookie or "",
-                "xsec_token": inp.xsec_token or "",
-                META_LIVE_ENABLED: bool(push_live),
-            }
-            if on_live_frame is not None:
-                meta[META_LIVE_CALLBACK] = on_live_frame
-            result = await crawler.detail(
-                CrawlContext(task_id=task_id, meta=meta),
-                inp.item_id,
-            )
+        async with crawl_session(
+            inp.platform,
+            cookie=run_cookie,
+            proxy_url=inp.proxy_url,
+            on_live_frame=on_live_frame,
+            live_frame_enabled=push_live,
+            task_id=task_id,
+            extra_meta={"xsec_token": inp.xsec_token or ""},
+        ) as session:
+            result = await session.crawler.detail(session.ctx(), inp.item_id)
             if not result.items:
                 return ProductOutput(
                     ok=False,
@@ -208,9 +194,6 @@ async def run_product(
                 item_id=inp.item_id,
                 item=item,
             )
-        finally:
-            if port is not None:
-                await manager.release(port)
 
     try:
         return await with_crawl_recovery(
@@ -228,6 +211,7 @@ async def run_product(
             item_id=inp.item_id,
             error_code=exc.code,
             message=exc.message,
+            repair=exc.details if isinstance(exc.details, dict) else None,
         )
     except Exception as exc:
         logger.exception("tool failed name=product")

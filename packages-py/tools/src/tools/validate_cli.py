@@ -1,11 +1,11 @@
 """validate_selectors 的命令行形态。
 
 职责：
-    给「拿不到 MCP 工具」的子 agent 一条退路：读选择器 JSON，POST 到
+    给「工具面只有一条命令」的修复子 agent 用的退路：读选择器 JSON，POST 到
     ``DINGDA_VALIDATE_URL``（修复现场的校验桥），把平台抽取脚本的输出打到 stdout。
 
 设计说明：
-    - 与 MCP 工具 ``validate_selectors`` 共用同一个 ``run_validate``
+    - 与工具 ``validate_selectors`` 共用同一个 ``run_validate``
     - ``--selectors`` 收 JSON 字符串；``@路径`` 形式则从文件读，避免 shell 引号地狱
 
 使用示例：

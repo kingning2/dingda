@@ -5,7 +5,7 @@
     供主进程 SSE 下发 browserFrame。search / product / preview 共用。
 
 设计说明：
-    - 依赖环境变量 ``DINGDA_AGENT_RUN_ID`` / ``DINGDA_API_BASE``
+    - 依赖环境变量 ``DINGDA_AGENT_RUN_ID``；Server 地址见 ``api_base()``
     - 无 run_id 时返回 None（不推帧），不打断工具
 """
 
@@ -16,23 +16,29 @@ import os
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from core.config import api_base_url
+
 logger = logging.getLogger("dingda.tools.live_push")
 
 LiveFrameHandler = Callable[[dict[str, Any]], Awaitable[None]]
 
 
 def agent_run_id() -> str:
-    """当前 Agent run id（MCP 注入）。"""
+    """当前 Agent run id（由 spawn 侧注入子进程环境）。"""
     return os.getenv("DINGDA_AGENT_RUN_ID", "").strip()
 
 
 def api_base() -> str:
-    """Server API Base。"""
-    return (
+    """Server API Base。
+
+    显式 ``DINGDA_API_BASE`` / ``VITE_API_BASE_URL`` 优先；都没有才按
+    ``DINGDA_HOST`` / ``DINGDA_PORT`` 推导（见 ``core.config.api_base_url``）。
+    """
+    explicit = (
         os.getenv("DINGDA_API_BASE", "").strip()
         or os.getenv("VITE_API_BASE_URL", "").strip()
-        or "http://127.0.0.1:8787"
-    ).rstrip("/")
+    )
+    return (explicit or api_base_url()).rstrip("/")
 
 
 async def post_live_frame(run_id: str, frame: dict[str, Any]) -> None:

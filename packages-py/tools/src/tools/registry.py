@@ -1,7 +1,7 @@
 """Tool 注册表：按名查找并执行 Tool。
 
 职责：
-    聚合各 Tool 模块（契约 + run_*）；供 MCP 与产品 Agent 统一 invoke。
+    聚合各 Tool 模块（契约 + run_*）；供产品 Agent 与工具子进程统一 invoke。
 
 设计说明：
     - 选品：search / product / compare / preview / login（每工具一个 ``tools/<name>.py``）
@@ -22,6 +22,46 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.errors import AppError
+from tools.browse import (
+    DEFAULT_TIMEOUT_S as BROWSE_TIMEOUT_S,
+    TOOL_DESCRIPTION as BROWSE_DESCRIPTION,
+    TOOL_NAME as BROWSE_NAME,
+    BrowseInput,
+    BrowseOutput,
+    run_browse,
+)
+from tools.child_cancel import (
+    DEFAULT_TIMEOUT_S as CHILD_CANCEL_TIMEOUT_S,
+    TOOL_DESCRIPTION as CHILD_CANCEL_DESCRIPTION,
+    TOOL_NAME as CHILD_CANCEL_NAME,
+    ChildCancelInput,
+    ChildCancelOutput,
+    run_child_cancel,
+)
+from tools.child_resume import (
+    DEFAULT_TIMEOUT_S as CHILD_RESUME_TIMEOUT_S,
+    TOOL_DESCRIPTION as CHILD_RESUME_DESCRIPTION,
+    TOOL_NAME as CHILD_RESUME_NAME,
+    ChildResumeInput,
+    ChildResumeOutput,
+    run_child_resume,
+)
+from tools.child_run import (
+    DEFAULT_TIMEOUT_S as CHILD_RUN_TIMEOUT_S,
+    TOOL_DESCRIPTION as CHILD_RUN_DESCRIPTION,
+    TOOL_NAME as CHILD_RUN_NAME,
+    ChildRunInput,
+    ChildRunOutput,
+    run_child_run,
+)
+from tools.child_status import (
+    DEFAULT_TIMEOUT_S as CHILD_STATUS_TIMEOUT_S,
+    TOOL_DESCRIPTION as CHILD_STATUS_DESCRIPTION,
+    TOOL_NAME as CHILD_STATUS_NAME,
+    ChildStatusInput,
+    ChildStatusOutput,
+    run_child_status,
+)
 from tools.compare import (
     DEFAULT_TIMEOUT_S as COMPARE_TIMEOUT_S,
     TOOL_DESCRIPTION as COMPARE_DESCRIPTION,
@@ -54,6 +94,14 @@ from tools.product import (
     ProductInput,
     ProductOutput,
     run_product,
+)
+from tools.repair_dom import (
+    DEFAULT_TIMEOUT_S as REPAIR_DOM_TIMEOUT_S,
+    TOOL_DESCRIPTION as REPAIR_DOM_DESCRIPTION,
+    TOOL_NAME as REPAIR_DOM_NAME,
+    RepairDomInput,
+    RepairDomOutput,
+    run_repair_dom,
 )
 from tools.search import (
     DEFAULT_TIMEOUT_S as SEARCH_TIMEOUT_S,
@@ -127,6 +175,14 @@ _TOOLS: dict[str, ToolSpec] = {
         run_product,  # type: ignore[arg-type]
         PRODUCT_TIMEOUT_S,
     ),
+    BROWSE_NAME: _spec(
+        BROWSE_NAME,
+        BROWSE_DESCRIPTION,
+        BrowseInput,
+        BrowseOutput,
+        run_browse,  # type: ignore[arg-type]
+        BROWSE_TIMEOUT_S,
+    ),
     COMPARE_NAME: _spec(
         COMPARE_NAME,
         COMPARE_DESCRIPTION,
@@ -150,6 +206,46 @@ _TOOLS: dict[str, ToolSpec] = {
         LoginOutput,
         run_login,  # type: ignore[arg-type]
         LOGIN_TIMEOUT_S,
+    ),
+    CHILD_RUN_NAME: _spec(
+        CHILD_RUN_NAME,
+        CHILD_RUN_DESCRIPTION,
+        ChildRunInput,
+        ChildRunOutput,
+        run_child_run,  # type: ignore[arg-type]
+        CHILD_RUN_TIMEOUT_S,
+    ),
+    CHILD_RESUME_NAME: _spec(
+        CHILD_RESUME_NAME,
+        CHILD_RESUME_DESCRIPTION,
+        ChildResumeInput,
+        ChildResumeOutput,
+        run_child_resume,  # type: ignore[arg-type]
+        CHILD_RESUME_TIMEOUT_S,
+    ),
+    CHILD_CANCEL_NAME: _spec(
+        CHILD_CANCEL_NAME,
+        CHILD_CANCEL_DESCRIPTION,
+        ChildCancelInput,
+        ChildCancelOutput,
+        run_child_cancel,  # type: ignore[arg-type]
+        CHILD_CANCEL_TIMEOUT_S,
+    ),
+    CHILD_STATUS_NAME: _spec(
+        CHILD_STATUS_NAME,
+        CHILD_STATUS_DESCRIPTION,
+        ChildStatusInput,
+        ChildStatusOutput,
+        run_child_status,  # type: ignore[arg-type]
+        CHILD_STATUS_TIMEOUT_S,
+    ),
+    REPAIR_DOM_NAME: _spec(
+        REPAIR_DOM_NAME,
+        REPAIR_DOM_DESCRIPTION,
+        RepairDomInput,
+        RepairDomOutput,
+        run_repair_dom,  # type: ignore[arg-type]
+        REPAIR_DOM_TIMEOUT_S,
     ),
     # 只给修复子 agent 用：靠 DINGDA_VALIDATE_URL 回打修复现场那个页面
     VALIDATE_NAME: _spec(
@@ -183,12 +279,12 @@ async def call_tool(name: str, payload: dict[str, Any]) -> BaseModel:
     spec = get_tool(name)
     inp = spec.input_model.model_validate(payload)
     live = make_live_frame_handler()
-    if name in {"search", "product", "preview"} and live is None:
+    if name in {"search", "product", "preview", "browse"} and live is None:
         logger.warning(
             "tool %s without DINGDA_AGENT_RUN_ID：浏览器直播不会推到 UI",
             name,
         )
-    if live is not None and name in {"search", "product"}:
+    if live is not None and name in {"search", "product", "browse"}:
         out = await spec.handler(inp, on_live_frame=live, live_frame_enabled=True)
     elif live is not None and name == "login":
         out = await spec.handler(inp, on_live_frame=live)

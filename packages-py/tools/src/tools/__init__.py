@@ -1,4 +1,4 @@
-"""内部 Tool：选品能力 + registry；供产品 Agent 与 MCP 共用。"""
+"""内部 Tool：选品能力 + registry；供产品 Agent 与工具子进程共用。"""
 
 from __future__ import annotations
 

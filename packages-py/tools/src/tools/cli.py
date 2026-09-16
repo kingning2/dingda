@@ -8,12 +8,13 @@
     - 复用 registry：新增工具**自动**有 CLI，不用再写一个 ``*_cli.py``
     - 直播帧不用管：``call_tool`` 内部已按 ``DINGDA_AGENT_RUN_ID`` 推回 UI
     - stdout 只有 JSON（日志走 stderr），方便 agent 直接 ``json.loads``
+    - 安装为 ``tool`` console script（见 pyproject.toml）；``python -m tools.cli`` 等效
 
 使用示例：
-    python -m tools.cli search --platform xianyu --query 键盘 --limit 20
-    python -m tools.cli product --platform xianyu --item_id 733352707833
-    python -m tools.cli compare --image "https://..."
-    python -m tools.cli preview --url "https://www.goofish.com/item?id=1"
+    tool search --platform xianyu --query 键盘 --limit 20
+    tool product --platform xianyu --item-id 733352707833
+    tool compare --image "https://..."
+    tool preview --url "https://www.goofish.com/item?id=1"
 """
 
 from __future__ import annotations
@@ -70,9 +71,13 @@ def _build_input(model: type[BaseModel], ns: argparse.Namespace) -> BaseModel:
 
 def main(argv: list[str] | None = None) -> int:
     _force_utf8_stdout()
+    # 独立跑工具（不经 Server）时也要读到仓库根的 .env：幂等，已加载则跳过
+    from core.config import load_env
+
+    load_env()
     from tools.registry import call_tool, get_tool, list_tools
 
-    parser = argparse.ArgumentParser(prog="python -m tools.cli", description="跑一个叮答工具")
+    parser = argparse.ArgumentParser(prog="tool", description="跑一个叮答工具")
     sub = parser.add_subparsers(dest="tool", required=True)
     for spec in list_tools():
         if spec.internal_only:

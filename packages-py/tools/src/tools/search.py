@@ -23,15 +23,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from browser.manager import get_browser_manager
-from contracts.browser_port import LaunchOptions
 from tools.account_cookie import resolve_crawl_cookie
-from crawler.core.base import BrowserSessionOptions
 from crawler.core.types import CrawlContext, CrawlItem
-from crawler.registry import cookies_for, create_api_crawler, create_crawler, is_api_platform
+from crawler.registry import create_api_crawler, is_api_platform
 from core.errors import AppError
 from tools.product import ProductComment
 from tools.recovery import with_crawl_recovery
+from tools.session import crawl_session
 
 logger = logging.getLogger("dingda.tools.search")
 
@@ -171,6 +169,7 @@ class SearchOutput(BaseModel):
     items: list[SearchItem] = Field(default_factory=list)
     error_code: str | None = None
     message: str | None = None
+    repair: dict[str, Any] | None = None
 
 
 async def run_search(
@@ -185,7 +184,7 @@ async def run_search(
         - None：有 on_live_frame 则开，否则关
         - True / False：强制开/关（True 时仍需回调）
     """
-    task_id = f"mcp-{uuid.uuid4().hex[:12]}"
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
     query = (inp.query or "").strip()
     platform = inp.platform.strip().lower()
     cookie = resolve_crawl_cookie(platform, inp.cookie)
@@ -245,6 +244,7 @@ async def run_search(
             query=query,
             error_code=exc.code,
             message=exc.message,
+            repair=exc.details if isinstance(exc.details, dict) else None,
         )
     except Exception as exc:
         logger.exception("tool failed name=search")
@@ -275,48 +275,38 @@ async def _search_browser(
     on_live_frame: Any | None = None,
     live_frame_enabled: bool = False,
 ) -> list[CrawlItem]:
-    """浏览器 Source 搜品；闲鱼随后逐条 detail。"""
-    from crawler.core.live import META_LIVE_CALLBACK, META_LIVE_ENABLED
+    """浏览器 Source 搜品；闲鱼随后逐条 detail。
 
-    manager = get_browser_manager()
-    port = await manager.acquire(LaunchOptions(headless=True))
-    try:
-        options = BrowserSessionOptions(
-            proxy_url=inp.proxy_url,
-            cookies=cookies_for(platform, cookie),
-            cookie_domain=inp.cookie_domain or "",
-        )
-        crawler = create_crawler(platform, port, options)
-        meta: dict[str, Any] = {
-            "limit": inp.limit,
-            "cookie": cookie or "",
-            META_LIVE_ENABLED: bool(live_frame_enabled),
-        }
-        if on_live_frame is not None:
-            meta[META_LIVE_CALLBACK] = on_live_frame
-        result = await crawler.search(
-            CrawlContext(task_id=task_id, meta=meta),
-            query,
-        )
+    列表与逐条详情共用同一次会话（同一台浏览器），不来回 acquire/release。
+    """
+    async with crawl_session(
+        platform,
+        cookie=cookie,
+        proxy_url=inp.proxy_url,
+        cookie_domain=inp.cookie_domain or "",
+        on_live_frame=on_live_frame,
+        live_frame_enabled=live_frame_enabled,
+        task_id=task_id,
+        extra_meta={"limit": inp.limit},
+    ) as session:
+        result = await session.crawler.search(session.ctx(), query)
         items = list(result.items)
         if platform == "xianyu":
             items = await _enrich_xianyu_details(
-                crawler,
+                session.crawler,
                 items,
                 task_id=task_id,
                 cookie=cookie,
-                live_meta=meta,
+                live_meta=session.live_meta,
             )
         elif platform == "xiaohongshu":
             items = await _enrich_xiaohongshu_details(
-                crawler,
+                session.crawler,
                 items,
                 task_id=task_id,
-                live_meta=meta,
+                live_meta=session.live_meta,
             )
         return items
-    finally:
-        await manager.release(port)
 
 
 async def _enrich_xianyu_details(
