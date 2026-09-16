@@ -36,19 +36,19 @@ Runtime 插头抽象方法（实现在 `RuntimeDefinition` 上），只管「装
 
 ### `codex.rs`
 
-`CODEX`，id `codex`。`external_mcp_injection: Some("codex-mcp")`。模型：`login status` 成功则 `debug models`，否则静态列表。  
+`CODEX`，id `codex`。模型：`login status` 成功则 `debug models`，否则静态列表。  
 鉴权：`auth = RuntimeAuth { probe_args: ["login","status"], parse: ExitCode, login_args: ["login"] }`。  
 `managed_download`：GitHub latest（Win 裸 `.exe`，macOS/Linux `.tar.gz`）。
 
 ### `claude.rs`
 
-`CLAUDE`，id `claude`。注入标记 `claude-mcp-json`（cwd `.mcp.json`）。  
+`CLAUDE`，id `claude`。  
 模型：先拉 models.dev 的 anthropic 目录，失败回落静态 5 项（见 `../model_discover/modelsdev.rs`）。  
 鉴权：`probe_args: ["auth","status"], parse: JsonLoggedIn, login_args: ["auth","login"]`。  
 `managed_download`：`downloads.claude.ai` + `version_file=latest` → `{ver}/{platform}/claude[.exe]`。
 
 ### `opencode.rs`
 
-`OPENCODE`，id `opencode`。注入 `opencode-env-content`。  
+`OPENCODE`，id `opencode`。  
 鉴权：`probe_args: ["auth","list"], parse: CredentialCount, login_args: ["auth","login"]`。  
 `managed_download` 指向 GitHub latest；实际下载由 [../install.rs](../install.rs) 执行。

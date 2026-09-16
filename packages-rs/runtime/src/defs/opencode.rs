@@ -56,7 +56,6 @@ pub const OPENCODE: RuntimeDefinition = RuntimeDefinition {
     }),
     install_url: "https://opencode.ai/docs",
     docs_url: "https://github.com/sst/opencode",
-    external_mcp_injection: Some("opencode-env-content"),
     is_default: false,
     validate_executable: None,
     discover_models,

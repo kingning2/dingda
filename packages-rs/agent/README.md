@@ -25,7 +25,7 @@ commands/agent_runtime.rs
 
 ### `catalog.rs`
 
-`list_agent_runtimes()`：遍历 registry，用 `discover_agent_with_source` 填「已就绪/未安装」、command 路径、MCP 注入标记。给 `list_agent_runtimes_command`。不做 `--version`（那是 probe）。
+`list_agent_runtimes()`：遍历 registry，用 `discover_agent_with_source` 填「已就绪/未安装」、command 路径。给 `list_agent_runtimes_command`。不做 `--version`（那是 probe）。
 
 ### `discover.rs`
 

@@ -61,7 +61,6 @@ pub const CLAUDE: RuntimeDefinition = RuntimeDefinition {
     }),
     install_url: "https://docs.anthropic.com/en/docs/claude-code/setup",
     docs_url: "https://docs.anthropic.com/en/docs/claude-code",
-    external_mcp_injection: Some("claude-mcp-json"),
     is_default: false,
     validate_executable: None,
     discover_models,

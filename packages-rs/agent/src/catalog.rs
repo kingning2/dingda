@@ -45,7 +45,6 @@ fn build_registry_stub(definition: &RuntimeDefinition) -> AgentRuntimeCatalogIte
         install_url: definition.install_url.to_string(),
         docs_url: definition.docs_url.to_string(),
         is_default: definition.is_default,
-        external_mcp_injection: definition.external_mcp_injection.map(str::to_string),
         status: AgentRuntimeStatusView {
             state: "missing".to_string(),
             label: "未安装".to_string(),
@@ -116,7 +115,6 @@ fn build_catalog_item(definition: &RuntimeDefinition) -> AgentRuntimeCatalogItem
         install_url: definition.install_url.to_string(),
         docs_url: definition.docs_url.to_string(),
         is_default: definition.is_default,
-        external_mcp_injection: definition.external_mcp_injection.map(str::to_string),
         status,
         can_login: definition.can_login(),
         can_probe: true,

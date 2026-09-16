@@ -66,7 +66,6 @@ pub const CODEX: RuntimeDefinition = RuntimeDefinition {
     }),
     install_url: "https://github.com/openai/codex",
     docs_url: "https://developers.openai.com/codex",
-    external_mcp_injection: Some("codex-mcp"),
     is_default: true,
     validate_executable: None,
     discover_models,

@@ -26,7 +26,6 @@ pub struct AgentRuntimeCatalogItem {
     pub install_url: String,
     pub docs_url: String,
     pub is_default: bool,
-    pub external_mcp_injection: Option<String>,
     pub status: AgentRuntimeStatusView,
     pub can_login: bool,
     pub can_probe: bool,

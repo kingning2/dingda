@@ -96,7 +96,6 @@ pub struct RuntimeDefinition {
     pub auth: Option<RuntimeAuth>,
     pub install_url: &'static str,
     pub docs_url: &'static str,
-    pub external_mcp_injection: Option<&'static str>,
     pub is_default: bool,
     /// 可选：发现阶段额外校验。
     pub validate_executable: Option<fn(&Path) -> bool>,
