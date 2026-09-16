@@ -568,7 +568,7 @@ async def run_forever(
     *,
     refresh_every: float = 600.0,
 ) -> None:
-    """常驻 IM 长连接（产品侧保活用；MCP 一般不调）。"""
+    """常驻 IM 长连接（产品侧保活用；选品链路不调）。"""
 
     async def _keepalive() -> None:
         while True:

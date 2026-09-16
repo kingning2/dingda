@@ -20,12 +20,12 @@ import asyncio
 import logging
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Awaitable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
 from browser.manager import BrowserManager
-from contracts.browser_port import Cookie, LaunchOptions, Page
+from contracts.browser_port import BrowserPort, Cookie, LaunchOptions, Page
 from channels.xianyu.slider import (
     auto_slider_enabled,
     clear_risk_cookies,
@@ -66,6 +66,9 @@ _MANUAL_POLL_S = 1.2
 _MANUAL_CLEAR_HOLD_S = 5.0
 # 目标正文至少要渲出这么多字符；风控页未渲染 / 空白页都到不了这个量
 _MANUAL_MIN_CONTENT_CHARS = 120
+# 关窗口每一步的上限。用户过了滑块之后窗口还挂在桌面上是最糟的体验，
+# 所以宁可超时跳过，也不能让某一步 await 把 finally 卡死。
+_CLOSE_TIMEOUT_S = 8.0
 _BODY_JS = "() => (document.body && document.body.innerText || '')"
 
 
@@ -190,7 +193,16 @@ async def _wait_manual_headed(
                         (headed.url or "")[:120],
                     )
                 clear_since = None
-            elif await _content_rendered(headed):
+                await asyncio.sleep(_MANUAL_POLL_S)
+                continue
+
+            # 判过用两条互补的证据，缺一就继续等：
+            #   - 见过风控（blocked）→ 风控 UI 消失即开始计时。只要曾出现过风控，
+            #     「消失了」就是用户操作的结果，不必再等正文渲染到 120 字 ——
+            #     详情页正文常常达不到那个量，旧逻辑会让用户过完滑块还干等到超时。
+            #   - 没见过风控 → 只能靠正文渲染，否则 goto 后页面空白会被误判为已过。
+            passed = blocked or await _content_rendered(headed)
+            if passed:
                 if clear_since is None:
                     clear_since = time.monotonic()
                 elif time.monotonic() - clear_since >= _MANUAL_CLEAR_HOLD_S:
@@ -212,17 +224,41 @@ async def _wait_manual_headed(
         logger.exception("manual slider failed where=%s", where)
         raise risk_control_error(f"{where} 人工滑块失败：{exc}") from exc
     finally:
-        if headed is not None:
-            try:
-                await headed.close()
-            except Exception:  # noqa: BLE001
-                pass
-        if port is not None:
-            try:
-                await manager.release(port)
-            except Exception:  # noqa: BLE001
-                pass
+        await _shutdown_headed(manager, port, headed, where=where)
+
+
+async def _shutdown_headed(
+    manager: BrowserManager,
+    port: BrowserPort | None,
+    headed: Page | None,
+    *,
+    where: str,
+) -> None:
+    """关掉人工滑块窗口：关页 → 归还槽位 → 停池，每步都带超时与日志。
+
+    为什么要单独收口：用户过完滑块后窗口还挂在桌面上是最糟的体验，而
+    ``close`` / ``release`` / ``stop`` 任一步卡住都会造成这个结果。逐步
+    ``wait_for`` + 记日志，卡住时也能在日志里看出是哪一步。
+    """
+    steps: list[tuple[str, Awaitable[None]]] = []
+    if headed is not None:
+        steps.append(("关闭页面", headed.close()))
+    if port is not None:
+        steps.append(("归还槽位", manager.release(port)))
+    steps.append(("停止浏览器池", manager.stop()))
+
+    for label, coro in steps:
+        started = time.monotonic()
         try:
-            await manager.stop()
-        except Exception:  # noqa: BLE001
-            pass
+            await asyncio.wait_for(coro, timeout=_CLOSE_TIMEOUT_S)
+            logger.info(
+                "人工滑块窗口 %s 完成 where=%s elapsed=%.1fs", label, where, time.monotonic() - started
+            )
+        except Exception:  # noqa: BLE001 - 清理失败不能盖掉业务异常
+            logger.warning(
+                "人工滑块窗口 %s 失败（%.1fs，可能有残留进程）where=%s",
+                label,
+                time.monotonic() - started,
+                where,
+                exc_info=True,
+            )

@@ -6,7 +6,7 @@
 
 设计说明：
     - 平台：闲鱼（xianyu）；需 cookie 与 IM accessToken
-    - 调用方：账号 / 渠道 HTTP，非 MCP Tool
+    - 调用方：账号 / 渠道 HTTP，非选品 Tool
 """
 
 from __future__ import annotations

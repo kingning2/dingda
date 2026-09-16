@@ -5,7 +5,7 @@
 
 设计说明：
     - 平台：闲鱼（xianyu）；需账号 cookie
-    - 调用方：账号 / 渠道 HTTP，非 MCP Tool
+    - 调用方：账号 / 渠道 HTTP，非选品 Tool
 """
 
 from __future__ import annotations
