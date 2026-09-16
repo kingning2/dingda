@@ -49,6 +49,21 @@ import { startStaticServer, type StaticServer } from "./helpers/static-server";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..");
 
+/**
+ * 读仓库根的 `.env`（总表见根目录 `.env.example`），用 Node 内置能力，不引依赖。
+ *
+ * **真实环境变量优先** —— 与 Python 侧 `core.config.load_env()` 同一语义，
+ * 所以命令行上的临时覆盖（`DINGDA_E2E_PORT=8801 pnpm …`）依然有效。
+ * `.env` 是本地文件、不存在属正常情况，静默跳过。
+ *
+ * 必须放在读取 `DINGDA_E2E_*` 之前，否则 `.env` 里的值赶不上。
+ */
+try {
+  process.loadEnvFile(path.join(repoRoot, ".env"));
+} catch {
+  // 没有 .env：按环境变量与用例默认值走
+}
+
 /** 测试专用端口，与开发默认的 8787 严格分离。 */
 const E2E_PORT = process.env.DINGDA_E2E_PORT ?? "8799";
 
@@ -155,8 +170,12 @@ export const config: WebdriverIO.Config = {
     // dingda-crawl skill 起浏览器爬平台，skill 文档写明单次 1~5 分钟，叠加上下文与
     // 多轮工具后一轮常见 3~10 分钟。其等待上限由 `DINGDA_E2E_RUN_TIMEOUT_MS`
     // （默认 600_000）控制，故这里必须留足余量。
+    //
+    // 2026-09-15 ai-codex-product 改成**完整选品链路**（小红书看风向 + 闲鱼核供给，
+    // 两次真实抓取 + 长思考），实测 8~15 分钟，等待上限 900_000
+    // （`DINGDA_E2E_RUN_TIMEOUT_MS`），故这里再抬一档并留启动/收尾余量。
     // 注意改成更大值只会让「真卡死」的失败等得更久，不改正常用例的速度。
-    timeout: 920_000,
+    timeout: 1_800_000,
   },
 
   reporters: ["spec"],

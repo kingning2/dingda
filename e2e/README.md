@@ -20,16 +20,14 @@ session 必然失败并报 `DevToolsActivePort file doesn't exist`。
 
 ## 跑之前
 
-产物由两条独立命令构建，缺任何一个都会以难定位的方式失败
-（`pretest` 会先检查并直接告诉你跑哪条）：
+日常请直接用仓库根的 `pnpm e2e`（内部会重编译）。若只想单独编产物：
 
 ```bash
 pnpm --filter @v2/e2e build:web   # 前端 → apps/web/dist
-pnpm --filter @v2/e2e build:app   # 壳   → target/debug/client（= cargo build -p client --features e2e）
+pnpm --filter @v2/e2e build:app   # 壳（默认写到 target-e2e，见 scripts/run.mjs）
 ```
 
-**改前端后必须重跑 `build:web`。**
-**改 Rust 后必须重跑 `build:app`，且不能省 `--features e2e`。**
+**改前端 / Rust 后不必再记两步**——`pnpm e2e` 每次都会重编。
 
 ### 壳被 dev 会话占用时（重要）
 
@@ -91,24 +89,27 @@ git checkout -- packages-rs/client/gen/schemas/
 
 ## 跑
 
-```bash
-pnpm --filter @v2/e2e test          # 全部 spec
-pnpm --filter @v2/e2e test:debug    # 带驱动调试日志
-pnpm --filter @v2/e2e typecheck     # 只做类型检查，不启壳（秒级）
-```
-
-只跑某一条 spec（注意用 `exec`；`pnpm test -- --spec ...` 会把 `--` 当参数传给 wdio，
-导致 `--spec` 失效、**所有 spec 都跑**）：
+仓库根一条命令（**每次先重编译**前端 + 带 `--features e2e` 的壳，再跑 wdio）：
 
 ```bash
-pnpm --filter @v2/e2e exec wdio run wdio.conf.ts --spec ./specs/account-qr.spec.ts
+pnpm e2e                    # 全部 spec
+pnpm e2e:codex              # 只跑 Codex 找商品（商品 + 直播流 + 中文）
+pnpm e2e -- --spec ./specs/desktop-smoke.spec.ts
 ```
 
-账号扫码用例先干跑一次再真扫（干跑只验「点得到、二维码出得来」，不占扫码窗口）：
+默认壳产物落到 `target-e2e/debug/client`，避开 `pnpm tauri dev` 锁住的
+`target/debug/client.exe`。等价于：
 
 ```bash
-DINGDA_E2E_QR_DRY_RUN=1 pnpm --filter @v2/e2e exec wdio run wdio.conf.ts --spec ./specs/account-qr.spec.ts
+pnpm --filter @v2/e2e e2e
+# = build:web + build:app + wdio
 ```
+
+只要跑、不编译：`DINGDA_E2E_SKIP_BUILD=1 pnpm e2e -- --spec …`  
+或 `pnpm --filter @v2/e2e test:only -- --spec …`。
+
+调试驱动日志：`pnpm --filter @v2/e2e test:debug`  
+只做类型检查：`pnpm --filter @v2/e2e typecheck`
 
 > `typecheck` 走的是 `e2e/tsconfig.json`。注意**仓库根的 `tsc` 不覆盖本目录**
 > （根 `tsconfig.json` 的 `include` 只有 `apps` 与 `packages`），所以改动本目录的
@@ -192,7 +193,7 @@ cargo test -p python
 干跑只验「发得出去、跑起来了、取消得掉」，不等结果：
 
 ```bash
-DINGDA_E2E_SEARCH_DRY_RUN=1 pnpm --filter @v2/e2e exec wdio run wdio.conf.ts --spec ./specs/ai-product-search.spec.ts
+DINGDA_E2E_SEARCH_DRY_RUN=1 pnpm e2e -- --spec ./specs/ai-product-search.spec.ts
 ```
 
 可选环境变量：`DINGDA_E2E_AGENT_ID`（默认 `opencode`）、`DINGDA_E2E_MODEL_ID`（默认沿用该
@@ -204,6 +205,42 @@ search、不补详情、不比价）、`DINGDA_E2E_MIN_PRODUCTS`（默认 1）�
 `openrouter/liquid/lfm-2.5-2.6b:free`，上限 65536）会直接报 context length 超限、
 `exitCode=1`。用 `DINGDA_E2E_MODEL_ID` 显式指定一个上下文足够的模型；不指定时会沿用
 `app_settings` 里的用户偏好，同一用例在不同机器上结论可能不同。
+
+**`specs/ai-codex-product.spec.ts` —— Codex 找商品（业务链路 + 直播流 + 步骤块 + 中文）：**
+
+- ✅ 首页选 **Codex** → 发一句「闲鱼搜露营椅」→ 工作页跑完
+- ✅ 断言：真的调过工具、至少一步是搜索类（不是只聊天）
+- ✅ 断言**工具身份被还原**：步骤块标题出现「搜索商品 / 查看商品详情 / 连贯浏览 /
+  预览网页 / 扫码登录 / 比价找同款」这类面向用户的动作文案，而不是清一色「执行操作」。
+  注意直播帧**不许**把它覆盖成页面标题（`ui-agent/run/reducer.ts` 的 `browserFrame` 分支
+  曾经是 `label: page.title || prev.label`，正好把后端刚还原出来的标题抹掉）
+- ✅ 断言**步骤块真的能折叠**：真实点标题栏，开合状态必须翻转，再点回来
+- ✅ 断言**命令行块**：展开后读到 `tool <子命令> …` 形态的裸入口，
+  且**不出现**解释器路径与 `run_tool.py` / `tools/cli`
+- ✅ 断言**完整输出**：折叠区里最长的一段原始返回 > 200 字（不是被 hint 那样截到 160）
+- ✅ 断言页面出现**直播流**（运行中采样 LIVE 徽标 / `data:image` 截图，
+  跑完补采，再看落库 `browser_history` 里带 `screenshot_url` 的帧 —— 三取一）
+- ✅ 断言**商品**：结果面板「共 N 条」≥ 阈值，且落库 `products.total` 对得上
+- ✅ 断言**全程中文**：助手正文含中文且无超长英文串；思考块（展开后）有内容则必须中文
+- ✅ 本机无 Codex 时跳过（不失败）
+
+> 步骤块断言靠源码里写死的 `data-testid`：`step-block`（`blocks/step.tsx` 的 `Collapse`）、
+> `step-terminal-command` / `step-terminal-output`。收起时正文被 `Collapse` 卸载，
+> 所以命令行与输出**必须先真实点开再读** —— 这本身也是折叠是否生效的判据。
+
+一轮真实抓商品常见 3~10 分钟。
+
+```bash
+pnpm e2e:codex
+
+# 干跑：只验能选中 / 能开跑 / 能取消
+DINGDA_E2E_CODEX_DRY_RUN=1 pnpm e2e:codex
+```
+
+可选：`DINGDA_E2E_MODEL_ID`（本机 Codex 若走自定义代理，请显式指定如
+`deepseek-v4-flash`，否则可能落到未鉴权的 api.openai.com 报 401）、
+`DINGDA_E2E_RUN_TIMEOUT_MS`（默认 600000）、`DINGDA_E2E_MIN_PRODUCTS`（默认 1）、
+`DINGDA_E2E_AGENT_ID`（默认 `codex`）。
 
 **`specs/agent-runtimes.spec.ts` —— Agent 检测与模型选择：**
 
@@ -219,6 +256,22 @@ search、不补详情、不比价）、`DINGDA_E2E_MIN_PRODUCTS`（默认 1）�
   记下原值 → 换一个 → 校验 → 用 UI 改回原值再校验。还原放在 `finally`，
   中途断言失败也不会把偏好留在改动后的值上；UI 还原失败才用接口兜底并告警。
 - 用例**不改**默认 Agent（那需要用户明确要求）。
+
+**`scripts/e2e_orchestrate.py`（Python，不启 WebView）—— CLI 主编排器握手：**
+
+- ✅ 角色面：parent 只编排 / worker 只取证 / child 无人设
+- ✅ 工具注册：`child_run|resume|cancel|status` + `repair_dom`
+- ✅ RepairOwner：默认 escalate，`crawler` 才内联
+- ✅ 握手：`child_run` → `needs_repair` → `repair_dom` → `child_resume` → `completed`
+- ✅ Store / live `agentPhase` / `child_cancel`
+
+不启真实 Codex/爬虫（假 `run_cli` + 假 `run_product`）。跑：
+
+```bash
+pnpm --filter @v2/e2e e2e:orchestrate
+# 或
+uv run --directory packages-py/api python scripts/e2e_orchestrate.py
+```
 
 **不覆盖**（别往这里塞）：
 

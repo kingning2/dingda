@@ -56,8 +56,9 @@
  *     （`ui-composer/prompt-composer.tsx`）—— 发送与「正在跑」；
  *   - `[data-slot="dropdown-menu-{trigger,content,item,sub-trigger,sub-content}"]`
  *     （`ui-primitives/dropdown-menu.tsx`）—— 首页的 Agent 选择器；
- *   - 结果面板：`h2` 文本「爬取结果」的 `parentElement` 即面板根
+ *   - 结果面板：`h2` 文本「爬取结果」的 `closest("header")` 的 `parentElement` 即面板根
  *     （`ui-ai/src/panel/products.tsx`），再往下取 `[data-slot="card-title"]`。
+ *     注意 h2 与面板根之间隔了 `<header>` 和一层 `div.min-w-0`，别直接取 h2 的父节点。
  *
  * 已知坑（每个命令 5 秒的自动聚焦、打标记前必须清标记等）见 `e2e/README.md`
  * 与 `helpers/ui.ts`。
@@ -182,11 +183,14 @@ function probeWork(): Promise<WorkProbe> {
     const text = (node: Element | null | undefined): string =>
       (node?.textContent ?? "").replace(/\s+/g, " ").trim();
 
-    const header = Array.from(document.querySelectorAll("h2")).find(
+    const titleNode = Array.from(document.querySelectorAll("h2")).find(
       (node) => text(node) === "爬取结果",
     );
-    // products.tsx 的结构：面板根 div > header，故 header 的父节点就是面板根。
-    const panel = header?.parentElement ?? null;
+    // products.tsx 的结构是「面板根 div > header > div > h2」—— h2 外面还包着一层
+    // `div.min-w-0`（用来截断标题）。所以**不能**拿 h2 的父节点当面板根：那层 div 里
+    // 既没有「共 N 条」计数，也没有商品卡片，会得出「面板是空的」这种假阴性。
+    // 正确路径是先向上找到 <header>，再取它的父节点。
+    const panel = titleNode?.closest("header")?.parentElement ?? titleNode?.parentElement ?? null;
     const totalNode = panel
       ? Array.from(panel.querySelectorAll("span")).find((node) => text(node).startsWith("共 "))
       : null;
@@ -262,7 +266,40 @@ type RunTimeline = {
   steps: string[];
   /** 是否在中途（跑完之前）捕捉到错误。 */
   errored: boolean;
+  /**
+   * 运行过程中是否在界面上见过浏览器直播流。
+   * 判据：步骤卡出现 `LIVE` 徽标、或「直播中…」、或 data:image 截图。
+   */
+  liveSeen: boolean;
+  /** 采样到直播时的样例（排障用）。 */
+  liveSamples: string[];
 };
+
+/** 读当前页上的直播流痕迹（步骤卡 PagePreview）。 */
+function probeLiveStream(): Promise<{ live: boolean; sample: string | null }> {
+  return browser.execute(() => {
+    const body = (document.body.innerText ?? "").replace(/\s+/g, " ");
+    const hasLiveWord = body.includes("直播中") || body.includes("LIVE");
+    // PagePreview：data:image 截图 = 后端 live-frame 推上来的
+    const shot = Array.from(document.querySelectorAll("img")).find((img) => {
+      const src = img.getAttribute("src") ?? "";
+      return src.startsWith("data:image");
+    });
+    const hasShot = Boolean(shot);
+    const liveBadge = Array.from(document.querySelectorAll("span, div")).some(
+      (node) => (node.textContent ?? "").trim() === "LIVE",
+    );
+    const live = liveBadge || (hasLiveWord && hasShot) || (hasShot && body.includes("打开中"));
+    const sample = shot
+      ? `shot=${(shot.getAttribute("src") ?? "").slice(0, 32)}… alt=${shot.getAttribute("alt") ?? ""}`
+      : liveBadge
+        ? "LIVE badge"
+        : hasLiveWord
+          ? "直播文案"
+          : null;
+    return { live: live || liveBadge || (hasShot && hasLiveWord), sample };
+  });
+}
 
 /**
  * 运行期间分步采样。
@@ -281,6 +318,8 @@ async function collectRunTimeline(timeoutMs: number): Promise<RunTimeline> {
   const steps: string[] = [];
   let lastDetail: string | null = null;
   let errored = false;
+  let liveSeen = false;
+  const liveSamples: string[] = [];
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -302,10 +341,19 @@ async function collectRunTimeline(timeoutMs: number): Promise<RunTimeline> {
       }
     }
 
+    const live = await probeLiveStream();
+    if (live.live) {
+      liveSeen = true;
+      if (live.sample && liveSamples.length < 5 && !liveSamples.includes(live.sample)) {
+        liveSamples.push(live.sample);
+        log(SCOPE, `见到直播流：${live.sample}`);
+      }
+    }
+
     await browser.pause(TIMELINE_INTERVAL_MS);
   }
 
-  return { phases: [...phases], steps, errored };
+  return { phases: [...phases], steps, errored, liveSeen, liveSamples };
 }
 
 /** 首页是否已渲染。 */
@@ -412,20 +460,40 @@ function subMenuState(): Promise<{ open: boolean; items: string[] }> {
  */
 
 /**
+ * `DINGDA_E2E_MODEL_ID` 对应的候选文案（下拉里渲染的是 `model.label`）。
+ *
+ * 为什么需要这层解析：`composer-agent-picker.tsx` 的子菜单渲染的是 `model.label`，
+ * 而人自然想按 `model.id` 指定模型（如 `deepseek-v4-flash`）。两者都接受 ——
+ * 先用 `agent.models` 把 id 翻成 label，再拿去匹配可见项。
+ * codex 正是 label ≠ id 的典型（id `deepseek-v4-flash` / label `DeepSeek V4 Flash`），
+ * 少了这一步就必然报「子菜单可见项里找不到」。
+ */
+function modelCandidates(agent: AgentRuntimeItem): string[] {
+  if (!MODEL_ID) return [];
+  const label = (agent.models ?? []).find((model) => model.id === MODEL_ID)?.label ?? null;
+  return label && label !== MODEL_ID ? [MODEL_ID, label] : [MODEL_ID];
+}
+
+/**
  * 决定点哪个模型。
  *
- * - 指定了 `DINGDA_E2E_MODEL_ID` → 只在**可见项**里找它（全等优先，其次包含）。
- *   找不到返回 null，由调用方报错并列出可见项 —— 让人一眼看出是「模型没渲染出来」，
- *   而不是笼统的「选择失败」。
+ * - 指定了 `DINGDA_E2E_MODEL_ID` → 只在**可见项**里找它（全等优先，其次包含；
+ *   id 与 label 都算命中，见 `modelCandidates`）。找不到返回 null，由调用方报错
+ *   并列出可见项 —— 让人一眼看出是「模型没渲染出来」，而不是笼统的「选择失败」。
  * - 没指定 → 沿用原策略：优先接口给的首选模型，否则第一个可见项。
  */
 function pickModel(agent: AgentRuntimeItem, items: string[]): string | null {
   if (MODEL_ID) {
-    return (
-      items.find((item) => item === MODEL_ID) ??
-      items.find((item) => item.includes(MODEL_ID)) ??
-      null
-    );
+    const candidates = modelCandidates(agent);
+    for (const wanted of candidates) {
+      const exact = items.find((item) => item === wanted);
+      if (exact) return exact;
+    }
+    for (const wanted of candidates) {
+      const partial = items.find((item) => item.includes(wanted));
+      if (partial) return partial;
+    }
+    return null;
   }
   const models = agent.models ?? [];
   const preferred = models.find((model) => model.id === agent.preferred_model_id)?.label ?? null;
@@ -438,7 +506,9 @@ async function selectComposerAgent(agent: AgentRuntimeItem): Promise<void> {
   // 注意：指定了 MODEL_ID 时必须连模型一起核对，否则会静默沿用用户偏好里的模型。
   const initial = await agentMenuState();
   const agentMatched = Boolean(initial.triggerText?.includes(agent.name));
-  const modelMatched = !MODEL_ID || Boolean(initial.triggerText?.includes(MODEL_ID));
+  // 触发器文案形如 `Codex · DeepSeek V4 Flash`，所以这里也要用 id/label 两种候选去比。
+  const modelMatched =
+    !MODEL_ID || modelCandidates(agent).some((wanted) => initial.triggerText?.includes(wanted));
   if (agentMatched && modelMatched) {
     log(SCOPE, `Agent 已是「${agent.name}」（${initial.triggerText}），跳过选择`);
     return;
@@ -808,6 +878,26 @@ describe("AI 找商品（外部 Agent 真实跑一轮）", () => {
     expect(timeline.steps.length).toBeGreaterThan(0);
     expect(timeline.phases.length).toBeGreaterThan(0);
 
+    // Skill / 爬虫：状态行详情应出现搜索类步骤（dingda-crawl → search）
+    const skillLike = timeline.steps.some((step) =>
+      /搜索|search|闲鱼|小红书|1688|爬取|商品/i.test(step),
+    );
+    expect(skillLike).toBe(true);
+    log(SCOPE, `Skill/工具步骤已出现：${timeline.steps.join(" → ")}`);
+
+    // 直播流：运行中至少见过一次 LIVE / 截图（search 会推 live-frame）
+    if (!timeline.liveSeen) {
+      // 兜底：跑完后页面上可能还留着 data:image 历史截图
+      const after = await probeLiveStream();
+      if (after.live) {
+        timeline.liveSeen = true;
+        if (after.sample) timeline.liveSamples.push(after.sample);
+        log(SCOPE, `跑完后补见到直播/截图痕迹：${after.sample}`);
+      }
+    }
+    expect(timeline.liveSeen).toBe(true);
+    log(SCOPE, `直播流采样：${JSON.stringify(timeline.liveSamples)}`);
+
     // 落盘一份快照（含时间线），失败后不用再复跑一轮（一轮几分钟）。
     const snapshot = await waitForPersistedWork(workId);
     const artifact = dumpRunArtifact(`ai-search-${workId}`, {
@@ -834,6 +924,13 @@ describe("AI 找商品（外部 Agent 真实跑一轮）", () => {
     const apiItems = snapshot?.products?.items ?? [];
     expect(apiItems.length).toBeGreaterThanOrEqual(MIN_PRODUCTS);
     expect(snapshot?.products?.total ?? 0).toBeGreaterThanOrEqual(MIN_PRODUCTS);
+
+    const historyShots = (snapshot?.browser_history ?? []).filter((frame) =>
+      Boolean(frame.screenshot_url),
+    );
+    if (historyShots.length > 0) {
+      log(SCOPE, `落库 browser_history 含截图 ${historyShots.length} 帧（直播链路旁证）`);
+    }
 
     // 两侧对得上：页面看到的标题必须能在落库数据里找到。
     const apiTitles = apiItems.map((item) => item.title);

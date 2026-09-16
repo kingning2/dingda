@@ -7,10 +7,14 @@
   "scripts": {
     "build:web": "pnpm --filter @v2/app-web build",
     "build:app": "cargo build -p client --features e2e",
-    "pretest": "node ./scripts/require-artifacts.mjs",
+    "build": "pnpm run build:web && pnpm run build:app",
+    "e2e": "node ./scripts/run.mjs",
+    "e2e:codex": "node ./scripts/run.mjs -- --spec ./specs/ai-codex-product.spec.ts",
+    "e2e:orchestrate": "uv run --directory ../packages-py/api python scripts/e2e_orchestrate.py",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "wdio run wdio.conf.ts",
-    "test:debug": "wdio run wdio.conf.ts --logLevel debug"
+    "test": "node ./scripts/run.mjs",
+    "test:only": "node ./scripts/require-artifacts.mjs && wdio run wdio.conf.ts",
+    "test:debug": "node ./scripts/run.mjs -- --logLevel debug"
   },
   "devDependencies": {
     "@wdio/cli": "^9.31.7",

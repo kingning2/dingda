@@ -45,6 +45,13 @@ export type WorkDetailSnapshot = {
   products?: WorkProductsView;
   comparison?: { kind?: string; items?: unknown[] } | null;
   messages?: Array<{ role: string; content: string }>;
+  /** 浏览器历史帧（含截图）；有值说明跑通过直播/截图链路。 */
+  browser_history?: Array<{
+    id?: string;
+    url?: string;
+    title?: string;
+    screenshot_url?: string | null;
+  }>;
 };
 
 async function getJson<T>(port: number, urlPath: string, timeoutMs = 10_000): Promise<T> {
