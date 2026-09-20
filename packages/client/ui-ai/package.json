@@ -13,13 +13,13 @@
     "lucide-react": "^1.38.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "@v2/app-state": "workspace:*",
     "@v2/contracts": "workspace:*",
     "@v2/runtime": "workspace:*",
     "@v2/ui-agent": "workspace:*",
     "@v2/ui-composer": "workspace:*",
     "@v2/ui-crawler": "workspace:*",
     "@v2/ui-monitor": "workspace:*",
+    "@v2/ui-model-config": "workspace:*",
     "@v2/ui-primitives": "workspace:*"
   },
   "peerDependencies": {

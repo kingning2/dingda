@@ -12,7 +12,7 @@
  *   - **不配 alias。** `@v2/*` 走 pnpm 工作区软链解析 —— 与 `vite.config.ts` 同一条
  *     约定（那里明确写了「刻意不在这里加别名，否则会掩盖工作区是否真的接通」）。
  *   - `environment: "node"`：目前测的都是纯函数。要测组件再按需换 jsdom。
- *   - 不排除 `e2e/`：它不在 include 范围内（有自己的 wdio 套件）。
+ *   - `e2e/` 已随 WebdriverIO 套件移除；`e2e-web/` 走 Playwright，不在 include 范围内。
  */
 import { defineConfig } from "vitest/config";
 

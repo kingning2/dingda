@@ -27,6 +27,7 @@
     "@v2/ui-feedback": "workspace:*",
     "@v2/ui-home": "workspace:*",
     "@v2/ui-layout": "workspace:*",
+    "@v2/ui-model-config": "workspace:*",
     "@v2/ui-monitor": "workspace:*",
     "@v2/ui-primitives": "workspace:*",
     "@v2/ui-theme": "workspace:*"

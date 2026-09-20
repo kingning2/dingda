@@ -3,18 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Agent 域：外部 CLI Runtime 探测与运行态",
+  "description": "Agent 域：运行事件归约、SSE 流、工作对话持久化",
   "exports": {
-    ".": "./src/index.ts",
     "./*": "./src/*"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "lucide-react": "^1.38.0",
     "@v2/app-state": "workspace:*",
     "@v2/contracts": "workspace:*",
-    "@v2/runtime": "workspace:*",
-    "@v2/ui-primitives": "workspace:*"
+    "@v2/runtime": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.1.0"

@@ -9,6 +9,7 @@
     "./*": "./src/*"
   },
   "dependencies": {
+    "@tanstack/react-form": "^1.33.5",
     "lucide-react": "^1.38.0",
     "@v2/contracts": "workspace:*",
     "@v2/runtime": "workspace:*",

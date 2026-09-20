@@ -108,6 +108,12 @@
       "@v2/ui-monitor/*": [
         "./packages/client/ui-monitor/src/*"
       ],
+      "@v2/ui-model-config": [
+        "./packages/client/ui-model-config/src/index.ts"
+      ],
+      "@v2/ui-model-config/*": [
+        "./packages/client/ui-model-config/src/*"
+      ],
       "@v2/app-web": [
         "./apps/web/src/index.ts"
       ],
