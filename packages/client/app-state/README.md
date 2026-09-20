@@ -27,7 +27,7 @@
 **不要往这里加业务依赖。** 一旦引入 `@v2/ui-*`，它就不再是叶子，环会立刻回来。
 谁负责「写」状态，谁留在自己的域里：
 
-- Agent 侧写入 → `@v2/ui-agent/agent-runtime-scan`
+- Agent 侧写入 → `@v2/ui-agent/work-list`
 - 账号侧写入 → `@v2/ui-account/account-discovery`
 - 需要「两边一起做」的启动编排 → `apps/web/src/boot`
 

@@ -55,7 +55,7 @@ pnpm check:deps      # node scripts/check-workspace-deps.mjs，约 0.3 秒
 4. Browser 禁止出现 Xianyu、1688、商品、价格等平台业务逻辑。
 5. 平台新增只修改 `packages-py/crawler/src/crawler/sources/<platform>/`，浏览器新增只修改 `packages-py/browser/src/browser/adapters/<browser>/`。
 6. 登录/账号语义属于 `packages-py/channels/src/channels/<platform>/`，Browser 只负责通用 Session/Cookie 能力。
-7. Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+7. Agent / 节点不得直接操作 Playwright/Camoufox，统一通过 Node → Crawler → Browser。
 8. 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
 ## 怎么写功能
@@ -68,14 +68,14 @@ pnpm check:deps      # node scripts/check-workspace-deps.mjs，约 0.3 秒
 ## 分层（跨层 import = 错）
 
 ```text
-Agent → Tool → Crawler → BrowserPort → Adapter
-         ↘ Snapshot / Dedup
+Agent → Node（registry） → Crawler → BrowserPort → Adapter
+  ↘ Snapshot / Dedup
 ```
 
 - Agent 禁止：Playwright、Camoufox、sqlite、平台包（闲鱼/1688…）
 - 新平台：只加 `packages-py/crawler/src/crawler/sources/<id>/`
 - 新浏览器：只加 `packages-py/browser/src/browser/adapters/`
-- 新代码目录：`packages-py/{agent,crawler,browser,tools}/src/<pkg>/`，勿堆进 `domains/*/service.py` 上帝类
+- 新代码目录：`packages-py/{agent,crawler,browser}/src/<pkg>/`，勿堆进 `domains/*/service.py` 上帝类；不要再建 `packages-py/tools/`
 - 禁止垃圾桶：`utils/`、`helpers/`、`services/`、`runtime/all_*.py`
 
 ## 契约与改动顺序

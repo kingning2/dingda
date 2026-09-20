@@ -1,144 +1,141 @@
 ---
 name: tool-architecture
-description: 约束叮答 Tool 契约与实现边界。编写 crawler.search_products、browser.open/click/extract、snapshot.save、Agent 可调用能力，或改 tool registry 时使用。每个 Tool 必须有名称、输入/输出 Schema、错误模型、timeout 与 cancellation；禁止隐式修改 Agent State。
+description: 约束叮答 Agent 节点（工具）契约与实现边界。编写 list/detail/login/live 节点、registry、或把 Crawler 暴露给 Agent 时使用。每个节点必须有名称、输入/输出 Schema、错误模型；禁止隐式修改 Agent State；禁止再建 packages-py/tools/。
 ---
 
-# Tool 架构开发规范
+# Tool / 节点架构开发规范
 
-先读 [layers.md](../layers.md)（含**核心规则**原文）。Tool 是 Agent 与底层能力之间的边界。Agent 只认识 Tool Contract。
+先读 [layers.md](../layers.md)（含**核心规则**原文）。**节点即工具**：Agent 与底层能力之间的边界在 `agent/nodes/`，经 `core/registry.py` 调用。不要再建 `packages-py/tools/`。
 
 ## 核心规则（本层相关）
 
-- Agent / Tool 不得直接操作 Playwright/Camoufox，统一通过 Tool → Crawler → Browser。
+- Agent / 节点不得直接操作 Playwright/Camoufox，统一通过 Node → Crawler → Browser。
 - Crawler 禁止直接依赖 Playwright / Camoufox，必须依赖 Browser Interface。
 - 禁止为了该架构新增 Rust Crawler、Rust Browser 或数据库层。
 
 ## 何时必须遵守
 
-- 给产品 Agent 加能力
-- 写 CLI skill 注入的工具（`packages-py/cli/src/cli/skills/`，经 `tools.cli` 暴露）
-- 把 Crawler / Browser / Snapshot 暴露给 Agent 或外部 CLI
-- 改工具名、参数、错误码、超时
+- 给产品 Agent 加能力（新节点）
+- 把 Crawler / Browser / Snapshot 暴露给 Agent
+- 改节点名、入参/出参、错误码
 
 ## 目标目录
 
 ```text
-packages-py/tools/src/tools/
-├── registry.py
-├── search.py      # 契约 + run_search
-├── product.py     # 契约 + run_product
-└── …
+packages-py/agent/src/agent/
+├── nodes/           # 每个节点：入参 + 出参 + _execute
+│   ├── list/
+│   ├── detail/
+│   ├── login.py
+│   └── live.py
+├── core/
+│   ├── registry.py  # call_node / list_nodes
+│   └── node.py      # Node / NodeContext / NodeOutput
+└── engine/
+    └── tools.py     # 节点 → OpenAI tools 表
 ```
 
-按现有包习惯放在 `packages-py/tools/src/tools/`，不要新建顶层 `tools/`，也不要在 `agent/tools/` 再写一套实现。
-
-CLI skill 不是第二套能力模型：新 Tool 先在 `tools/<name>.py` 落地（Schema + `run_*`），再挂 `registry.py`；CLI skill 与产品 Agent **共用**同一 Executor（`tools.cli` 只是入口）。
+不要新建 `packages-py/tools/`，也不要在 `agent/tools/` 再写一套实现。能力就落在 `nodes/`。
 
 ## 契约流
 
 ```text
-Tool Definition
+Node Definition（name / description / input_model）
     ↓
-Input Schema
+registry.call_node
     ↓
-Executor
+Node._execute → Crawler
     ↓
-Output Schema
+NodeOutput
 ```
 
-Tool 必须：
+节点必须：
 
-* 有明确名称
-* 有输入 Schema
-* 有输出 Schema
-* 有错误模型
-* 支持 timeout
-* 支持 cancellation
-* 支持结构化事件
+* 有明确名称（注册到 `ALL_NODES`）
+* 有输入 Schema（pydantic `input_model`）
+* 有输出 Schema（`NodeOutput` 子类）
+* 失败用 `ok=False` + `error_code`，不抛异常打断发动机
 * 不允许隐式修改 Agent State
 
-名称示例（当前选品）：
+名称示例（当前）：
 
 ```text
-search
-product
+login
+list_xianyu / list_xiaohongshu / list_ali1688
+detail_xianyu / detail_xiaohongshu
+live
 ```
 
-## 单文件 Tool vs registry
+## 单文件节点 vs registry
 
 | 层 | 放什么 | 谁依赖 |
 |----|--------|--------|
-| `tools/<name>.py` | 名字、描述、Input/Output、超时、`run_*` | registry、测试 |
-| `registry.py` | 按名查找、执行 | Agent Executor、`tools.cli` |
+| `nodes/<…>.py` | 名字、描述、Input/Output、`_execute` | registry、测试 |
+| `core/registry.py` | 按名查找、发 toolCall/toolResult | engine |
+| `engine/tools.py` | 节点 → 模型 tools 数组 | engine |
 
-Agent Core 只经 `registry.call_tool`。禁止直接 import Crawler Source / Playwright。
+发动机只经 `registry.call_node`。禁止直接 import Crawler Source / Playwright。
 
 ## 执行语义
 
-- **timeout**：Executor 必须能在时限结束时停止调用（取消 token 或等价物），并返回明确错误（如 `tool.timeout`），而不是挂死。
-- **cancellation**：Agent 取消 run 时向下传；Browser/Crawler 实现要能中止，不要无视。
-- **结构化事件**：至少 `tool.started` / `tool.progress` / `tool.completed` / `tool.failed`，payload JSON 可序列化。产品 Agent 经 Python 事件总线/SSE；不要为 Tool 进度新增 Tauri emit。
-- **错误模型**：稳定 `code` + `message` + 可选 `details`。不要把 Playwright traceback 当唯一输出。
-- **无隐式 State**：Executor 返回 Output Schema；由 Agent loop 写 State。Tool 不要去改 `agent.state`。
+- **cancellation**：经 `NodeContext.cancel`；浏览器抓取当前只能在步与步之间停下。
+- **结构化事件**：`toolCall` / `toolResult` 由 registry 发；节点可经 `ctx.emit_frame` 推浏览器帧。
+- **错误模型**：稳定 `error_code` + `message`。不要把 Playwright traceback 当唯一输出。
+- **无隐式 State**：节点返回 `NodeOutput`；由发动机回填消息。节点不要去改「对话状态」。
 
-## 谁可以调用 Tool
+## 谁可以调用节点
 
 | 调用方 | 路径 |
 |--------|------|
-| 产品 Agent | `registry.call` |
-| 外部 CLI（Codex 等） | Skill 注入的 `tools.cli` → 同一 `registry.call` |
-| 前端手动爬虫 | **可以不经 Tool**，HTTP → Crawler 应用服务 → 同一 Crawler Core |
-
-不要为 CLI 单独再写一个 `XianyuSearch` 而产品 Agent 用另一套参数。
+| 产品 Agent 发动机 | `registry.call_node` |
+| 前端手动爬虫 | **可以不经节点**，HTTP → Crawler 应用服务 → 同一 Crawler Core |
 
 ## 依赖
 
 ```text
-Workflow → Agent → Tool Contract → Tool Implementation → Crawler / Browser → Adapter
+api → agent.engine → registry.call_node → nodes → Crawler → Browser → Adapter
 ```
 
 禁止：
 
 ```text
-❌ Agent → XianyuCrawler
-❌ Agent → Playwright
-❌ Agent → SQLite
-❌ Workflow → Camoufox
-❌ CLI skill / `tools.cli` 入口里直接 import 平台 vendor 再抄一份业务
+❌ Agent / Node → Playwright / Camoufox
+❌ Agent → SQLite / infrastructure.db
+❌ Node → crawler.sources.* 私有细节捷径（走 crawler 公开插座）
+❌ 再建 packages-py/tools/ 第二套能力包
 ```
 
 ## 错误 / 正确
 
 ```python
-# ❌ Tool 偷偷改 Agent，且打开 Playwright
-class SearchTool:
-    async def run(self, agent, q):
+# ❌ 节点偷偷改对话状态，且打开 Playwright
+class SearchNode:
+    async def _execute(self, inp, *, ctx):
         from playwright.async_api import async_playwright
-        agent.state["items"] = []
+        ctx.meta["items"] = []
         browser = await async_playwright().start()
 ```
 
 ```python
-# ✅ 纯契约执行
-async def run_search(inp: SearchInput) -> SearchOutput:
-    return await …  # 经 Crawler → BrowserPort
+# ✅ 经 crawler 插座取数，失败用 ok=False
+async def _execute(self, inp: ListInput, *, ctx: NodeContext) -> ListOutput:
+    return await …  # 经 crawler → BrowserPort
 ```
 
-## 新增 Tool 清单
+## 新增节点清单
 
-1. 在 `packages-py/tools/src/tools/<name>.py` 写名字 + Input + Output + `run_*`
-2. `run_*` 只调 Crawler/Browser Port，不调平台私有包细节之外的捷径
-3. 注册到 `registry.py`
-4. 需要给 CLI 用时，`tools.cli` 用同一 registry 注册
-5. 加超时/取消/事件
-6. 单测只测 Schema 与假 Port，不启动浏览器
-7. 不改 Agent Core（除非 Planner 的允许列表要加名字）
+1. 在 `packages-py/agent/src/agent/nodes/` 写名字 + Input + Output + `_execute`
+2. `_execute` 只调 Crawler 插座，不调平台私有包捷径
+3. 挂到 `nodes/__init__.py` 的 `ALL_NODES`
+4. 需要登录恢复时套 `with_login_recovery`
+5. 单测只测 Schema 与假 Port，不启动浏览器
+6. 不改发动机核心（除非系统提示要加选型说明）
 
 ## 检查清单
 
 - [ ] 有名字、输入/输出 Schema、错误码
-- [ ] 有 timeout 与 cancellation
-- [ ] 不修改 Agent State
-- [ ] 实现不 import 平台 Source 或 Playwright 实现类
-- [ ] CLI skill 与产品 Agent 未分叉业务
+- [ ] 失败不抛未捕获异常打断循环
+- [ ] 不修改对话 State
+- [ ] 实现不 import Playwright / Camoufox
+- [ ] 未再建 `packages-py/tools/`
 - [ ] 未把该能力做成 Tauri command

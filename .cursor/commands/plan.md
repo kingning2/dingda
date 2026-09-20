@@ -13,7 +13,7 @@ description: 变更前最小计划。开发 Agent / Crawler / Browser / Tool 或
 2. **契约检查**
    - 产品 HTTP：`packages-py/contracts/src/contracts/` 与 `packages/contracts/src/` 对齐；顺序 Contract → Python → React（不必改 Rust）
    - CLI Agent 事件：Python SSE 与 `packages/contracts/src/agent-event.ts`；启动在 `packages-py/cli/src/cli/`，探测在 Tauri
-   - Tool：`packages-py/tools/src/tools/`（每工具一文件 + registry）
+   - Tool（节点）：`packages-py/agent/src/agent/nodes/` + `core/registry.py`
 
 3. **最小改动范围**
    - 只列要改的目录与文件类型

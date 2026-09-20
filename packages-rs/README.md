@@ -7,7 +7,6 @@ Tauri 壳拆出来的 Rust 成员包。工作区根清单在仓库根 [`Cargo.to
 
 ```text
 common ← camoufox ← python ← client
-common ← runtime  ← agent  ← client
 ```
 
 依赖单向、无环。`common` 是唯一被所有包依赖的底座；`client` 是唯一可执行体。
@@ -19,8 +18,6 @@ common ← runtime  ← agent  ← client
 | [common/](common/README.md) | 日志出口、路径解析、平台标签 | 壳无法工作（底座） |
 | [camoufox/](camoufox/README.md) | Camoufox 定位与解压 | 去掉 Camoufox 浏览器支持 |
 | [python/](python/README.md) | Python Server 子进程生命周期与启动环境 | 去掉内置 Server 拉起 |
-| [runtime/](runtime/README.md) | 外部 CLI Runtime 定义 / 探测 / 托管下载 | 去掉 CLI 探测与下载 |
-| [agent/](agent/README.md) | CLI Agent 目录与探测（IPC DTO） | 去掉设置页 Agent 列表 |
 | [client/](client/README.md) | Tauri 客户端：窗口 / 托盘 / IPC / 编排 | 无桌面程序（唯一可执行体） |
 
 ## 构建入口

@@ -1,7 +1,7 @@
 # commands
 
-前端 `invoke` 的 Tauri command。只做壳能力：Python 地址、本机对话框、CLI 探测/下载。  
-CLI **启动/取消**在 Python `/v1/agent/runtimes/...`；账号/搜品走 HTTP。
+前端 `invoke` 的 Tauri command。只做壳能力：Python 地址、本机对话框、OS 集成。  
+Agent 运行、账号、搜品一律走 HTTP（Python Server），不经壳。
 
 新增 command：本目录加函数，并在 [../lib.rs](../lib.rs) 的 `generate_handler!` 登记。
 
@@ -9,7 +9,7 @@ CLI **启动/取消**在 Python `/v1/agent/runtimes/...`；账号/搜品走 HTTP
 
 ### `mod.rs`
 
-`pub mod` 列出本层五个模块。无逻辑。
+`pub mod` 列出本层四个模块。无逻辑。
 
 ### `api.rs`
 
@@ -19,17 +19,6 @@ CLI **启动/取消**在 Python `/v1/agent/runtimes/...`；账号/搜品走 HTTP
 - `get_server_status` — `{ ready, apiBaseUrl }`，`ready` 表示 `/health` 已通
 
 前端不要写死端口（除非纯浏览器 dev）。
-
-### `agent_runtime.rs`
-
-外部 CLI Agent IPC（探测 / 登录 / 下载，不 spawn）：
-
-- `list_agent_runtimes_command` → `agent::catalog::list_agent_runtimes`
-- `list_agent_registry_command` — 未扫描时的注册表占位
-- `probe_agent_runtime` / `login_agent_runtime` → `agent::probe`
-- `download_agent_runtime` — 调 `RuntimeDefinition::download_managed`（[runtime/install.rs](../runtime/install.rs)）
-
-启动与取消：Python `POST /v1/agent/runtimes/{id}/run` / `.../runs/{run_id}/cancel`。
 
 ### `dialog.rs`
 

@@ -9,8 +9,8 @@ index.ts               # 包入口桶文件（re-export 公开 API）
 layout.tsx             # 分栏装配：左 Chat / 右 结果|设置
 
 work/                  # Agent 工作编排（会话 + 发送 + 输出解析）
-  send.ts              # 发起一次 Agent 运行：乐观插入 → SSE → 逐事件更新 detail
-  session.ts           # 历史加载：SQLite → session 快照 → 首页草稿 → 空壳
+  send.ts              # 发起 / 接回一次 Agent 运行：乐观插入 → SSE（或续传）→ 逐事件更新 detail
+  session.ts           # 历史加载：SQLite → session 快照 → 首页草稿 → 空壳；对账在跑 run
   agent-output.ts      # 工具输出 → 商品 / 比价视图的解析与合并
 
 chat/                  # 聊天记录（本目录的核心）
@@ -22,7 +22,7 @@ chat/                  # 聊天记录（本目录的核心）
   working-status.tsx   # Codex 状态行 + `└` 详情推导
   use-sticky-and-follow.ts  # sticky 分区 + 跟随底部
   use-side-panel.ts    # 侧边栏 Tab + 聊天面板宽度拖拽
-  use-work-detail.ts   # 加载详情 / 自动发送草稿 / 发送编排 / 设置变更
+  use-work-detail.ts   # 加载详情 / 打活跃探针 / 起手这一轮（发草稿或接回）/ 发送编排 / 设置变更
   chat.tsx             # Chat 面板：轮次 + 虚拟滚动 + 装配输入框
   composer-footer.tsx  # 输入框（无状态包装）
   stick-to-bottom.ts   # 是否贴底的纯函数
@@ -70,6 +70,12 @@ markdown/              # Markdown 渲染 + 代码块 + 链接
 | 等待 | Composer 上方 `• Working (0s • esc to interrupt)`，详情用 `└` |
 | 滚动 | 用户脱离底部后不再自动跟随；滚回底部自动恢复 |
 | 取消 | 活回合按 Esc |
+| 离开页面 | 只 `detach`（不叫停）：run 活得比页面长，重进这个 work 会探针 + 接回来 |
+| 刷新 / 断网 | 接回那次运行：从 0 重放已发生的事件重建那条助手消息；商品按 id 去重跨轮累积，比价第一段重放**替换**旧计数 |
+
+运行的寿命归服务端（`agent.runs`）：客户端断开只是退订。所以「刷新 / 杀进程 / 断网几十秒」
+之后重进工作页，看到的是完整过程继续直播，而不是「上次执行已中断」。那条文案只在
+探针查不到在跑 run 时才出现。
 
 运行阶段由 `@v2/ui-agent/run/phase` 统一映射：
 

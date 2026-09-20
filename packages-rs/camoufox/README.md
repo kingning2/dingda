@@ -12,6 +12,7 @@ Camoufox 浏览器运行时的**定位与解压**。只负责把 exe 找出来�
 - `bundled_camoufox_zip(app)` — 找 `resources/runtime/camoufox/camoufox-{tag}.zip`
 - `extract_camoufox_zip(zip, dest)` — 用 **`zip` crate** 逐文件解压，中断时不写 stamp
 - `ensure_camoufox_exe(app)` — 就绪则直接返回；否则解压到 `~/.dingda/v2/camoufox/current`
+  （**调用方**负责丢到后台线程；本函数本身是同步阻塞的）
 - `find_camoufox_exe(root)` — 在目录树里找启动器（含 macOS `.app` 布局）
 
 **就绪条件**：exe + `properties.json` + `.extract-stamp` 与 zip 的 size/mtime 对齐。

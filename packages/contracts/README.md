@@ -5,10 +5,10 @@
 ```text
 account.ts         账号 / 扫码 / 登录态
 agent-event.ts     产品 Agent 的事件流
-agent-runtime.ts   外部 CLI Runtime（探测结果、安装进度）
 ai-work.ts         AI 工作台
 composer.ts        输入区
 crawler.ts         采集
+monitor.ts         商品监控
 ```
 
 ## 为什么单独成包
@@ -32,4 +32,4 @@ import type { AccountStatus } from "@v2/contracts/account";
 ```
 
 不做 barrel 是刻意的：`export *` 遇到同名导出会**静默丢弃**，而协议里 `account` 与
-`agent-runtime` 都有 `status` 这类通用名，barrel 会制造难以定位的消失。
+`crawler` 都有 `status` 这类通用名，barrel 会制造难以定位的消失。

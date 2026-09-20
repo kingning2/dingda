@@ -1,7 +1,7 @@
 # domains/runtime
 
 Python Server 自己的进程快照（uptime、是否 running）。  
-不是 Tauri 里 Codex/Claude 的 Agent Runtime，不要往这里塞 CLI 事件。
+不是任何外部 CLI 的 Agent Runtime，不要往这里塞 Agent 运行事件。
 
 ## 本目录文件
 

@@ -59,9 +59,8 @@ packages-py/             Python uv workspace（成员见根 pyproject.toml）
   browser/               唯一可 import Camoufox / Playwright 的包
   channels/              登录 / cookie / 扫码 / IM WSS（不是爬虫 Source）
   crawler/               平台采集（经 contracts 的 BrowserPort 用浏览器）
-  tools/                 Agent 可调用工具（search / product / compare / preview）
   domains/               应用服务（account / channel / knowledge / runtime）
-  agent/                 产品 Agent（planning / tool 调用 / workflow）
+  agent/                 产品 Agent（engine + nodes + llm；节点即工具）
   cli/                   外部 CLI runtime（spawn + SSE + skill 注入）
   api/                   FastAPI 装配与入口（唯一可 import 全部）
   # 每包形如 packages-py/<pkg>/src/<pkg>/
@@ -300,7 +299,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 6. Source 是平台适配层。
 7. 新增一个电商平台时，原则上只需要新增 Source，不应该修改 Agent Core。
 8. 新增一种浏览器实现时，不应该修改 Agent。
-9. Tool 是 Agent 与底层能力之间的边界。
+9. 节点（nodes）是 Agent 与底层能力之间的边界。
 10. 所有跨模块通信必须使用明确的输入/输出 Schema。
 11. 不允许为了方便直接跨层 import。
 12. 不允许把所有逻辑堆到 `runtime/`、`utils/`、`services/` 等垃圾桶目录。
@@ -311,8 +310,9 @@ fetch(`${apiBaseUrl}/v1/...`)
 
 ```text
 packages-py/agent/src/agent/core/
-packages-py/agent/src/agent/workflows/
-packages-py/tools/src/tools/                 # Tool 边界（不要再做一套 agent/tools 实现）
+packages-py/agent/src/agent/engine/
+packages-py/agent/src/agent/nodes/           # Agent 可调用节点（即工具边界）
+packages-py/agent/src/agent/llm/
 packages-py/crawler/src/crawler/core/
 packages-py/crawler/src/crawler/sources/<platform>/
 packages-py/crawler/src/crawler/extraction/
@@ -323,10 +323,9 @@ packages-py/browser/src/browser/               # manager / session / context / a
 
 这些目录是新产品能力落点：
 
-- `packages-py/agent/src/agent/`（勿再堆 `domains/agent`）
+- `packages-py/agent/src/agent/`（勿再堆 `domains/agent`；工具落在 `nodes/`，不要再建 `packages-py/tools/`）
 - `packages-py/crawler/src/crawler/`（勿再堆 `domains/crawler`）
 - `packages-py/browser/src/browser/`
-- `packages-py/tools/src/tools/`（待建 Tool 契约）
 
 `api/` 只做 HTTP 校验与调用；`domains/account`、`domains/channel`、`channels/` 继续承担账号/登录/IM，不要改成 Crawler Source。
 
@@ -371,10 +370,17 @@ packages-py/browser/src/browser/               # manager / session / context / a
 ```
 
 ```text
-✅ Agent → Tool Contract
-✅ Tool Implementation → Crawler Port / Browser Port
+✅ Agent → Node（registry.call_node）
+✅ Node → Crawler Port / Browser Port
 ✅ Crawler Source → Browser Port
 ✅ Browser Interface ← CamoufoxAdapter
+```
+
+禁止再建：
+
+```text
+❌ packages-py/tools/
+❌ packages-py/bridge/
 ```
 
 ---
@@ -387,7 +393,7 @@ packages-py/browser/src/browser/               # manager / session / context / a
 |----|----------|
 | 产品 HTTP | `packages-py/contracts/src/contracts/` ↔ `packages/contracts/src/` |
 | CLI Agent 事件 | Python SSE ↔ `packages/contracts/src/agent-event.ts`（壳探测不推事件） |
-| Tool | `packages-py/tools/src/tools/`（产品 Agent 与 CLI skill 共用；每工具一文件 + registry） |
+| Tool（节点） | `packages-py/agent/src/agent/nodes/` + `core/registry.py` |
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。
 
@@ -421,5 +427,5 @@ packages-py/browser/src/browser/               # manager / session / context / a
 ✅ packages-py/agent/src/agent/core/…
 ✅ packages-py/crawler/src/crawler/sources/xianyu/crawler.py
 ✅ packages-py/browser/src/browser/adapters/camoufox.py
-✅ packages-py/tools/src/tools/search.py
+✅ packages-py/agent/src/agent/nodes/list/xianyu.py
 ```

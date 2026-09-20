@@ -9,7 +9,7 @@
 ```text
 apps/web ─────────────────────────────────────┐
                                               ↓
-ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-monitor
+ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-monitor · ui-model-config
                                               ↓
         ui-layout · ui-feedback ──→ ui-primitives ──→ ui-theme
 
@@ -38,9 +38,10 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-mo
 | [client/ui-ai/](client/ui-ai/README.md) | AI 消息渲染、Markdown、思考过程 | 消息气泡、代码块 |
 | [client/ui-composer/](client/ui-composer/README.md) | 输入区、附件、Agent 选择 | 打字框 |
 | [client/ui-account/](client/ui-account/README.md) | 账号、扫码登录、登录态告警 | 账号相关 |
-| [client/ui-agent/](client/ui-agent/README.md) | 外部 CLI Runtime 探测与运行态 | Agent 探测 |
+| [client/ui-agent/](client/ui-agent/README.md) | Agent 运行事件归约、SSE 流、工作对话持久化 | Agent 运行态 |
 | [client/ui-crawler/](client/ui-crawler/README.md) | 商品详情拉取与商品预览浮层 | 商品预览 |
 | [client/ui-monitor/](client/ui-monitor/README.md) | 商品监控：监控列表、价格历史、变更事件 | 商品卖不卖得掉 / 有没有降价 |
+| [client/ui-model-config/](client/ui-model-config/README.md) | 模型配置：模型凭据列表、供应商选择、连通性检测 | 用哪把 API Key |
 | [client/ui-home/](client/ui-home/README.md) | 首屏、项目条、类型入口 | 首页 |
 
 应用装配层在 [`apps/web/`](../apps/web/README.md)（Vite 根）。**启动编排**
@@ -51,9 +52,9 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-mo
 
 拆包之前这些问题是看不见的 —— 单棵源码树里「谁引谁」没有强制力。
 
-1. **转发壳会把环藏起来。** `ui-agent/agent-runtime-scan.ts` 曾经整篇是
-   `export { ... } from "@v2/ui-crawler/discovery-scan"`，于是依赖图看起来像
-   `ui-agent → ui-crawler → ui-agent`。转发壳删掉、实现归位后环才消失。
+1. **转发壳会把环藏起来。** `ui-agent/agent-runtime-scan.ts`（该文件已随外部 CLI 对接
+   删除，这里保留为教训）曾经整篇是 `export { ... } from "@v2/ui-crawler/discovery-scan"`，
+   于是依赖图看起来像 `ui-agent → ui-crawler → ui-agent`。转发壳删掉、实现归位后环才消失。
    **不要为了「兼容旧 import」留转发文件**，直接改调用方。
 2. **跨域状态要下沉成叶子包。** Agent / 账号 / 最近会话三份状态写在同一份 store 里，
    谁都来读。它一旦挂在某个业务包下（原先是 `ui-crawler`），那个包就被迫认识

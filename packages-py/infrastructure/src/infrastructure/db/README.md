@@ -12,7 +12,7 @@
 
 ### `schema.py`
 
-`CREATE TABLE accounts` / `app_settings` / `agent_works`，以及 accounts 的 ALTER 列 SQL。改表先改这里再改对应 repo。
+`CREATE TABLE accounts` / `app_settings` / `agent_works` / `watch_targets` / `watch_points` / `llm_credentials`，以及 accounts 的 ALTER 列 SQL。改表先改这里再改对应 repo。
 
 ### `accounts.py`
 
@@ -37,6 +37,18 @@
 - `add_point` / `list_points` 价格历史读写
 
 `state` 本层只当落库值筛选（`TARGET_ACTIVE`），语义与取值词表在 `contracts.watch.WatchState`。
+
+### `llm_credentials.py`
+
+模型凭据表：多条并存、一条生效。
+
+- `list_credentials`（使用中的排最前）/ `get_credential` / `get_active_credential`
+- `upsert_credential` 建或覆盖；**不动 `is_active`**
+- `set_active` 先清零再置一，**两条 UPDATE 在同一事务里** —— 中间态（0 条生效）被另一个请求读到，发动机就会去读环境变量、悄悄换一个模型
+- `set_check_result` 记最近一次连通性检测；**不更新 `updated_at`**（检测是只读探活，不是用户编辑）
+- `find_by_provider_and_key` 供环境变量导入查重
+
+`base_url` 存 `NULL` 表示「跟随供应商默认」，**不把默认值抄进库** —— 供应商换域名时，抄进来的旧值会让「改默认」对老凭据失效。`api_key` 与 `accounts.cookie` 同口径存明文：库在本机用户目录，真正的边界是不把 key 回传给前端（回传的是掩码，见 `contracts.llm`）。
 
 只做 SQL 与聚合，不做轮询、不做价格文本解析、不做结论推导（那三件事在 `domains.watch`）。
 

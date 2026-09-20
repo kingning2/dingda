@@ -1,6 +1,7 @@
 # core
 
-进程级底座：配置、日志、错误类型、上下文压缩。不含闲鱼/账号规则，也不含 FastAPI 装配。
+进程级底座：配置、日志、错误类型。不含闲鱼/账号规则，也不含 FastAPI 装配。
+Agent 上下文压缩已迁到 `packages-py/agent/src/agent/core/compress.py`。
 
 ## 本目录文件
 
@@ -15,10 +16,6 @@
 ### `errors.py`
 
 `AppError` 及派生：可在 domain / api 层抛出，由 FastAPI 异常处理器映射为稳定 HTTP 状态码与错误 JSON（`{ok:false, code, message}`）。
-
-### `compress.py`
-
-Headroom 上下文压缩的统一入口：`compress_messages` / `compress_text` / `compress_tool_payload`。惰性导入 `headroom`，是否启用由 `DINGDA_HEADROOM` 决定（默认开）；不可用时透传原文。
 
 ### `__init__.py`
 

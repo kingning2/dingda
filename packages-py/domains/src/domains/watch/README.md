@@ -7,7 +7,7 @@
 1. 这个商品过几天还在卖吗？（还在卖 = 需求可能不旺；卖掉了 = 需求被验证）
 2. 卖家降过价吗？降了多少？
 
-不负责搜品（那是 crawler + tools），不负责通知出口（本产品暂无外部通知）。
+不负责搜品（那是 crawler + agent/nodes），不负责通知出口（本产品暂无外部通知）。
 
 ## 本目录文件
 
@@ -15,8 +15,8 @@
 
 取数**插座**：`ProductSnapshot`（归一后的取数结果）+ `ProductFetcher`（协议）。
 
-`domains` 不依赖 `tools`，而 `api` 是唯一同时依赖两者的层，所以「取一次详情」这件事
-由 `api.watch_feed.fetch_product` 实现插头，挂载时注入。
+`domains` 不依赖 crawler / agent；「取一次详情」应由 `api` 实现插头并在挂载时注入。
+**当前插头未接线**（原 `api.watch_feed` + 旧 `tools.product` 已删），所以后台轮询没挂上。
 
 ### `poller.py`
 
@@ -59,4 +59,4 @@ API 层只做序列化。`clamp_interval` 把间隔夹在 1 分钟 ~ 7 天。
 ## 子目录
 
 无。表结构：[infrastructure/db](../../../../infrastructure/src/infrastructure/db/README.md)。
-取数插头：[api/watch_feed.py](../../../../api/src/api/README.md)。
+取数插头：待 `api` 用 `agent/nodes` 详情节点重接（见 [api/README.md](../../../../api/src/api/README.md) 的 watch 说明）。

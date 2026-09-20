@@ -34,7 +34,7 @@ Tauri v2 默认只认 `<cwd>/src-tauri`。本包在 `packages-rs/client`，故�
 ### `tauri.conf.json`
 
 产品名、窗口（无边框 1280×800）、devUrl `1420`、CSP（允许连本机 Python `127.0.0.1`）、图标路径。
-`beforeDevCommand` 跑 `pnpm dev`；`beforeBuildCommand` 跑 `pnpm prepare:desktop-runtime && pnpm build`，
+`beforeDevCommand` / `beforeBuildCommand` 都会先跑 `pnpm prepare:desktop-runtime`（生成 `resources/runtime/`，Tauri 打包 glob 依赖该目录），再分别跑 `pnpm dev` / `pnpm build`；
 两者都在**前端目录（仓库根）**执行。OCR 不在启动/构建时预热，首次识图再懒加载。
 
 ## 子目录

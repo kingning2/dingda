@@ -23,6 +23,10 @@
 
 `XianyuCrawler`：开页直播 + 套用 `extract.json`。
 
+`detail()` 入口先过 `crawler.core.pacing.pace("xianyu:detail")`，两次详情至少隔
+`DINGDA_DETAIL_MIN_INTERVAL_S`（默认 2.5）秒。`fetch_detail` 工具一次被模型批量调十条时，
+没有这道闸门就会连拉出限流（`被挤爆啦,请稍后重试`），之后每条详情都掉进风控恢复流程。
+
 ### `extractor.py`
 
 脚本骨架 + 标准化；不写死平台选择器/字段。
