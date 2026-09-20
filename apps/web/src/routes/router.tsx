@@ -1,9 +1,9 @@
 import { createHashRouter } from "react-router-dom";
 
 import { AccountsPage } from "@web/pages/accounts-page";
-import { AgentsPage } from "@web/pages/agents-page";
 import { AssetsPage } from "@web/pages/assets-page";
 import { IntegrationsPage } from "@web/pages/integrations-page";
+import { ModelConfigPage } from "@web/pages/model-config-page";
 import { MonitorPage } from "@web/pages/monitor-page";
 import { PluginsPage } from "@web/pages/plugins-page";
 import { AppLayout } from "@web/routes/layouts/app-layout";
@@ -52,11 +52,6 @@ export const router = createHashRouter([
                 handle: entry("扩展"),
               },
               {
-                path: "agents",
-                element: <AgentsPage />,
-                handle: entry("Agent"),
-              },
-              {
                 path: "accounts",
                 element: <AccountsPage />,
                 handle: entry("账号"),
@@ -66,6 +61,11 @@ export const router = createHashRouter([
                 element: <AssetsPage />,
               },
               { path: "integrations", element: <IntegrationsPage /> },
+              {
+                path: "model-config",
+                element: <ModelConfigPage />,
+                handle: entry("模型配置"),
+              },
               {
                 path: "monitor",
                 element: <MonitorPage />,

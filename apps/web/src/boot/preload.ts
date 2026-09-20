@@ -1,8 +1,8 @@
 /**
  * 应用启动预载：Server 就绪后拉齐首页所需数据，完成前不卸启动屏。
  *
- * 包含：Agent 目录（及模型缓存）、账号、最近会话。
- * 不含：OCR 预热、首次全量 Agent 深度扫描（放后台）。
+ * 包含：账号、最近会话。
+ * 不含：OCR 预热。
  *
  * 这段编排只能待在应用装配层：它要把 Agent 域（@v2/ui-agent）与账号域
  * （@v2/ui-account）各自的发现逻辑组合起来，而两个域互不引用。早先它挂在
@@ -10,14 +10,9 @@
  */
 
 import { useDiscoveryStore } from "@v2/app-state";
-import { getApiBaseUrl } from "@v2/runtime/http-client";
 import { kickServerWarmup } from "@v2/runtime/server";
 import { refreshAccountsForPlatforms } from "@v2/ui-account/account-discovery";
-import {
-  loadCachedAgentRuntimes,
-  refreshRecentWorks,
-  rescanAgentRuntimes,
-} from "@v2/ui-agent/cli/scan";
+import { refreshRecentWorks } from "@v2/ui-agent/work-list";
 
 let preloadPromise: Promise<void> | null = null;
 let initialLoadStarted = false;
@@ -29,17 +24,9 @@ export async function preloadAppHome(): Promise<void> {
   preloadPromise = (async () => {
     await kickServerWarmup();
     await Promise.all([
-      loadCachedAgentRuntimes({ autoScanIfEmpty: false }),
       refreshAccountsForPlatforms(),
       refreshRecentWorks({ limit: 40 }),
     ]);
-
-    // 无已安装 Agent 时后台扫描，不挡进首页
-    const agents = useDiscoveryStore.getState().agents;
-    const hasInstalled = agents.some((agent) => agent.available);
-    if (!hasInstalled && getApiBaseUrl()) {
-      void rescanAgentRuntimes(getApiBaseUrl());
-    }
   })();
 
   try {
@@ -52,7 +39,7 @@ export async function preloadAppHome(): Promise<void> {
 }
 
 /**
- * 应用启动后执行一次：Agent 缓存 + 账号 + 最近会话。
+ * 应用启动后执行一次：账号 + 最近会话。
  * 若启动预载已写过 store，则直接跳过。
  */
 export async function ensureDiscoveryScanned(): Promise<void> {
@@ -64,7 +51,6 @@ export async function ensureDiscoveryScanned(): Promise<void> {
   initialLoadStarted = true;
 
   await Promise.all([
-    loadCachedAgentRuntimes({ autoScanIfEmpty: false }),
     refreshAccountsForPlatforms(),
     refreshRecentWorks(),
   ]);

@@ -7,6 +7,11 @@
     <meta name="color-scheme" content="light" />
     <title>DingDa v2</title>
     <style id="boot-critical">
+      /*
+       * 启动页要在 CSS 打包产物之前就画出来，所以这里的色值是 ui-theme/src/tokens.css 的
+       * 逐字副本（含 --app-wash 那四层径向渐变与 --wash-base 底色）。改令牌时同步这里，
+       * 否则会出现「先闪一下旧配色再切成新配色」。
+       */
       html,
       body {
         margin: 0;
@@ -15,7 +20,7 @@
       }
 
       body {
-        background: #ffffff;
+        background: #f5f6f8;
         font-family: "Geist Variable", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
@@ -32,7 +37,7 @@
           radial-gradient(44% 38% at 90% 6%, rgba(240, 197, 216, 0.45) 0%, transparent 66%),
           radial-gradient(48% 42% at 82% 94%, rgba(247, 224, 196, 0.5) 0%, transparent 64%),
           radial-gradient(56% 48% at 14% 102%, rgba(213, 229, 248, 0.38) 0%, transparent 70%),
-          linear-gradient(#ffffff, #ffffff);
+          linear-gradient(#f5f6f8, #f5f6f8);
         transition: opacity 220ms cubic-bezier(0, 0, 0.2, 1);
       }
 
@@ -63,7 +68,7 @@
         font-size: 18px;
         font-weight: 600;
         letter-spacing: 0.02em;
-        color: #202020;
+        color: #1f2329;
       }
 
       .boot-splash__status {
@@ -71,14 +76,14 @@
         align-items: center;
         gap: 8px;
         font-size: 13px;
-        color: #5c5c5c;
+        color: #86909c;
       }
 
       .boot-splash__spinner {
         width: 14px;
         height: 14px;
-        border: 2px solid rgba(53, 53, 53, 0.14);
-        border-top-color: #353535;
+        border: 2px solid rgba(61, 110, 224, 0.18);
+        border-top-color: #3d6ee0;
         border-radius: 50%;
         animation: boot-spin 0.75s linear infinite;
       }
