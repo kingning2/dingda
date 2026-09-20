@@ -27,24 +27,16 @@ pub fn run() {
     paths::set_app_root(manifest_dir.clone());
     paths::set_repo_root(repo_root_from_manifest_dir(&manifest_dir));
     paths::set_dev_mode(cfg!(dev));
-    // 只有 --features e2e 会重新赋值（内嵌 WebDriver 插件），其余构建此 mut 无意义。
-    #[allow(unused_mut)]
-    let mut builder = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .append_invoke_initialization_script(platform_initialization_script());
-
-    // 仅 `--features e2e`：内嵌 W3C WebDriver 服务，供 e2e 的 embedded provider 驱动。
-    // release 与日常 dev 构建都不含 —— 理由见 Cargo.toml。
-    #[cfg(feature = "e2e")]
-    {
-        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
-    }
 
     builder
         .setup(|app| {
             let server_dir = paths::ensure_server_workdir(app.handle());
             let uv_bin = paths::resolve_uv_bin(app.handle());
+            // 快路径：不含 Camoufox 解压，避免 setup 主线程卡住窗口渲染
             let runtime_env = python::desktop_runtime_env(app.handle(), &server_dir);
             let mut config = PythonConfig::from_env();
             config.server_dir = server_dir;
@@ -59,6 +51,26 @@ pub fn run() {
             let runtime_for_bg = Arc::clone(&runtime);
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
+                // 解压可能数百 MB：blocking 池里跑，不堵 UI、也不占 async worker
+                let app_for_fox = app_handle.clone();
+                match tauri::async_runtime::spawn_blocking(move || {
+                    python::resolve_camoufox_env(&app_for_fox)
+                })
+                .await
+                {
+                    Ok(Some((key, value))) => {
+                        runtime_for_bg.push_extra_env(key, value).await;
+                    }
+                    Ok(None) => {}
+                    Err(error) => {
+                        logging::log(
+                            logging::Scope::Shell,
+                            "camoufox ensure join failed",
+                            Some(&error.to_string()),
+                        );
+                    }
+                }
+
                 if let Err(error) = runtime_for_bg.start_background(&app_handle).await {
                     logging::log(
                         logging::Scope::Shell,
@@ -74,11 +86,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::api::get_api_base_url,
             commands::api::get_server_status,
-            commands::agent_runtime::list_agent_runtimes_command,
-            commands::agent_runtime::list_agent_registry_command,
-            commands::agent_runtime::probe_agent_runtime,
-            commands::agent_runtime::login_agent_runtime,
-            commands::agent_runtime::download_agent_runtime,
             commands::dialog::pick_file,
             commands::dialog::pick_folder,
             commands::frontend::log_frontend_error,

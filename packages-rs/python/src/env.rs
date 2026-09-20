@@ -6,6 +6,7 @@
 //!
 //! 设计说明：
 //!     - 开发态（`tauri dev`）不注入国内镜像与 venv，避免污染本机环境
+//!     - Camoufox 解压可能很久，必须在后台 `spawn_blocking` 里做，不能进 setup 主线程
 //!     - 原实现放在 `common::paths`，因它是 Python 关注点而迁入本包，
 //!       同时也打断了 paths ↔ camoufox 的循环依赖
 
@@ -20,7 +21,7 @@ const DEFAULT_INDEX: &str = "https://mirrors.aliyun.com/pypi/simple/";
 const PYTHON_INSTALL_MIRROR: &str =
     "https://registry.npmmirror.com/-/binary/python-build-standalone";
 
-/// 启动子进程环境：开发态不改 PyPI；安装包才注入国内镜像与可写 venv。
+/// 启动子进程环境（快路径）：不含 Camoufox 解压，可在 setup 主线程调用。
 pub fn desktop_runtime_env(app: &AppHandle, server_dir: &Path) -> Vec<(String, String)> {
     let mut env = vec![
         ("DINGDA_SERVER_DIR".into(), server_dir.display().to_string()),
@@ -43,6 +44,13 @@ pub fn desktop_runtime_env(app: &AppHandle, server_dir: &Path) -> Vec<(String, S
         env.push(("UV_PROJECT_ENVIRONMENT".into(), venv.display().to_string()));
     }
 
+    env
+}
+
+/// 解析 Camoufox exe，必要时解压 zip。
+///
+/// 调用方必须丢到 `spawn_blocking`：首次解压可达数百 MB，放主线程会卡住窗口渲染。
+pub fn resolve_camoufox_env(app: &AppHandle) -> Option<(String, String)> {
     match ensure_camoufox_exe(app) {
         Ok(exe) => {
             logging::log(
@@ -50,7 +58,10 @@ pub fn desktop_runtime_env(app: &AppHandle, server_dir: &Path) -> Vec<(String, S
                 &format!("camoufox exe={}", exe.display()),
                 None,
             );
-            env.push(("DINGDA_CAMOUFOX_EXE".into(), exe.display().to_string()));
+            Some((
+                "DINGDA_CAMOUFOX_EXE".into(),
+                exe.display().to_string(),
+            ))
         }
         Err(error) if is_packaged_install() => {
             logging::log(
@@ -58,11 +69,11 @@ pub fn desktop_runtime_env(app: &AppHandle, server_dir: &Path) -> Vec<(String, S
                 &format!("camoufox missing in install package: {error}"),
                 None,
             );
+            None
         }
         Err(_) => {
             // tauri dev 无 zip 时用本机 camoufox 缓存，不刷屏
+            None
         }
     }
-
-    env
 }

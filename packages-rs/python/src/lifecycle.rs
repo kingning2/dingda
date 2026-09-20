@@ -91,23 +91,32 @@ impl EventSink for AppHandle {
 
 pub struct PythonLifecycle {
     config: PythonConfig,
+    /// 可在启动前追加（Camoufox 解压在后台完成后注入）。
+    extra_env: Mutex<Vec<(String, String)>>,
     client: Client,
     child: Mutex<Option<Child>>,
     ready: AtomicBool,
 }
 
 impl PythonLifecycle {
-    pub fn new(config: PythonConfig) -> Self {
+    pub fn new(mut config: PythonConfig) -> Self {
         let client = Client::builder()
             .timeout(HEALTH_TIMEOUT)
             .build()
             .expect("reqwest client");
+        let extra_env = Mutex::new(std::mem::take(&mut config.extra_env));
         Self {
             config,
+            extra_env,
             client,
             child: Mutex::new(None),
             ready: AtomicBool::new(false),
         }
+    }
+
+    /// 追加子进程环境变量（例如后台解压完成后的 `DINGDA_CAMOUFOX_EXE`）。
+    pub async fn push_extra_env(&self, key: String, value: String) {
+        self.extra_env.lock().await.push((key, value));
     }
 
     pub fn api_base_url(&self) -> String {
@@ -196,6 +205,8 @@ impl PythonLifecycle {
         let port = self.config.port.to_string();
         let uv = self.config.uv_bin.clone();
 
+        let extra_env = self.extra_env.lock().await.clone();
+
         if self.config.use_uv {
             let mut sync = Command::new(&uv);
             sync.args(["sync", "--frozen"])
@@ -205,7 +216,7 @@ impl PythonLifecycle {
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .env_remove("VIRTUAL_ENV");
-            apply_extra_env(&mut sync, &self.config.extra_env);
+            apply_extra_env(&mut sync, &extra_env);
             #[cfg(windows)]
             {
                 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -238,9 +249,7 @@ impl PythonLifecycle {
                 "run", "python", "-m", SERVER_MODULE, "--host", &host, "--port", &port,
             ]);
             cmd
-        } else if let Some(python) = self
-            .config
-            .extra_env
+        } else if let Some(python) = extra_env
             .iter()
             .find(|(k, _)| k == "DINGDA_PYTHON")
             .map(|(_, v)| v.clone())
@@ -263,7 +272,7 @@ impl PythonLifecycle {
             .env_remove("VIRTUAL_ENV")
             .env("PYTHONUNBUFFERED", "1")
             .env("FORCE_COLOR", "1");
-        apply_extra_env(&mut command, &self.config.extra_env);
+        apply_extra_env(&mut command, &extra_env);
 
         #[cfg(windows)]
         {

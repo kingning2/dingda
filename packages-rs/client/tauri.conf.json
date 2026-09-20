@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.dingda.v2",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm prepare:desktop-runtime && pnpm dev",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "pnpm prepare:desktop-runtime && pnpm build",
     "frontendDist": "../../apps/web/dist"
