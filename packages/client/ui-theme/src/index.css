@@ -17,8 +17,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme {
-  --font-sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+/*
+ * 主题桥接层。所有设计令牌定义在 tokens.css（那里是唯一允许出现字面值的地方），这里只做
+ * 两件事：把项目令牌暴露成 Tailwind 的 --color-* 主题变量（业务用 bg-bg-panel 这类类名），
+ * 以及把 shadcn 组件的语义变量别名到项目令牌上。
+ *
+ * 字体与 apps/web/index.html 的 <body> 声明保持一致。
+ * 圆角写成字面刻度而非 var() —— @theme 里 --radius-sm: var(--radius-sm) 是循环引用，
+ * Tailwind 会静默丢弃整条声明。刻度与 tokens.css 的 sm 4px / md 8px / lg 12px 对齐。
+ * 以后 shadcn add 新组件若想追加令牌，回来这里指到项目令牌上，不要引入新的字面值。
+ */
+@theme inline {
+  --font-sans: "Geist Variable", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+
+  /* 项目语义色 */
   --color-bg: var(--bg);
   --color-bg-panel: var(--bg-panel);
   --color-bg-subtle: var(--bg-subtle);
@@ -26,13 +39,80 @@
   --color-text: var(--text);
   --color-text-strong: var(--text-strong);
   --color-text-muted: var(--text-muted);
-  --color-accent: var(--accent);
+  /* bg-accent 是 shadcn 组件硬编码的悬停面，不是主色；主色看 --accent / --selected */
+  --color-accent: var(--bg-subtle);
   --color-accent-tint: var(--accent-tint);
   --color-brand: var(--brand);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius-lg);
-  --radius-pill: var(--radius-pill);
+  --color-selected: var(--selected);
+
+  /* shadcn 语义色（由下方 :root 别名到项目令牌） */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-4xl: 28px;
+  --radius-pill: 999px;
+}
+
+/*
+ * 不允许加 @layer —— Tailwind v4 把 @theme 输出进 @layer theme，而 shadcn 组件里那些
+ * hover:bg-accent 之类的类名读的是这些变量。无层样式永远压过有层样式，所以这段裸 :root
+ * 才能稳定生效。
+ * --border / --radius 不在此列：tokens.css 已定义且语义一致。
+ */
+:root {
+  --background: var(--bg);
+  --foreground: var(--text-strong);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--text-strong);
+  --popover: var(--bg-app);
+  --popover-foreground: var(--text-strong);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-contrast);
+  --secondary: var(--bg-subtle);
+  --secondary-foreground: var(--text-strong);
+  --muted: var(--bg-subtle);
+  --muted-foreground: var(--text-muted);
+  /*
+   * 这里刻意不定义 --accent。--primary 与 --ring 读的都是它，而这段无层 :root 会压过
+   * @theme，所以一旦在此写 --accent: var(--bg-subtle)，tokens.css 里那个主色就会被覆盖，
+   * 结果是所有默认按钮（bg-primary text-primary-foreground）变成浅灰底 + 近白字，
+   * 主色永远上不了屏。悬停面的诉求由 @theme 的 --color-accent 直接指向 --bg-subtle 满足。
+   */
+  --accent-foreground: var(--text-strong);
+  --destructive: var(--danger);
+  --input: var(--border);
+  /* 聚焦环走主色而不是 --border-strong：灰环在灰底和彩色按钮上都看不出来 */
+  --ring: var(--accent);
+  --chart-1: var(--brand);
+  --chart-2: var(--blue);
+  --chart-3: var(--green);
+  --chart-4: var(--text-soft);
+  --chart-5: var(--text-faint);
 }
 
 * {
@@ -73,118 +153,6 @@ body::before {
 
 button {
   font-family: inherit;
-}
-
-@theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
@@ -235,10 +203,47 @@ button {
   animation: codex-status-shimmer 2s linear infinite;
 }
 
+/* 聊天块轻量入场：只做透明度与 6px 位移，避免页卡等高内容造成布局跳动。 */
+@keyframes chat-block-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-block-enter {
+  animation: chat-block-enter 240ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* 折叠正文比外层块更快稳定，避免展开时读起来“二次弹跳”。 */
+@keyframes chat-collapse-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-collapse-enter {
+  animation: chat-collapse-enter 160ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .codex-status-shimmer {
     color: var(--foreground);
     background: none;
+    animation: none;
+  }
+
+  .chat-block-enter,
+  .chat-collapse-enter {
     animation: none;
   }
 }

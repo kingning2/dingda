@@ -1,39 +1,72 @@
-/* OpenDesign-inspired design tokens */
+/*
+ * 设计令牌 —— 唯一允许出现字面色值的地方。
+ *
+ * 亮色中台配色：钢蓝主色（#3d6ee0）+ 冷灰中性阶。语义变量在 index.css 桥接到
+ * Tailwind 的 --color-* 与 shadcn 组件。业务代码只写类名，不写色值。
+ *
+ * 三处已被验证为「只经由令牌生效」的约束，改动时别绕开：
+ *     - 项目自有的 --bg-panel / --bg-subtle / --accent-tint 等类名目前无人使用，
+ *       界面实际只走 shadcn 语义层（bg-muted / text-muted-foreground / border-border）。
+ *       改这里就等于全局换肤，不需要动组件。
+ *     - --wash-* 是 body 那层彩色径向光晕。它与主色是有意不一致的：主色换成企业蓝后
+ *       光晕仍保留原有的蓝 / 粉 / 桃 / 雾四色，作为页面的柔和底色而非品牌表达。
+ *     - --wash-base 同时决定页面底的真实颜色（body 是 transparent，靠它铺底），
+ *       所以它必须等于 --bg，否则「页面底」这个令牌是骗人的。
+ */
 :root {
-  --bg: #fff;
+  /* 面 */
+  --bg: #f5f6f8;
   --bg-app: #fff;
-  --bg-panel: #fafafa;
-  --bg-subtle: #ededed;
-  --bg-muted: #dbdbdb;
-  --border: #dbdbdb;
-  --border-strong: #bdbdbd;
-  --border-soft: #ededed;
-  --text: #494949;
-  --text-strong: #202020;
-  --text-muted: #5c5c5c;
-  --text-soft: #848484;
-  --text-faint: #bdbdbd;
-  --accent: #353535;
-  --accent-contrast: #fafafa;
-  --accent-strong: #202020;
-  --accent-soft: #ededed;
-  --accent-tint: #f7f7f7;
-  --accent-hover: #202020;
-  --brand: #87ea5c;
-  --brand-soft: #ebffde;
-  --brand-text: #0d5400;
+  --bg-panel: #fff;
+  --bg-subtle: #f2f3f5;
+  --bg-muted: #e5e6eb;
+  --bg-elevated: #fff;
+
+  /* 描边 */
+  --border: #e5e6eb;
+  --border-strong: #d0d3d9;
+  --border-soft: #f2f3f5;
+  --stroke-thin: 1px;
+
+  /* 文字：正文与标题同为近黑，层级交给字重，而不是靠两档灰度 */
+  --text: #1f2329;
+  --text-strong: #1f2329;
+  --text-muted: #86909c;
+  --text-soft: #a9aeb8;
+  --text-faint: #c9cdd4;
+
+  /* 主色：钢蓝。比 #1677ff 降饱和，白字仍过 AA（4.73:1）——
+     再往淡里走一步，#4096ff 配白字只剩 2.99:1，所以淡到这个位置是白字的边界 */
+  --accent: #3d6ee0;
+  --accent-contrast: #fff;
+  --accent-strong: #2b57c2;
+  --accent-hover: #5583ea;
+  --accent-soft: #e8effc;
+  --accent-tint: #f3f7fe;
+
+  /* 激活态（导航 / 胶囊选中） */
+  --selected: #3d6ee0;
+  --selected-soft: color-mix(in srgb, #3d6ee0 12%, transparent);
+
+  /* 状态色 */
+  --danger: #f53f3f;
+  --green: #00b42a;
+  --green-bg: #e8ffea;
+  --green-border: #aff0b5;
+  --blue: #5583ea;
+
+  /* 品牌（当前无组件引用，只挂 chart-1） */
+  --brand: #3d6ee0;
+  --brand-soft: #e8effc;
+  --brand-text: #2b57c2;
+
+  /* 阴影 */
   --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
   --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
   --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
   --shadow-lg: 0 24px 60px rgba(28, 27, 26, 0.16), 0 8px 16px rgba(28, 27, 26, 0.07);
-  --bg-elevated: #fafafa;
-  --blue: #1a74ff;
-  --green: #00aa54;
-  --green-bg: #f5ffee;
-  --green-border: #adf788;
-  --selected: #353535;
-  --selected-soft: color-mix(in srgb, #353535 12%, transparent);
-  --stroke-thin: 1px;
+
+  /* 圆角 */
   --radius-medium: 4px;
   --radius-sm: 4px;
   --radius: 8px;
@@ -41,7 +74,9 @@
   --radius-pill: 999px;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --entry-rail-width: 236px;
-  --wash-base: #ffffff;
+
+  /* 页面底色光晕 */
+  --wash-base: #f5f6f8;
   --wash-blue: rgba(168, 196, 236, 0.55);
   --wash-pink: rgba(240, 197, 216, 0.45);
   --wash-peach: rgba(247, 224, 196, 0.5);
