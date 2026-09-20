@@ -1,4 +1,4 @@
-"""小红书 detail_dom 修复 adapter。"""
+"""小红书 DOM 修复 adapter（搜索页 + 详情页）。"""
 
 from __future__ import annotations
 
@@ -53,6 +53,50 @@ class XiaohongshuDetailRepairAdapter:
 
     def is_risk_payload(self, payload: dict[str, Any]) -> bool:
         return bool(payload.get("blocked"))
+
+    def is_auth_payload(self, payload: dict[str, Any]) -> bool:
+        return False
+
+
+class XiaohongshuSearchRepairAdapter:
+    """小红书搜索/列表 DOM 修复插头。"""
+
+    platform = "xiaohongshu"
+    section_name = "dom"
+    extract_beside = Path(ex.__file__)
+
+    def required_fields(self) -> list[str]:
+        return ["links", "id_pattern", "card", "title"]
+
+    def current_selectors(self) -> dict[str, Any]:
+        return dict(ex._sec("dom"))
+
+    def dump_roots(self) -> list[str]:
+        cfg = self.current_selectors()
+        card = cfg.get("card")
+        roots: list[str] = []
+        if isinstance(card, str) and card.strip():
+            roots.append(card.split(",")[0].strip())
+        roots.append("body")
+        return roots
+
+    async def evaluate_extract(
+        self,
+        page: Page,
+        selectors: dict[str, Any],
+        *,
+        item_id: str,
+    ) -> dict[str, Any]:
+        arg = {"dom": selectors}
+        raw = await page.evaluate(ex.DOM_SEARCH_JS, arg)
+        return raw if isinstance(raw, dict) else {"items": []}
+
+    def payload_ok(self, payload: dict[str, Any]) -> bool:
+        items = payload.get("items")
+        return isinstance(items, list) and len(items) > 0
+
+    def is_risk_payload(self, payload: dict[str, Any]) -> bool:
+        return False
 
     def is_auth_payload(self, payload: dict[str, Any]) -> bool:
         return False

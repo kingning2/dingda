@@ -1,4 +1,4 @@
-"""DOM 修复编排：指纹 → AI CLI → 验证 → 写回。
+"""DOM 修复编排：指纹重定位 → 验证 → 写回。
 
 职责：
     在确认非风控/非登录墙后，尝试修复 detail_dom（或其它 section），
@@ -18,12 +18,10 @@ from crawler.extraction.fingerprint import (
     save_fingerprint,
 )
 from crawler.extraction.repair import gates
-from crawler.extraction.repair.bridge import ValidationBridge
 from crawler.extraction.repair.dump import dump_dom_tree
 from crawler.extraction.repair.persist import persist_patch
 from crawler.extraction.repair.types import (
     DomPatch,
-    DomSnapshot,
     PlatformRepairAdapter,
     RepairResult,
 )
@@ -38,7 +36,10 @@ async def repair_detail_dom(
     *,
     item_id: str,
 ) -> RepairResult:
-    """指纹 + AI 循环修复；成功返回 payload。"""
+    """指纹重定位修复；成功返回 payload。
+
+    原先还有一轮「AI 补丁」兜底，随外部 CLI 对接一并删除；现在指纹抽不到就判失败。
+    """
     if not gates.repair_enabled():
         return RepairResult(ok=False, error="crawler.dom_repair_disabled")
 
@@ -46,7 +47,6 @@ async def repair_detail_dom(
     if not gates.try_acquire_platform(platform):
         return RepairResult(ok=False, error="crawler.dom_repair_busy")
 
-    bridge: ValidationBridge | None = None
     try:
         roots = adapter.dump_roots()
         tree = await dump_dom_tree(page, roots=roots)
@@ -55,9 +55,6 @@ async def repair_detail_dom(
             return RepairResult(ok=False, error="channel.risk")
 
         base = adapter.current_selectors()
-        # 上一轮失败的现场：逐轮累积，下一轮跟选择器一起喂给 CLI，避免盲改
-        last_payload: dict[str, Any] | None = None
-        last_reason: str | None = None
         fields = [f for f in adapter.required_fields() if f in base]
         relocated = relocate_section(
             platform,
@@ -81,69 +78,10 @@ async def repair_detail_dom(
                 persist_patch(adapter.extract_beside, patch)
                 _save_fps_from_tree(platform, adapter.section_name, fields, relocated, tree)
                 return RepairResult(ok=True, payload=payload, patch=patch)
-            # 指纹重定位也没抽对：把现场留给 AI 轮
-            last_payload = payload
-            last_reason = str(payload.get("error") or "payload-not-ok")
 
-        # AI 轮之前起校验桥：子 agent 能自己回打「正在修的这一页」试跑选择器，
-        # 不必等下一轮才知道对不对
-        bridge = ValidationBridge(page, adapter, item_id=item_id)
-        validate_url = bridge.start()
-
-        rounds = gates.max_rounds()
-        last_err = "dom_repair_failed"
-        for round_i in range(1, rounds + 1):
-            if not gates.consume_ai_budget():
-                last_err = "crawler.dom_repair_budget"
-                break
-            snap = DomSnapshot(
-                platform=platform,
-                section=adapter.section_name,
-                url=str(tree.get("url") or getattr(page, "url", "") or ""),
-                item_id=item_id,
-                current_selectors=base,
-                tree=tree,
-                required_fields=adapter.required_fields(),
-                last_error=last_reason,
-                last_payload=last_payload,
-            )
-            logger.info(
-                "repair ai round=%s/%s platform=%s item_id=%s",
-                round_i,
-                rounds,
-                platform,
-                item_id,
-            )
-            from cli.repair import propose_dom_patch
-
-            patch = await propose_dom_patch(snap, validate_url=validate_url)
-            if patch is None:
-                last_err = "crawler.dom_repair_failed"
-                last_reason = "cli-no-json：CLI 没吐出可解析的 JSON 补丁"
-                continue
-            # 再 dump 一次防中途变风控页
-            tree = await dump_dom_tree(page, roots=roots)
-            if gates.looks_risk_text(str(tree.get("preview") or "")):
-                return RepairResult(ok=False, error="channel.risk")
-            payload = await _evaluate(adapter, page, patch.selectors, item_id)
-            if adapter.is_risk_payload(payload):
-                return RepairResult(ok=False, error="channel.risk")
-            if adapter.is_auth_payload(payload):
-                return RepairResult(ok=False, error="account.session_expired")
-            if not adapter.payload_ok(payload):
-                last_err = "crawler.dom_repair_failed"
-                base = patch.selectors
-                last_payload = payload
-                last_reason = str(payload.get("error") or "payload-not-ok")
-                continue
-            persist_patch(adapter.extract_beside, patch)
-            _save_fps_from_tree(platform, adapter.section_name, fields, patch.selectors, tree)
-            return RepairResult(ok=True, payload=payload, patch=patch)
-
-        return RepairResult(ok=False, error=last_err)
+        # 指纹重定位没抽对：AI 补丁轮已随外部 CLI 对接一起移除，直接判失败
+        return RepairResult(ok=False, error="crawler.dom_repair_failed")
     finally:
-        if bridge is not None:
-            bridge.stop()
         gates.release_platform(platform)
 
 

@@ -97,6 +97,19 @@ class BrowserCrawler(ABC):
             status_code=501,
         )
 
+    async def browse(self, ctx: CrawlContext, query: str) -> CrawlResult:
+        """平台连贯浏览（一个 page 内列表 → 逐个点开详情）；默认未实现。
+
+        与 search + 逐条 detail 的区别：全程只开一个浏览器页，直播是一段连续画面，
+        能看到真实点进商品的过程。代价是慢，只有需要「给用户看过程」时才用。
+        ``ctx.meta`` 认 ``limit`` / ``detail_count``，直播开关同 search。
+        """
+        raise AppError(
+            "crawler.browse_unsupported",
+            f"平台 {self.platform} 暂不支持连贯浏览",
+            status_code=501,
+        )
+
 
 class ApiCrawler(ABC):
     """API 爬虫插座：无浏览器，子类只实现平台 HTTP 搜品。"""

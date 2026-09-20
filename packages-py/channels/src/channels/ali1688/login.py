@@ -1,7 +1,7 @@
 """1688 clawhub 扫码取 AK 页面原语。
 
 职责：
-    打开 clawhub、点登录、截二维码、等待登录成功、点钥匙抽 AK。
+    打开 clawhub、点登录、截二维码、等待登录成功、点钥匙重新生成并抽 AK。
     经 browser.sync 的 Playwright 页操作，不含扫码状态机。
 
 设计说明：
@@ -48,6 +48,30 @@ def _click_login(page: Any) -> None:
     )
     if not clicked:
         raise RuntimeError("未找到「登录」入口")
+
+
+def _regenerate_ak(page: Any) -> bool:
+    """在 AK 弹层里点「重新生成」，把旧 key 换成新签的。
+
+    clawhub 签发的 key 有有效期（实测一周），重新登录只会展示同一把旧 key ——
+    网关照样报 ``AppKeyExpired``。登录链路里必须主动点「重新生成」拿新 key。
+    没找到按钮（页面改版 / 已经是新弹层）就不动，让读取循环照常兜底。
+    """
+    clicked = page.evaluate(
+        """() => {
+          const nodes = [...document.querySelectorAll('button,a,div,span')];
+          const regen = nodes.find(e => (e.textContent || '').includes('重新生成'));
+          if (!regen) return false;
+          regen.click();
+          return true;
+        }"""
+    )
+    if clicked:
+        logger.info("已点击「重新生成」，等待新 AK 出现")
+        page.wait_for_timeout(600)
+    else:
+        logger.info("未找到「重新生成」按钮，按现有弹层内容读取")
+    return bool(clicked)
 
 
 def _wait_login_iframe(page: Any, *, timeout_ms: int) -> None:
@@ -473,6 +497,7 @@ def extract_ak_from_page(page: Any, *, timeout_ms: int = 12_000) -> str:
         raise RuntimeError("未找到 AK 入口（钥匙或「我的ak」），请确认已登录 clawhub")
     logger.info("已打开 AK 面板 via=%s", opened)
     page.wait_for_timeout(300)
+    _regenerate_ak(page)
 
     deadline = time.monotonic() + timeout_ms / 1000
     while time.monotonic() < deadline:

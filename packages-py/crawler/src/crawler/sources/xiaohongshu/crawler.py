@@ -7,7 +7,7 @@
 设计说明：
     - 平台：xiaohongshu；禁止 import Playwright / Camoufox，仅经 BrowserPort
     - 登录扫码仍在 channels/xiaohongshu；本模块只采集
-    - 调用方：tools.search / tools.product、crawler/registry
+    - 调用方：``agent/nodes``（list / detail）、crawler/registry
 
 使用示例：
     crawler = XiaohongshuCrawler(browser_port, options)
@@ -272,8 +272,10 @@ class XiaohongshuCrawler(BrowserCrawler):
                 if not captured and not (isinstance(hint, dict) and hint.get("hasInitial")):
                     # 不再空等 INITIAL_STATE，避免误导性的 page data not ready
                     raise AppError(
-                        "crawler.extract_failed",
-                        "搜索页已打开但未拿到笔记数据（无 search/notes 与页内状态）",
+                        "crawler.needs_repair",
+                        "搜索页选择器抽不到笔记，需修复 DOM 选择器",
+                        status_code=502,
+                        details={"platform": "xiaohongshu", "section": "dom", "query": query},
                     )
                 raise AppError("crawler.extract_failed", "页面数据未就绪")
 

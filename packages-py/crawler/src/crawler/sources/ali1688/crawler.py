@@ -7,7 +7,7 @@
 设计说明：
     - platform：ali1688
     - mode 由 ctx.meta.mode 指定：text | image | link（默认 text）
-    - 调用方：tools.search / tools.compare、crawler/registry
+    - 调用方：``agent/nodes``（list_ali1688）、crawler/registry
 
 使用示例：
     crawler = Ali1688Crawler()

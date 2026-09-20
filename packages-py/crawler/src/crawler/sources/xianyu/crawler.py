@@ -9,7 +9,7 @@
 设计说明：
     - 平台：xianyu；禁止在本模块 import Playwright / Camoufox，仅经 BrowserPort
     - 过滑块与风控判定属 Channel（slider / risk），不进 Browser
-    - 调用方：tools.search / tools.product / tools.browse、crawler/registry
+    - 调用方：``agent/nodes``（list / detail / live）、crawler/registry
 
 使用示例：
     crawler = XianyuCrawler(browser_port, options)
@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Callable
 
 from contracts.browser_port import (
@@ -38,6 +39,7 @@ from channels.xianyu.slider import page_is_risk_block
 from channels.xianyu.risk_recovery import XianyuRiskRecovery
 from channels.xianyu.session import Session
 from crawler.core.base import BrowserCrawler, BrowserSessionOptions
+from crawler.core.pacing import pace
 from crawler.core.types import CrawlContext, CrawlItem, CrawlResult
 from crawler.extraction.repair import raise_repair_error
 from crawler.extraction.repair.types import RepairResult
@@ -90,6 +92,22 @@ _MAX_DETAIL_COUNT = 10
 _SESSION_EXPIRED = session_expired_markers()
 _XIANYU_ADAPTER = XianyuDetailRepairAdapter()
 _XIANYU_RISK = XianyuRiskRecovery()
+
+_DEFAULT_DETAIL_MIN_INTERVAL_S = 2.5
+
+
+def detail_min_interval_s() -> float:
+    """两次详情之间的最小间隔（秒）；``DINGDA_DETAIL_MIN_INTERVAL_S`` 可调，0 关闭节流。
+
+    详情 mtop 是闲鱼最容易被限流的接口：一次连拉十条（每条 ~0.35s）之后，
+    后续每条都会回 ``RGV587_ERROR::SM::哎哟喂,被挤爆啦,请稍后重试``，
+    于是每条都要走一轮「开页 → 过滑块 → 人工有头窗口」的恢复，越滚越慢。
+    """
+    try:
+        raw = os.environ.get("DINGDA_DETAIL_MIN_INTERVAL_S", _DEFAULT_DETAIL_MIN_INTERVAL_S)
+        return max(0.0, float(raw))
+    except ValueError:
+        return _DEFAULT_DETAIL_MIN_INTERVAL_S
 
 
 class _RawPageView(Page):
@@ -352,6 +370,13 @@ class XianyuCrawler(BrowserCrawler):
                 raise session_expired_error("xianyu")
             if not items and (payload.get("blocked") or await _blocked(page, raw_page)):
                 raise risk_control_error("搜索页触发验证码/安全验证（滑块未通过）")
+            if not items:
+                raise AppError(
+                    "crawler.needs_repair",
+                    "搜索页选择器抽不到商品，需修复 DOM 选择器",
+                    status_code=502,
+                    details={"platform": "xianyu", "section": "dom", "query": query},
+                )
         return items, via
 
     async def browse(self, ctx: CrawlContext, query: str) -> CrawlResult:
@@ -524,6 +549,7 @@ class XianyuCrawler(BrowserCrawler):
         cookie = str(ctx.meta.get("cookie") or "").strip()
         if not cookie:
             raise AppError("account.cookie_required", "商品详情需要账号 cookie", status_code=401)
+        await pace("xianyu:detail", min_interval=detail_min_interval_s())
         logger.info("detail start item_id=%s task=%s", item_id, ctx.task_id)
         try:
             session = Session.from_cookie_header(cookie)
