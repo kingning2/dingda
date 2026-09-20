@@ -8,12 +8,11 @@
     4. 命令行参数（由 ``__main__`` 传入）
 
 设计说明：
-    - ``api_base_url()`` 是「当前 Server 的 HTTP 基址」的**唯一来源**：CLI 侧
-      （``cli.base``）与 Tool 子进程侧（``tools.live_push``）都靠它回打 Server，
-      两边各写一份常量就会漂移 —— 曾经两边都硬编码 8787，导致桌面壳换端口后
-      直播帧被推去错误端口并静默丢弃。
-    - ``load_env()`` 必须由**入口**显式调用（``api.__main__`` / ``tools.cli``），
-      不做 import 副作用；壳拉起的子进程会继承 ``os.environ``，所以加载一次即可。
+    - ``api_base_url()`` 是「当前 Server 的 HTTP 基址」的**唯一来源**：桌面壳只注入
+      ``DINGDA_PORT``，写死常量就会漂移 —— 曾经硬编码 8787，导致换端口后直播帧被
+      推去错误端口并静默丢弃。
+    - ``load_env()`` 必须由**入口**显式调用（``api.__main__``），不做 import 副作用；
+      壳拉起的子进程会继承 ``os.environ``，所以加载一次即可。
 """
 
 from __future__ import annotations

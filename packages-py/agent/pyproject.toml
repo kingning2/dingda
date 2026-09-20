@@ -1,19 +1,26 @@
 [project]
 name = "agent"
 version = "0.1.0"
-description = "DingDa 产品 Agent：planning / tool 调用 / workflow。只经 tools 与 contracts，禁止 import browser/crawler/playwright/sqlite。"
+description = "DingDa 产品 Agent：一主编排（orchestrator）+ 爬虫子 agent 与修复/验证子 agent + 工具层（login/crawl/repair/validate/risk）。经 crawler/browser 插座取数，禁止 import playwright/camoufox/channels/sqlite。"
 requires-python = ">=3.13"
 dependencies = [
+  "browser",
   "contracts",
   "core",
-  "openai>=2.54.0",
-  "tools",
+  "crawler",
+  "headroom-ai>=0.37.0",
+  "httpx>=0.28",
+  "langchain-core>=0.3",
+  "langchain-openai>=0.3",
+  "openai>=1.60",
+  "pydantic>=2.0",
 ]
 
 [tool.uv.sources]
+browser = { workspace = true }
 contracts = { workspace = true }
 core = { workspace = true }
-tools = { workspace = true }
+crawler = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=61"]
