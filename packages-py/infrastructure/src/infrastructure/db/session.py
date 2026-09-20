@@ -30,6 +30,7 @@ def set_db_path(path: Path | None) -> None:
 async def init_db() -> None:
     from infrastructure.db import accounts as account_repo
     from infrastructure.db import agent_works as agent_works_repo
+    from infrastructure.db import llm_credentials as llm_credential_repo
     from infrastructure.db import settings as settings_repo
     from infrastructure.db import watch as watch_repo
 
@@ -37,6 +38,7 @@ async def init_db() -> None:
     settings_repo.ensure_schema()
     agent_works_repo.ensure_schema()
     watch_repo.ensure_schema()
+    llm_credential_repo.ensure_schema()
     logger.info("database ready: %s", db_path())
 
 

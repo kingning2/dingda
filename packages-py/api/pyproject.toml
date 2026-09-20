@@ -7,7 +7,6 @@ dependencies = [
   "agent",
   "browser",
   "channels",
-  "cli",
   "contracts",
   "core",
   "crawler",
@@ -15,7 +14,6 @@ dependencies = [
   "fastapi>=0.115",
   "infrastructure",
   "pydantic>=2.0",
-  "tools",
   "uvicorn[standard]>=0.32",
 ]
 
@@ -23,13 +21,11 @@ dependencies = [
 agent = { workspace = true }
 browser = { workspace = true }
 channels = { workspace = true }
-cli = { workspace = true }
 contracts = { workspace = true }
 core = { workspace = true }
 crawler = { workspace = true }
 domains = { workspace = true }
 infrastructure = { workspace = true }
-tools = { workspace = true }
 
 [dependency-groups]
 dev = [

@@ -1,4 +1,4 @@
-"""商品监控 HTTP：加入监控、看列表/详情、调间隔、手动轮询、概览。
+"""商品监控 HTTP：加入监控、看列表/详情、调间隔、概览。
 
 职责：
     把前端/脚本的监控请求接到 ``domains.watch``；本层只做入参校验与序列化，
@@ -10,13 +10,10 @@
     - GET  /v1/watch/targets/{target_id}  单条：价格历史点 + 变更事件
     - PATCH/DELETE /v1/watch/targets/{id} 调状态/间隔、彻底移除
     - GET  /v1/watch/summary              概览：多少还在卖、多少卖掉了、多少降价了
-    - POST /v1/watch/poll                 立刻轮询几条（手动验证用，不替代后台调度）
-    - 后台定时轮询由 ``api.boot.warmup`` 挂 ``domains.watch.scheduler``，不在本层
 
 使用示例：
     POST /v1/watch/targets {"items":[{"platform":"xianyu","item_id":"123"}],"poll_interval_seconds":21600}
     GET  /v1/watch/targets?state=active
-    POST /v1/watch/poll {"target_ids":["watch-abc123"],"limit":1}
 """
 
 from __future__ import annotations
@@ -27,10 +24,8 @@ from dataclasses import asdict
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
-from api.watch_feed import fetch_product
 from contracts.watch import WatchState
 from domains.watch.insight import WatchChange
-from domains.watch.scheduler import poll_targets_now
 from domains.watch.service import (
     WatchItemInput,
     WatchTargetDetail,
@@ -43,13 +38,15 @@ from domains.watch.service import (
     remove_target,
     summarize,
 )
-from infrastructure.db.watch import DEFAULT_POLL_INTERVAL_SECONDS, WatchTargetRow
+from infrastructure.db.watch import (
+    DEFAULT_POLL_INTERVAL_SECONDS,
+    WatchPointRow,
+    WatchTargetRow,
+)
 
 logger = logging.getLogger("dingda.api.watch")
 
 router = APIRouter(prefix="/v1/watch", tags=["watch"])
-
-MANUAL_POLL_MAX = 5
 
 
 class WatchTargetInput(BaseModel):
@@ -183,34 +180,6 @@ class WatchSummaryResponse(BaseModel):
     awaiting_first_poll: int
 
 
-class WatchPollRequest(BaseModel):
-    """手动触发一次轮询。"""
-
-    target_ids: list[str] | None = Field(
-        default=None,
-        description=f"只轮询这些目标；不传则轮询所有到期的。最多 {MANUAL_POLL_MAX} 条",
-    )
-
-
-class WatchPollResult(BaseModel):
-    """单条轮询结果。"""
-
-    target_id: str
-    ok: bool
-    price: float | None
-    sold_state: str
-    error: str | None
-
-
-class WatchPollResponse(BaseModel):
-    """手动轮询结果。"""
-
-    ok: bool = True
-    polled: int
-    succeeded: int
-    results: list[WatchPollResult]
-
-
 def _to_item(view: WatchTargetView) -> WatchTargetItem:
     """服务层视图 → HTTP DTO。"""
     return WatchTargetItem(**asdict(view))
@@ -324,42 +293,6 @@ def delete_watch_target(target_id: str) -> WatchDeleteResponse:
 def watch_summary() -> WatchSummaryResponse:
     """概览：多少还在卖、多少卖掉了、多少降价了。"""
     return WatchSummaryResponse(**asdict(summarize()))
-
-
-@router.post("/poll", response_model=WatchPollResponse)
-async def poll_watch_targets(body: WatchPollRequest) -> WatchPollResponse:
-    """立刻轮询几条（手动验证用）。
-
-    后台定时轮询是常驻调度器的职责，本接口只用于「加完想马上看一眼」。
-    最多 ``MANUAL_POLL_MAX`` 条，逐条串行，间隔 3 秒。
-
-    注意耗时：走 mtop HTTP 时每条 1~3 秒；一旦回落浏览器商品页，单条可能要十几秒到
-    数十秒（含自动过滑块）。所以本接口会同步阻塞，客户端超时要留够余量。
-    """
-    target_ids = body.target_ids
-    if target_ids is not None and len(target_ids) > MANUAL_POLL_MAX:
-        logger.info("watch manual poll trimmed %s -> %s", len(target_ids), MANUAL_POLL_MAX)
-        target_ids = target_ids[:MANUAL_POLL_MAX]
-    outcomes = await poll_targets_now(fetch_product, target_ids=target_ids)
-    logger.info(
-        "watch manual poll done polled=%s ok=%s",
-        len(outcomes),
-        sum(1 for item in outcomes if item.ok),
-    )
-    return WatchPollResponse(
-        polled=len(outcomes),
-        succeeded=sum(1 for item in outcomes if item.ok),
-        results=[
-            WatchPollResult(
-                target_id=item.target_id,
-                ok=item.ok,
-                price=item.price,
-                sold_state=item.sold_state,
-                error=item.error,
-            )
-            for item in outcomes
-        ],
-    )
 
 
 def _detail_response(detail: WatchTargetDetail) -> WatchDetailResponse:

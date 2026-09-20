@@ -1,9 +1,8 @@
 """Server 基址解析 + `.env` 加载测试。
 
 重点两条回归：
-1. **桌面壳只注入 `DINGDA_PORT`** —— `api_base_url()` / `tools.live_push.api_base()`
-   必须跟着端口走，不能回落到写死的 8787；否则非默认端口下直播帧会被推到错误端口
-   并静默丢弃。
+1. **桌面壳只注入 `DINGDA_PORT`** —— `api_base_url()` 必须跟着端口走，不能回落到
+   写死的 8787。
 2. **`.env` 的优先级**：真实环境变量 > `.env` > 代码默认值。
 """
 
@@ -14,9 +13,7 @@ import pathlib
 import pytest
 
 import core.config as config_module
-from cli.base import _api_base
 from core.config import DEFAULT_PORT, api_base_url, env_file, load_env
-from tools.live_push import api_base
 
 
 @pytest.fixture(autouse=True)
@@ -67,19 +64,6 @@ def test_bad_port_falls_back_instead_of_raising(
 
 def test_no_env_at_all_uses_default_port() -> None:
     assert api_base_url() == f"http://127.0.0.1:{DEFAULT_PORT}"
-
-
-def test_cli_and_tools_agree(monkeypatch: pytest.MonkeyPatch) -> None:
-    """CLI 侧与 Tool 子进程侧必须解析出同一个地址（防两边常量漂移）。"""
-    monkeypatch.setenv("DINGDA_PORT", "8801")
-    assert _api_base() == api_base() == "http://127.0.0.1:8801"
-
-
-def test_tools_keeps_vite_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
-    """`VITE_API_BASE_URL` 仍排在 `DINGDA_API_BASE` 之后、推导值之前。"""
-    monkeypatch.setenv("VITE_API_BASE_URL", "http://127.0.0.1:6666/")
-    monkeypatch.setenv("DINGDA_PORT", "8801")
-    assert api_base() == "http://127.0.0.1:6666"
 
 
 # ---------------------------------------------------------------------------

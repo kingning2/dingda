@@ -1,12 +1,15 @@
 """SQLite 表结构定义。
 
 职责：
-    以 SQL 常量集中声明全部产品表：账号、应用设置、AI 工作快照、商品监控。
+    以 SQL 常量集中声明全部产品表：账号、应用设置、AI 工作快照、商品监控、模型凭据。
     改表先改这里，再改 ``infrastructure.db`` 下对应的 repo 模块。
 
 设计说明：
     - 只写 ``CREATE TABLE IF NOT EXISTS`` 与 ``ALTER TABLE``；不做迁移编排
     - accounts 的补列用独立常量，由 ``accounts.ensure_schema`` 逐个 try 执行
+    - ``llm_credentials.api_key`` 与 ``accounts.cookie`` 同口径存**明文**：
+      库在本机用户目录、单机桌面应用，不为「本地明文」加一层自欺的加密；
+      真正的边界是不把 key 回传给前端（回传的是掩码，见 ``contracts.llm``）
 """
 
 from __future__ import annotations
@@ -102,4 +105,22 @@ CREATE TABLE IF NOT EXISTS watch_points (
     observed_at REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_watch_points_target ON watch_points(target_id, observed_at DESC);
+"""
+
+LLM_CREDENTIALS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS llm_credentials (
+    credential_id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    label TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL,
+    base_url TEXT,
+    api_key TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 0,
+    last_check_at REAL,
+    last_check_ok INTEGER,
+    last_check_message TEXT,
+    created_at REAL NOT NULL,
+    updated_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_llm_credentials_provider ON llm_credentials(provider);
 """

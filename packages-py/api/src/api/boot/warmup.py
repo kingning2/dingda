@@ -5,10 +5,8 @@ from __future__ import annotations
 import asyncio
 from enum import StrEnum
 
-from api.watch_feed import fetch_product
 from core.logging import info
 from domains.account.token_scheduler import schedule_xianyu_token_scheduler
-from domains.watch.scheduler import schedule_watch_scheduler
 from infrastructure.db.session import init_db
 
 _lock = asyncio.Lock()
@@ -66,5 +64,4 @@ async def _run_warmup() -> None:
         await init_db()
         _phase = WarmupPhase.READY
         schedule_xianyu_token_scheduler()
-        schedule_watch_scheduler(fetch_product)
         info("后端预热完成")

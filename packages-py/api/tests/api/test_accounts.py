@@ -180,6 +180,10 @@ def test_ali1688_list_probe_and_delete_clears_ak(
 
     monkeypatch.setattr("channels.ali1688.ak.data_dir", lambda: tmp_path)
     monkeypatch.delenv("ALI_1688_AK", raising=False)
+    # 本地 AK 对得上时列表会打一次真网关（见 ``_sync_ali1688_auth``）。这条测的是账号域
+    # 的读写，不是 1688 的通断，所以把那次探活按死成「认」。网关那一侧由
+    # ``tests/channels/test_ali1688_client_errors.py`` 用假响应覆盖。
+    monkeypatch.setattr("channels.ali1688.client.probe_credentials", lambda **_: True)
     secret = "e" * 32
     ak_id = "list-id"
     raw = base64.urlsafe_b64encode(f"{secret}{ak_id}".encode()).decode().rstrip("=")
@@ -197,7 +201,7 @@ def test_ali1688_list_probe_and_delete_clears_ak(
     assert item["auth_valid"] is True
     assert item["session"]["label"] == "已登录"
 
-    # 清掉本地 AK 后再列表 → 过期
+    # 清掉本地 AK 后再列表 → 过期（本地就判得出，不必问网关）
     (tmp_path / "ali1688" / "ak.json").unlink()
     listed2 = account_client.get("/v1/accounts", params={"platform": "ali1688"})
     assert listed2.json()["items"][0]["auth_valid"] is False
@@ -209,3 +213,82 @@ def test_ali1688_list_probe_and_delete_clears_ak(
     deleted = account_client.delete(f"/v1/accounts/ali1688:{ak_id}")
     assert deleted.status_code == 200
     assert get_ak() == (None, None)
+
+
+def _seed_ali1688_account(tmp_path, monkeypatch, *, auth_valid: bool) -> str:
+    """装一个「本地 AK 对得上」的 1688 账号，返回 account_id。"""
+    import base64
+
+    from channels.ali1688.ak import save_ak
+    from infrastructure.db import accounts as account_repo
+
+    monkeypatch.setattr("channels.ali1688.ak.data_dir", lambda: tmp_path)
+    monkeypatch.delenv("ALI_1688_AK", raising=False)
+    ak_id = "live-id"
+    raw = base64.urlsafe_b64encode(f"{'f' * 32}{ak_id}".encode()).decode().rstrip("=")
+    save_ak(raw)
+    account_id = f"ali1688:{ak_id}"
+    account_repo.upsert_account(
+        account_id=account_id,
+        platform="ali1688",
+        display_name="1688 AK",
+        cookie=raw,
+        auth_valid=auth_valid,
+    )
+    return account_id
+
+
+def test_ali1688_list_marks_expired_when_gateway_rejects(
+    account_client: TestClient,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """【回归】本地 AK 还好好的、网关却拒了它 —— 列表必须翻成过期。
+
+    这正是这次要修的洞：``probe`` 只比对字符串，AK 被网关吊销或过期时文件还是那一串，
+    于是账号页一直显示「已登录」，一调就错。
+    """
+    account_id = _seed_ali1688_account(tmp_path, monkeypatch, auth_valid=True)
+    monkeypatch.setattr("channels.ali1688.client.probe_credentials", lambda **_: False)
+
+    item = account_client.get("/v1/accounts", params={"platform": "ali1688"}).json()["items"][0]
+
+    assert item["auth_valid"] is False
+    assert item["session"]["state"] == "auth_expired"
+    assert item["account_id"] == account_id
+
+
+def test_ali1688_probe_recovers_to_valid(
+    account_client: TestClient,
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """反向也要通：网关认了就把「过期」收回成「已登录」—— 续了 AK 不用重启。"""
+    _seed_ali1688_account(tmp_path, monkeypatch, auth_valid=False)
+    monkeypatch.setattr("channels.ali1688.client.probe_credentials", lambda **_: True)
+
+    item = account_client.get("/v1/accounts", params={"platform": "ali1688"}).json()["items"][0]
+
+    assert item["auth_valid"] is True
+    assert item["session"]["label"] == "已登录"
+
+
+@pytest.mark.parametrize("auth_valid", [True, False])
+def test_ali1688_list_keeps_state_when_probe_cannot_tell(
+    account_client: TestClient,
+    tmp_path,
+    monkeypatch,
+    auth_valid: bool,
+) -> None:
+    """探活「没问到答案」时**保持原状**，两个方向都不许被改写。
+
+    ``probe_credentials`` 回 None 表示网络不通 / 被限流 / 网关抽风。把它当成
+    ``False`` 的话，一次网络抖动就会让前端弹「登录已过期，请重新扫码」——
+    用户白扫一次码。所以这里钉住：不知道就别动。
+    """
+    _seed_ali1688_account(tmp_path, monkeypatch, auth_valid=auth_valid)
+    monkeypatch.setattr("channels.ali1688.client.probe_credentials", lambda **_: None)
+
+    item = account_client.get("/v1/accounts", params={"platform": "ali1688"}).json()["items"][0]
+
+    assert item["auth_valid"] is auth_valid

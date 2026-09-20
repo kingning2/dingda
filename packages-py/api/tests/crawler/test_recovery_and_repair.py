@@ -95,56 +95,6 @@ def test_xianyu_dump_roots_cover_seller_region() -> None:
     assert roots[-1] == "body"
 
 
-def test_repair_feeds_last_failure_into_next_round(tmp_path: Path) -> None:
-    """上一轮失败的选择器 + 实际抽到的内容，要一起传给下一轮，不能盲改。"""
-    from crawler.extraction.repair.types import DomPatch
-
-    extract = tmp_path / "extract.json"
-    extract.write_text(
-        json.dumps({"detail_dom": {"title": "#t", "price": "#p"}}),
-        encoding="utf-8",
-    )
-    adapter = _FakeAdapter(extract)
-    dump = {
-        "url": "https://www.goofish.com/item?id=7",
-        "preview": "商品 正文",
-        "trees": [],
-    }
-    page = SimpleNamespace(url=dump["url"], evaluate=AsyncMock(return_value=dump))
-    snaps: list[Any] = []
-
-    async def _propose(snap: Any, *, validate_url: str | None = None) -> DomPatch:
-        snaps.append(snap)
-        pick = "#nope" if len(snaps) == 1 else "[class*=price]"
-        return DomPatch(
-            section="detail_dom",
-            selectors={**snap.current_selectors, "price": pick},
-            source="ai",
-        )
-
-    async def _run() -> RepairResult:
-        with (
-            patch("crawler.extraction.fingerprint._STORE", tmp_path / "fp.json"),
-            patch(
-                "crawler.extraction.repair.orchestrator.relocate_section",
-                return_value=None,
-            ),
-            patch("cli.repair.propose_dom_patch", _propose),
-        ):
-            return await repair_detail_dom(page, adapter, item_id="7")
-
-    result = asyncio.run(_run())
-
-    assert result.ok is True
-    assert len(snaps) == 2
-    # 第一轮没有失败现场可给
-    assert snaps[0].last_error is None
-    assert snaps[0].last_payload is None
-    # 第二轮带上了「上次抽出来是 dom-empty」
-    assert snaps[1].last_error == "dom-empty"
-    assert snaps[1].last_payload == {"error": "dom-empty"}
-
-
 class _FakeAdapter:
     """最小 PlatformRepairAdapter：首次选择器不中用，靠指纹重定位。"""
 
@@ -186,9 +136,7 @@ class _FakeAdapter:
 
 
 def test_repair_survives_invalid_selector(tmp_path: Path) -> None:
-    """模型吐非 CSS 伪类（:has-text）时只能算这轮没抽到，不能把抓取带崩。"""
-    from unittest.mock import AsyncMock as _AsyncMock
-
+    """选择器非法（:has-text 这类非 CSS 伪类）时只能算这轮没抽到，不能把抓取带崩。"""
     extract = tmp_path / "extract.json"
     extract.write_text(
         json.dumps({"detail_dom": {"title": "#t", "price": "#p"}}),
@@ -209,10 +157,6 @@ def test_repair_survives_invalid_selector(tmp_path: Path) -> None:
             patch(
                 "crawler.extraction.repair.orchestrator.relocate_section",
                 return_value={"title": "[class*=t]", "price": "[class*=p]"},
-            ),
-            patch(
-                "cli.repair.propose_dom_patch",
-                _AsyncMock(return_value=None),
             ),
         ):
             return await repair_detail_dom(page, adapter, item_id="7")

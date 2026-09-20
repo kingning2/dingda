@@ -1,174 +1,52 @@
 """Agent HTTP 路由。
 
 职责：
-    暴露默认外部 Agent CLI / 默认模型偏好、扫描目录缓存，
-    AI 工作对话快照读写，以及产品 Agent / 外部 CLI 的 SSE 运行入口。
+    AI 工作对话快照读写，以及 Agent 运行入口（SSE）。
 
 设计说明：
-    - 偏好与扫描目录落在 SQLite ``app_settings``
     - 对话快照落在 ``agent_works``
-    - CLI 启动在 Python ``cli``，不再经 Tauri spawn
-    - PATH 探测/下载仍可由 Tauri 完成；运行一律走本模块
+    - **运行入口的接线在 [agent_run.py](agent_run.py)**：本文件只管校验入参、把
+      ``stream_run`` / ``resume_run`` 包成 ``StreamingResponse``。编排在
+      ``agent.run.run_chat`` → ``agent.orchestrator.run_orchestrator``；
+      生命周期与投递日志在 ``agent.runs``。请求模型也定义在 ``agent_run`` 里 ——
+      放在本文件会让 ``agent_run`` 反过来 import 本模块，绕成环
+    - **两条起手路径共用一条实现**：``runtime_id`` 已无实际含义（外部 CLI 对接删掉后
+      只剩一种实现），保留路径是为了不动前端既有调用
+    - **run 活得比请求长**：断开只退订，接回走 ``GET /runtimes/runs/{run_id}/events``，
+      进页面的活跃探针走 ``GET /works/{work_id}/active-run``
+    - SSE 收尾事件由 ``agent.runs`` 保证发出：前端靠 ``runCompleted`` 把界面从
+      「运行中」放下来，漏发会让消息永远转圈
 """
 
 from __future__ import annotations
 
-import json
 import logging
 import uuid
-from collections.abc import AsyncIterator
-from typing import Any
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
 
-from agent.core.agent import AgentService
-from cli import live as live_hub
-from cli.spawn import cancel_run, run_cli
-from cli.steps import page_from_live_frame
 from contracts.agent import (
-    AgentDefaultModelPutRequest,
-    AgentDefaultModelView,
-    AgentDefaultPutRequest,
-    AgentDefaultView,
-    AgentPreferencesView,
-    AgentRuntimesCatalogPutRequest,
-    AgentRuntimesCatalogView,
+    AgentActiveRunView,
     AgentWorkDetailResponse,
     AgentWorkListResponse,
     AgentWorkPutRequest,
     AgentWorkSummaryView,
 )
-from infrastructure.db import agent_works as works_repo
-from infrastructure.db import settings as settings_repo
 from core.errors import AppError
+from infrastructure.db import agent_works as works_repo
+
+from api.agent_run import AgentRunRequest, cancel_run, manager, resume_run, stream_run
 
 logger = logging.getLogger("dingda.api.agent")
 
 router = APIRouter(prefix="/v1/agent", tags=["agent"])
 
-
-class AgentWorkRunRequest(BaseModel):
-    """产品 Agent 运行请求。"""
-
-    prompt: str = Field(description="用户原文")
-    run_id: str | None = None
-
-
-class AgentRuntimeRunRequest(BaseModel):
-    """外部 CLI Runtime 运行请求。"""
-
-    prompt: str
-    cwd: str | None = None
-    model_id: str | None = None
-    session_id: str | None = None
-    reasoning: str | None = Field(
-        default=None,
-        description="推理强度 / OpenCode variant（可选）",
-    )
-    executable: str | None = Field(
-        default=None,
-        description="Tauri 扫描到的 CLI 绝对路径（优先于 PATH 再解析）",
-    )
-    extra_allowed_dirs: list[str] | None = None
-    run_id: str | None = None
-    platform_hint: str | None = Field(
-        default=None,
-        description="本轮优先平台：xianyu / xiaohongshu / ali1688",
-    )
-    context_messages: list[dict[str, Any]] | None = Field(
-        default=None,
-        description="换 Agent 冷启动时由叮答托管的先前对话 [{role, content}, ...]",
-    )
-
-
-class AgentLiveFrameRequest(BaseModel):
-    """preview 工具投递的一帧截图。"""
-
-    url: str = ""
-    title: str = ""
-    hint: str | None = None
-    mime: str = "image/jpeg"
-    image_b64: str
-
-
-def _sse(event: str, data: dict[str, Any]) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-@router.get("/preferences", response_model=AgentPreferencesView)
-def get_agent_preferences() -> AgentPreferencesView:
-    """读取默认 Agent 与各 Agent 默认模型。"""
-    default_agent_id = settings_repo.get_default_agent_id()
-    default_models = settings_repo.get_default_models()
-    logger.info(
-        "已读取 Agent 偏好 default_agent=%s models=%s",
-        default_agent_id,
-        default_models,
-    )
-    return AgentPreferencesView(
-        default_agent_id=default_agent_id,
-        default_models=default_models,
-    )
-
-
-@router.get("/default", response_model=AgentDefaultView)
-def get_default_agent() -> AgentDefaultView:
-    """读取当前默认 Agent id。"""
-    agent_id = settings_repo.get_default_agent_id()
-    logger.info("已读取默认 Agent id=%s", agent_id)
-    return AgentDefaultView(default_agent_id=agent_id)
-
-
-@router.put("/default", response_model=AgentDefaultView)
-def put_default_agent(request: AgentDefaultPutRequest) -> AgentDefaultView:
-    """把可用 Agent 设为默认并写入 SQLite。"""
-    agent_id = request.agent_id.strip()
-    if not agent_id:
-        raise AppError("agent.invalid_id", "Agent id 不能为空", status_code=400)
-
-    saved = settings_repo.set_default_agent_id(agent_id)
-    logger.info("已保存默认 Agent id=%s", saved)
-    return AgentDefaultView(default_agent_id=saved)
-
-
-@router.put("/default-model", response_model=AgentDefaultModelView)
-def put_default_model(request: AgentDefaultModelPutRequest) -> AgentDefaultModelView:
-    """写入某 Agent 的默认模型。"""
-    agent_id = request.agent_id.strip()
-    model_id = request.model_id.strip()
-    if not agent_id:
-        raise AppError("agent.invalid_id", "Agent id 不能为空", status_code=400)
-    if not model_id:
-        raise AppError("agent.invalid_model", "模型 id 不能为空", status_code=400)
-
-    mapping = settings_repo.set_default_model(agent_id, model_id)
-    logger.info("已保存默认模型 agent=%s model=%s", agent_id, model_id)
-    return AgentDefaultModelView(
-        agent_id=agent_id,
-        model_id=model_id,
-        default_models=mapping,
-    )
-
-
-@router.get("/runtimes", response_model=AgentRuntimesCatalogView)
-def get_agent_runtimes_catalog() -> AgentRuntimesCatalogView:
-    """读取上次扫描落库的 Agent CLI 目录。"""
-    agents = settings_repo.get_agent_runtimes_catalog()
-    logger.info("已读取 Agent 扫描目录 count=%s", len(agents))
-    return AgentRuntimesCatalogView(agents=agents)
-
-
-@router.put("/runtimes", response_model=AgentRuntimesCatalogView)
-def put_agent_runtimes_catalog(
-    request: AgentRuntimesCatalogPutRequest,
-) -> AgentRuntimesCatalogView:
-    """手动扫描完成后写入 Agent CLI 目录（含模型）。"""
-    if not isinstance(request.agents, list):
-        raise AppError("agent.runtimes_invalid", "agents 必须是数组", status_code=400)
-    saved = settings_repo.set_agent_runtimes_catalog(request.agents)
-    return AgentRuntimesCatalogView(agents=saved)
+_SSE_HEADERS = {
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+    "Connection": "keep-alive",
+}
 
 
 @router.get("/works", response_model=AgentWorkListResponse)
@@ -216,109 +94,99 @@ def put_agent_work(work_id: str, request: AgentWorkPutRequest) -> AgentWorkDetai
     return AgentWorkDetailResponse(detail=row.detail)
 
 
-@router.post("/works/{work_id}/run")
-async def run_agent_work(work_id: str, body: AgentWorkRunRequest) -> StreamingResponse:
-    """产品 Agent SSE：进程内 Tool + Headroom + LLM。"""
-    key = work_id.strip()
-    if not key:
-        raise AppError("agent.work_invalid_id", "work_id 不能为空", status_code=400)
-    run_id = (body.run_id or f"run-{uuid.uuid4().hex[:12]}").strip()
-    prompt = body.prompt.strip()
-    logger.info("agent work run start work=%s run=%s", key, run_id)
+def _sse_response(body: AgentRunRequest, *, runtime_id: str) -> StreamingResponse:
+    """把一次运行包成 SSE 响应。
 
-    async def gen() -> AsyncIterator[str]:
-        service = AgentService()
-        async for event in service.run(prompt, run_id=run_id, runtime_id="dingda"):
-            yield _sse(str(event.get("type") or "message"), {"runId": run_id, **event})
-
-    return StreamingResponse(gen(), media_type="text/event-stream")
-
-
-@router.post("/runtimes/{runtime_id}/run")
-async def run_agent_runtime(
-    runtime_id: str,
-    body: AgentRuntimeRunRequest,
-) -> StreamingResponse:
-    """外部 CLI Runtime SSE（Python spawn）。"""
-    rid = runtime_id.strip()
+    ``prompt`` 为空在这里挡掉：真跑到发动机才报错的话，前端得先建好一条空消息、
+    再看到它变红，不如请求直接失败。
+    """
     run_id = (body.run_id or f"run-{uuid.uuid4().hex[:12]}").strip()
     prompt = body.prompt.strip()
     if not prompt:
         raise AppError("agent.prompt_required", "prompt 不能为空", status_code=400)
-    logger.debug("agent runtime run start runtime=%s run=%s", rid, run_id)
-
-    async def gen() -> AsyncIterator[str]:
-        try:
-            async for event in run_cli(
-                rid,
-                prompt,
-                run_id=run_id,
-                cwd=body.cwd,
-                model_id=body.model_id,
-                session_id=body.session_id,
-                reasoning=body.reasoning,
-                executable=body.executable,
-                extra_allowed_dirs=body.extra_allowed_dirs,
-                platform_hint=body.platform_hint,
-                context_messages=body.context_messages,
-            ):
-                yield _sse(str(event.get("type") or "message"), {"runId": run_id, **event})
-        except AppError as exc:
-            yield _sse("error", {"runId": run_id, "type": "error", "message": exc.message})
-            yield _sse(
-                "runCompleted",
-                {"runId": run_id, "type": "runCompleted", "exitCode": 1},
-            )
+    logger.info("agent run start run=%s runtime=%s prompt_len=%s", run_id, runtime_id, len(prompt))
 
     return StreamingResponse(
-        gen(),
+        stream_run(run_id=run_id, runtime_id=runtime_id, request=body),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache, no-transform",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive",
-        },
+        headers=_SSE_HEADERS,
     )
 
 
-@router.post("/runtimes/runs/{run_id}/live-frame")
-async def post_agent_runtime_live_frame(
-    run_id: str,
-    body: AgentLiveFrameRequest,
-) -> dict[str, Any]:
-    """接收 preview 工具推送的直播帧，供 SSE 侧 drain。"""
-    key = run_id.strip()
+@router.post("/works/{work_id}/run")
+async def run_agent_work(work_id: str, body: AgentRunRequest) -> StreamingResponse:
+    """在某个工作对话里跑一轮 Agent。"""
+    key = work_id.strip()
     if not key:
-        raise AppError("agent.run_invalid_id", "run_id 不能为空", status_code=400)
-    if not body.image_b64.strip():
-        raise AppError("agent.frame_empty", "image_b64 不能为空", status_code=400)
-    mime = (body.mime or "image/jpeg").strip() or "image/jpeg"
-    screenshot_url = f"data:{mime};base64,{body.image_b64.strip()}"
-    page = page_from_live_frame(
-        url=body.url or "",
-        title=body.title or "",
-        hint=body.hint,
-        screenshot_url=screenshot_url,
-    )
-    live_hub.push_frame(
-        key,
-        {
-            "type": "browserFrame",
-            "url": page["url"],
-            "title": page["title"],
-            "hint": page.get("focus_label"),
-            "screenshot_url": screenshot_url,
-            "page": page,
-        },
-    )
-    return {"ok": True, "run_id": key}
+        raise AppError("agent.work_invalid_id", "work_id 不能为空", status_code=400)
+    return _sse_response(body, runtime_id=key)
+
+
+@router.post("/runtimes/{runtime_id}/run")
+async def run_agent_runtime(runtime_id: str, body: AgentRunRequest) -> StreamingResponse:
+    """运行入口（前端走的就是这条）。
+
+    ``runtime_id`` 只进日志与 ``runStarted`` 事件，不参与选路。
+    """
+    return _sse_response(body, runtime_id=runtime_id.strip())
 
 
 @router.post("/runtimes/runs/{run_id}/cancel")
-async def cancel_agent_runtime_run(run_id: str) -> dict[str, Any]:
-    """取消 Python 侧正在跑的 CLI。"""
+async def cancel_agent_runtime_run(run_id: str) -> dict[str, object]:
+    """取消一次运行。
+
+    只能停在步与步之间：正在跑的浏览器抓取不会被打断（那要能中断 Playwright 的调用链）。
+    没有对应的在跑运行也回 ``ok``：前端 abort fetch 是另一条独立的取消路径，
+    这里报错只会让用户在控制台看到一堆无意义的失败。
+    """
     key = run_id.strip()
     if not key:
         raise AppError("agent.run_invalid_id", "run_id 不能为空", status_code=400)
-    await cancel_run(key)
-    return {"ok": True, "run_id": key}
+    signalled = cancel_run(key)
+    logger.info("agent run cancel run=%s signalled=%s", key, signalled)
+    return {"ok": True, "run_id": key, "signalled": signalled}
+
+
+@router.get("/runtimes/runs/{run_id}/events")
+async def resume_agent_run(run_id: str, after: int = 0) -> StreamingResponse:
+    """接回一次运行：先重放 ``seq > after`` 的已投递事件，再续上直播直到跑完。
+
+    客户端断开只退订，run 仍在服务端跑（见 ``agent.runs``）—— 这条端点就是
+    「关掉应用 / 刷新 / 断网之后接回来」的入口。查不到就 404：那说明 run 已经
+    结束并被回收，客户端该按「上次执行已中断」收尾，而不是干等一个空流。
+    """
+    key = run_id.strip()
+    if not key:
+        raise AppError("agent.run_invalid_id", "run_id 不能为空", status_code=400)
+    if manager.get(key) is None:
+        raise AppError("agent.run_not_found", "这次运行已经结束", status_code=404)
+    logger.info("agent run resume run=%s after=%s", key, after)
+
+    return StreamingResponse(
+        resume_run(run_id=key, after=after),
+        media_type="text/event-stream",
+        headers=_SSE_HEADERS,
+    )
+
+
+@router.get("/works/{work_id}/active-run", response_model=AgentActiveRunView)
+async def get_active_agent_run(work_id: str) -> AgentActiveRunView:
+    """这个工作对话下有没有在跑的 run。
+
+    进页面时的活跃探针：有在跑的 run 就接回，没有才走「上次执行已中断」那条路。
+    顺带回收过期 run —— 这条端点是唯一保证会被打开的入口。
+    """
+    key = work_id.strip()
+    if not key:
+        raise AppError("agent.work_invalid_id", "work_id 不能为空", status_code=400)
+    manager.reap()
+    record = manager.active_for_work(key)
+    if record is None:
+        return AgentActiveRunView(work_id=key)
+    logger.info("agent active run probe work=%s run=%s seq=%s", key, record.run_id, record.seq)
+    return AgentActiveRunView(
+        work_id=key,
+        run_id=record.run_id,
+        seq=record.seq,
+        status=record.status,
+    )

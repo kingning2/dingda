@@ -108,3 +108,17 @@ class AgentWorkPutRequest(BaseModel):
     """覆盖写入 AI 工作对话快照。"""
 
     detail: dict[str, Any]
+
+
+class AgentActiveRunView(BaseModel):
+    """某个工作对话下正在跑的 run。
+
+    ``run_id=None`` 表示没有在跑的运行（客户端据此走「上次执行已中断」那条路）。
+    ``seq`` 是服务端投递日志的当前游标，只作诊断用 —— 接回是从 0 整条重建的。
+    """
+
+    ok: bool = True
+    work_id: str
+    run_id: str | None = None
+    seq: int = 0
+    status: str | None = None
