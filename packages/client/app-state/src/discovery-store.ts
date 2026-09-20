@@ -1,9 +1,9 @@
 /**
- * 启动探测结果（Agent CLI + 平台账号 + 最近会话）的全局状态。
+ * 启动探测结果（平台账号 + 最近会话）的全局状态。
  * 预热写这里，首页 / 项目页只订阅下发。
  *
  * 为什么单独成包、且放在最底层：
- * 这份状态天然跨域 —— Agent 域写 agents、账号域写 accounts、首页域读 recentWorks。
+ * 这份状态天然跨域 —— 账号域写 accounts、首页域读 recentWorks。
  * 早先它挂在 ui-crawler 里，于是「谁都要引 ui-crawler」和「ui-crawler 要引 ui-agent」
  * 同时成立，直接把依赖图拧成了环。状态本身不依赖任何业务逻辑，只依赖线协议类型，
  * 所以让它下沉为叶子包，各域各自向上依赖它即可。
@@ -12,7 +12,6 @@
 import { create } from "zustand";
 
 import type { AccountListItem, AccountPlatform } from "@v2/contracts/account";
-import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
 import type { AgentWorkSummary } from "@v2/contracts/ai-work";
 
 export const ACCOUNT_PLATFORMS: AccountPlatform[] = [
@@ -22,9 +21,6 @@ export const ACCOUNT_PLATFORMS: AccountPlatform[] = [
 ];
 
 export type DiscoveryState = {
-  agents: AgentRuntimeItem[];
-  agentsScanning: boolean;
-
   accounts: AccountListItem[];
   autoConnectIds: string[];
   accountsLoading: boolean;
@@ -35,9 +31,6 @@ export type DiscoveryState = {
   recentWorks: AgentWorkSummary[];
   recentWorksLoading: boolean;
   recentWorksLoaded: boolean;
-
-  setAgents: (agents: AgentRuntimeItem[]) => void;
-  setAgentsScanning: (scanning: boolean) => void;
 
   setAccountsSnapshot: (
     accounts: AccountListItem[],
@@ -54,9 +47,6 @@ export type DiscoveryState = {
 };
 
 export const useDiscoveryStore = create<DiscoveryState>((set) => ({
-  agents: [],
-  agentsScanning: false,
-
   accounts: [],
   autoConnectIds: [],
   accountsLoading: false,
@@ -66,11 +56,6 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
   recentWorks: [],
   recentWorksLoading: false,
   recentWorksLoaded: false,
-
-  setAgents: (agents) =>
-    set((state) => (state.agents === agents ? state : { agents })),
-  setAgentsScanning: (agentsScanning) =>
-    set((state) => (state.agentsScanning === agentsScanning ? state : { agentsScanning })),
 
   setAccountsSnapshot: (accounts, autoConnectIds) =>
     set({
@@ -112,10 +97,6 @@ export const useDiscoveryStore = create<DiscoveryState>((set) => ({
     }),
   setRecentWorksLoading: (recentWorksLoading) => set({ recentWorksLoading }),
 }));
-
-export function getDiscoveryAgents(): AgentRuntimeItem[] {
-  return useDiscoveryStore.getState().agents;
-}
 
 export function getDiscoveryAccounts(platform?: AccountPlatform): AccountListItem[] {
   const accounts = useDiscoveryStore.getState().accounts;

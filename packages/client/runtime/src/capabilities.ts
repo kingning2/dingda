@@ -10,8 +10,6 @@ import { isTauri } from "@tauri-apps/api/core";
 export type HostCapabilities = {
   /** 运行在 Tauri 壳内 */
   desktop: boolean;
-  /** 外部 CLI Agent（Codex/Claude/…）— 仅客户端 */
-  externalAgents: boolean;
   /** 原生窗口铬（标题栏拖拽等） */
   windowChrome: boolean;
 };
@@ -20,11 +18,6 @@ export function getHostCapabilities(): HostCapabilities {
   const desktop = isTauri();
   return {
     desktop,
-    externalAgents: desktop,
     windowChrome: desktop,
   };
-}
-
-export function supportsExternalAgents(): boolean {
-  return getHostCapabilities().externalAgents;
 }
