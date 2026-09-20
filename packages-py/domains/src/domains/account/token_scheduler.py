@@ -7,7 +7,8 @@
     - 闲鱼启动探活对齐 goofish-cli：先 ``loginuser.get``，令牌/会话可恢复则
       浏览器静默续期（快速进入），续不上才标过期（才需要扫码）
     - 小红书探活对齐 xiaohongshu-mcp ``CheckLoginStatus``，不走同步扫码线程
-    - 1688 只看账户对应 AK 是否还在本地/环境变量，不开浏览器
+    - 1688 先比对本地 AK，再打一次网关问它认不认（AK 被吊销或过期时文件还在，
+      只有真打一次才知道）；网络不通就保持原状，不开浏览器
     - 由 warmup ``ensure_warmed`` 挂上，不挡 /health
 """
 
@@ -17,9 +18,9 @@ import asyncio
 import logging
 from typing import Any
 
-from channels.ali1688.ak import probe as probe_ali1688_ak
 from channels.xianyu.refresh import token
 from channels.xiaohongshu.status import probe as probe_xiaohongshu
+from domains.account.service import probe_ali1688_account
 from infrastructure.db import accounts as account_repo
 
 logger = logging.getLogger("dingda.account.token_scheduler")
@@ -91,14 +92,21 @@ async def probe_all_xiaohongshu() -> None:
 
 
 def probe_all_ali1688() -> None:
-    """1688 探活：账户 cookie 里的 AK 是否仍在本地/环境变量。"""
+    """1688 探活：账户存的 AK 现在还作不作数（本地比对 + 打一次网关）。
+
+    「没问到」（``None``）时**保持原状**，与 ``AccountService._sync_ali1688_auth``
+    用同一份判断 —— 两处都写的话，一边说「过期」一边说「已登录」就会来回翻。
+    """
     rows = account_repo.list_accounts(platform="ali1688")
     if not rows:
         return
 
     logger.info("1688 AK 探活（%s 个账号）", len(rows))
     for row in rows:
-        valid = probe_ali1688_ak(row.cookie)
+        valid = probe_ali1688_account(row.cookie)
+        if valid is None:
+            logger.info("1688 探活没问到答案，保持原状态: %s", row.account_id)
+            continue
         account_repo.set_auth_valid(row.account_id, valid)
         logger.info("1688 探活结果: %s valid=%s", row.account_id, valid)
 

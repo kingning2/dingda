@@ -2,11 +2,12 @@
 
 职责：
     定义「按 platform + item_id 取一次商品详情」的统一接口，
-    让 ``domains.watch`` 不必依赖 ``tools``（api 才是同时依赖两者的层）。
+    让 ``domains.watch`` 不必依赖 crawler / agent（插头由 ``api`` 挂载时注入）。
 
 设计说明：
     - 插座：``ProductSnapshot``（归一后的取数结果）+ ``ProductFetcher``（协议）
-    - 插头：``api.watch_feed.fetch_product``（用 tools.product.run_product 实现）
+    - 插头：当前未接线（原 ``api.watch_feed`` + 旧 ``tools.product`` 已删）；
+      调度器要重新挂上时，在 ``api`` 用 ``agent/nodes`` 详情节点实现本协议
     - 价格文本不在这里解析：本层只搬事实，``poller`` 负责把文本收敛成数字
 """
 

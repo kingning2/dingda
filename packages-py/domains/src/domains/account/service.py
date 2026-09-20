@@ -20,6 +20,29 @@ from core.errors import AppError
 logger = logging.getLogger("dingda.account.service")
 
 
+def probe_ali1688_account(stored_raw: str) -> bool | None:
+    """账户上存的这把 1688 AK 现在还作数吗。三态：好 / 明确被拒 / 没问到。
+
+    两段分工不同。本地那段（``ak.probe``）是纯字符串比对，管的是「AK 文件被删了 /
+    换成了另一把」这种不问就知道的事，为它跑一趟网络是浪费。本地对得上才打网关 ——
+    因为**本地对得上不等于凭据还能用**：AK 被网关吊销或过期时，文件还在、
+    字符串也还是那一串，只有真打一次才知道。
+
+    ``None`` 表示没问到（网络不通 / 限流 / 网关 5xx）。调用方**不许把它当成失效**：
+    前端拿到 ``auth_valid=False`` 会弹「登录已过期，请重新扫码」，拿一次网络抖动换
+    用户白扫一次码，比多显示一会儿「已登录」更糟。
+
+    读写账户的两个入口（``_sync_ali1688_auth`` 与 ``token_scheduler``）共用这一份判断，
+    免得两边各写一遍、各自漂移。
+    """
+    from channels.ali1688.ak import probe as probe_ali1688_ak
+    from channels.ali1688.client import probe_credentials
+
+    if not probe_ali1688_ak(stored_raw):
+        return False
+    return probe_credentials()
+
+
 def _to_record(row: account_repo.AccountRow) -> AccountRecord:
     session, actions = build_session_views(
         row.platform,  # type: ignore[arg-type]
@@ -128,11 +151,15 @@ class AccountService:
         )
 
     def _sync_ali1688_auth(self) -> None:
-        """列表前轻量探活：AK 文件/环境变量是否还对得上账户。"""
-        from channels.ali1688.ak import probe as probe_ali1688_ak
+        """列表前探活：账户存的 AK 现在还作不作数（见 ``probe_ali1688_account``）。
 
+        判据只认确定的两种：``None``（网络抖动 / 限流 / 网关抽风）**不写库**。
+        """
         for row in account_repo.list_accounts(platform="ali1688"):
-            valid = probe_ali1688_ak(row.cookie)
+            valid = probe_ali1688_account(row.cookie)
+            if valid is None:
+                logger.info("1688 探活没问到答案，保持原状态 account=%s", row.account_id)
+                continue
             if valid != row.auth_valid:
                 account_repo.set_auth_valid(row.account_id, valid)
 
