@@ -33,9 +33,15 @@ export type AgentEvent =
       screenshot_url: string;
       /** 后端 page 快照，挂到进行中的 browser_crawl */
       page?: AgentWorkStepPageView;
+      /** 该帧来自哪个子会话；有值时应挂进对应子块而不是父的平铺步骤 */
+      childRunId?: string;
+      /**
+       * 该帧挂到哪个步骤块；不填则：登录帧优先挂进行中的 login，
+       * 其它帧挂当前进行中的 browser_crawl。
+       * 掉线恢复要填：那时搜索块还在跑，二维码会被它抢走。
+       */
+      stepId?: string;
     }
-  | { type: "fileChanged"; path: string }
-  | { type: "session"; sessionId: string }
   | { type: "error"; message: string }
   | { type: "runCompleted"; exitCode: number }
   | {
@@ -47,6 +53,19 @@ export type AgentEvent =
       sessionId?: string | null;
       step?: string | null;
       errorCode?: string | null;
+      /** 子会话收尾摘要，服务端定相时一并下发 */
+      summary?: string | null;
+    }
+  | {
+      /**
+       * 子会话事件中继信封：Server 把 worker 的事件按原样包一层推给父 run。
+       * 前端据此把子会话的步骤/正文收进嵌套子块，而不是父的平铺步骤。
+       */
+      type: "childEvent";
+      childRunId: string;
+      role: string;
+      /** 被中继的原始事件；其 step.id 已加 `{childRunId}:` 前缀避免与父撞车 */
+      event: AgentEvent;
     };
 
 export type AgentEventEnvelope = { runId: string } & AgentEvent;
