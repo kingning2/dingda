@@ -83,7 +83,12 @@ export function Layout({ workId, onBack }: LayoutProps) {
 
   const sidePanel =
     sideTab === "results" ? (
-      <Products products={detail.products} comparison={detail.comparison ?? null} />
+      <Products
+        products={detail.products}
+        comparison={detail.comparison ?? null}
+        selection={detail.selection ?? null}
+        appraisal={detail.appraisal ?? null}
+      />
     ) : (
       <Settings
         agents={composerAgents}
@@ -132,6 +137,7 @@ export function Layout({ workId, onBack }: LayoutProps) {
           <Chat
             detail={detail}
             agents={composerAgents}
+            serverReady={server.ready}
             busy={!detail.can_send}
             runPhase={runPhase}
             error={error}

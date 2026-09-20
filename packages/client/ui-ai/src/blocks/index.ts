@@ -16,6 +16,8 @@
 import "./user";
 import "./thinking";
 import "./step";
+import "./login";
 import "./text";
+import "./child";
 
 export { registerBlock, resolveBlock } from "../chat/registry";

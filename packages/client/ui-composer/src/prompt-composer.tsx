@@ -117,7 +117,7 @@ export function PromptComposer({
     const trimmed = message.trim();
     onSubmit({
       message: trimmed,
-      agent_id: resolvedAgentId ?? "codex",
+      agent_id: resolvedAgentId ?? "dingda",
       model_id: resolvedModelId,
       attachments: attachments.map((item) => ({ ...item })),
     });

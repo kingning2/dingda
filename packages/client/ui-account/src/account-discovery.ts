@@ -1,7 +1,7 @@
 /**
  * 账号发现：启动时拉全部平台账号；扫码登录 / 解绑后只刷单个平台。
  *
- * 与 Agent 发现（@v2/ui-agent/agent-runtime-scan）刻意分开：两者写同一份 store
+ * 与最近工作发现（@v2/ui-agent/work-list）刻意分开：两者写同一份 store
  * （@v2/app-state），但各自只管自己那半边，互不引用。需要「一起做」的启动编排
  * 属于应用层，放在 apps/web/src/boot 组合。
  */

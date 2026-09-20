@@ -109,7 +109,7 @@ function PagePreview({
           <img
             src={page.screenshot_url!}
             alt={page.title}
-            className="w-full object-contain object-top"
+            className="object-contain object-top"
             decoding="async"
           />
         ) : (

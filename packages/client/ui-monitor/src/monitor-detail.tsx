@@ -17,6 +17,7 @@ import type { MonitorDetailResponse, MonitorPatchRequest } from "@v2/contracts/m
 import { Badge } from "@v2/ui-primitives/badge";
 import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent } from "@v2/ui-primitives/card";
+import { StatTile } from "@v2/ui-primitives/stat-tile";
 import { cn } from "@v2/ui-primitives/utils";
 import { Loader2 } from "lucide-react";
 
@@ -119,12 +120,12 @@ export function MonitorDetail({ detail, loading, now, onPatch, onRemove }: Monit
       </header>
 
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <Stat label="首价" value={formatPrice(target.first_price)} />
-        <Stat label="现价" value={formatPrice(target.last_price)} />
-        <Stat label="涨跌" value={formatDrop(target)} />
-        <Stat label="最低" value={formatPrice(target.min_price)} />
-        <Stat label="最高" value={formatPrice(target.max_price)} />
-        <Stat label="已监控" value={formatDuration(target.watched_hours)} />
+        <StatTile label="首价" value={formatPrice(target.first_price)} />
+        <StatTile label="现价" value={formatPrice(target.last_price)} />
+        <StatTile label="涨跌" value={formatDrop(target)} />
+        <StatTile label="最低" value={formatPrice(target.min_price)} />
+        <StatTile label="最高" value={formatPrice(target.max_price)} />
+        <StatTile label="已监控" value={formatDuration(target.watched_hours)} />
       </dl>
 
       <section className="flex flex-col gap-2">
@@ -194,16 +195,6 @@ export function MonitorDetail({ detail, loading, now, onPatch, onRemove }: Monit
           </ul>
         )}
       </section>
-    </div>
-  );
-}
-
-/** 单个快照指标。 */
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 text-sm font-medium text-foreground">{value}</dd>
     </div>
   );
 }

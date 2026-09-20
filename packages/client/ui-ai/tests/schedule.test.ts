@@ -68,10 +68,8 @@ const detail = (messages: unknown[]) =>
     browser_history: [{ id: "f9", url: "https://x.test/old", title: "旧" }],
     composer_placeholder: "",
     can_send: true,
-    cli_session_id: null,
-    cli_session_runtime_id: null,
     composer_agents: [],
-    composer_agent_id: "codex",
+    composer_agent_id: "dingda",
     composer_model_id: null,
   }) as never;
 
@@ -128,6 +126,52 @@ describe("轮次切分", () => {
     expect(turns).toHaveLength(1);
     expect(turns[0]?.user).toBeNull();
     expect(turns[0]?.blocks).toHaveLength(1);
+  });
+});
+
+describe("扫码登录块", () => {
+  it("kind=login 的步骤排成 login 块，不是 step", () => {
+    const login = {
+      id: "login-1",
+      label: "扫码登录 · 闲鱼",
+      kind: "login",
+      status,
+      page: {
+        url: "dingda://login/xianyu",
+        title: "扫码登录 · 闲鱼",
+        screenshot_url: "data:image/png;base64,AAAA",
+        focus_label: "用 App 扫码登录",
+        loading: true,
+      },
+    };
+    const message = assistant({
+      steps: [login],
+      timeline: [{ kind: "step", id: "login-1" }],
+    });
+    const blocks = scheduleMessage(message as never, timelineDetail, false, null);
+    expect(blocks.map((b) => b.kind)).toEqual(["login"]);
+    expect(blockOf(blocks, "login")?.step.id).toBe("login-1");
+  });
+
+  it("老会话 browser_crawl + dingda://login URL 也认成 login 块", () => {
+    const legacy = {
+      id: "s9",
+      label: "扫码登录 · 闲鱼",
+      kind: "browser_crawl",
+      status,
+      page: {
+        url: "dingda://login/xianyu",
+        title: "扫码登录 · 闲鱼",
+        screenshot_url: "data:image/png;base64,AAAA",
+        loading: true,
+      },
+    };
+    const message = assistant({
+      steps: [legacy],
+      timeline: [{ kind: "step", id: "s9" }],
+    });
+    const blocks = scheduleMessage(message as never, timelineDetail, false, null);
+    expect(blocks.map((b) => b.kind)).toEqual(["login"]);
   });
 });
 
@@ -231,6 +275,88 @@ describe("新旧格式分流", () => {
   it("只有空白的 thinking / content 不产生块", () => {
     const blank = assistant({ id: "a4", content: "\n", thinking: "   " });
     expect(scheduleMessage(blank as never, timelineDetail, false, null)).toEqual([]);
+  });
+});
+
+describe("子会话块", () => {
+  /** 子块本体。步骤 id 是后端加了 `{runId}:` 前缀的命名空间 id。 */
+  const childView = (over: Record<string, unknown> = {}) => ({
+    run_id: "run1",
+    role: "worker",
+    label: "worker 子会话",
+    phase: "running",
+    status: { state: "running", label: "执行中", hint: null, badge_class: "b" },
+    step: "搜索商品 · 闲鱼",
+    steps: [{ id: "run1:s1", label: "抓取", kind: "browser_crawl", status }],
+    timeline: [
+      { kind: "step", id: "run1:s1" },
+      { kind: "text", id: "run1:x0", text: "找到 3 件" },
+    ],
+    content: "找到 3 件",
+    thinking: "",
+    summary: "",
+    ...over,
+  });
+
+  const messageWithChild = (over: Record<string, unknown> = {}) =>
+    assistant({
+      id: "a1",
+      timeline: [{ kind: "child", id: "run1" }],
+      children: [childView(over)],
+    });
+
+  it("timeline 的 child 条目按 run_id 查回子块，子块内部按自己的 timeline 铺开", () => {
+    const blocks = scheduleMessage(messageWithChild() as never, timelineDetail, false, null);
+    expect(blocks.map((b) => b.kind)).toEqual(["child"]);
+    const child = blockOf(blocks, "child");
+    expect(child?.child.run_id).toBe("run1");
+    expect(child?.blocks.map((b) => b.kind)).toEqual(["step", "text"]);
+  });
+
+  it("子块步骤能查到商品 —— detail 确实传进了子块调度", () => {
+    // 子块步骤 id 带 runId 前缀，product.step_id 也是带前缀的那个；
+    // 不把 detail 传进去，这一条会空。
+    const linked = detail([]) as never as {
+      products: { items: { id: string; title: string; step_id: string; platform: string; price: string }[] };
+    };
+    linked.products.items = [
+      { id: "p9", title: "露营椅", step_id: "run1:s1", platform: "xianyu", price: "1" },
+    ];
+    const blocks = scheduleMessage(messageWithChild() as never, linked as never, false, null);
+    const inner = blockOf(blockOf(blocks, "child")?.blocks ?? [], "step");
+    expect(inner?.products.map((item) => item.id)).toEqual(["p9"]);
+  });
+
+  it("运行中的子块 streaming=true；收尾后 false 并带出摘要", () => {
+    const running = blockOf(
+      scheduleMessage(messageWithChild() as never, timelineDetail, false, null),
+      "child",
+    );
+    expect(running?.streaming).toBe(true);
+
+    const done = blockOf(
+      scheduleMessage(
+        messageWithChild({ phase: "completed", summary: "找到 3 件" }) as never,
+        timelineDetail,
+        false,
+        null,
+      ),
+      "child",
+    );
+    expect(done?.streaming).toBe(false);
+    expect(done?.child.summary).toBe("找到 3 件");
+  });
+
+  it("child 条目查不到对应子块时跳过，不抛错", () => {
+    const orphan = assistant({ id: "a7", timeline: [{ kind: "child", id: "nope" }] });
+    const blocks = scheduleMessage(orphan as never, timelineDetail, false, null);
+    expect(blocks).toEqual([]);
+  });
+
+  it("没有 timeline 时旧格式也补上子块（不能整块吞掉）", () => {
+    const legacy = assistant({ id: "a8", content: "父正文", children: [childView()] });
+    const blocks = scheduleMessage(legacy as never, timelineDetail, false, null);
+    expect(blocks.map((b) => b.kind)).toEqual(["text", "child"]);
   });
 });
 

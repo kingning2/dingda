@@ -101,7 +101,7 @@ export function Collapse({
         ) : null}
       </summary>
       {hasBody && open ? (
-        <div ref={bodyRef} className={cn("mt-1.5 min-w-0", bodyClassName)}>
+        <div ref={bodyRef} className={cn("chat-collapse-enter mt-1.5 min-w-0", bodyClassName)}>
           {children}
         </div>
       ) : null}

@@ -13,6 +13,7 @@
 
 import type { ComponentType } from "react";
 import type {
+  AgentWorkChildView,
   AgentWorkMessageView,
   AgentWorkProductItem,
   AgentWorkStepView,
@@ -42,7 +43,25 @@ export type ChatBlock =
       pageUrl: string | null;
       products: AgentWorkProductItem[];
     }
-  | { kind: "text"; id: string; text: string; streaming: boolean };
+  | {
+      kind: "login";
+      id: string;
+      step: AgentWorkStepView;
+    }
+  | { kind: "text"; id: string; text: string; streaming: boolean }
+  | {
+      kind: "child";
+      id: string;
+      /** 子会话本体（状态、当前动作、摘要）。 */
+      child: AgentWorkChildView;
+      /**
+       * 子块内部已排好的块。在这里排好而不是让子块组件去调度，
+       * 是为了让「块类型 → 组件」的分派仍然只发生在 ChatBlock 这一处。
+       */
+      blocks: ChatBlock[];
+      /** 子会话是否仍在跑；决定折叠块是否跟随展开。 */
+      streaming: boolean;
+    };
 
 /** 块类型判别值。注册表与分派都以此为准。 */
 export type ChatBlockKind = ChatBlock["kind"];

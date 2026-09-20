@@ -12,7 +12,7 @@ import {
   getComposerAgentOptions,
   resolveDefaultAgentId,
 } from "@v2/ui-composer/composer-agents";
-import { fetchAgentWorkDetail } from "@v2/ui-agent/api";
+import { fetchActiveAgentRun, fetchAgentWorkDetail } from "@v2/ui-agent/api";
 
 const WORK_DRAFT_PREFIX = "dingda:work-draft:";
 const WORK_SNAPSHOT_PREFIX = "dingda:work-snapshot:";
@@ -32,15 +32,6 @@ export function stashWorkDraft(workId: string, draft: ComposerSubmitPayload): vo
   } catch {
     // sessionStorage may be unavailable
   }
-}
-
-/** @deprecated 使用 stashWorkDraft */
-export function stashWorkPrompt(workId: string, prompt: string): void {
-  stashWorkDraft(workId, {
-    message: prompt,
-    agent_id: resolveDefaultAgentId(getComposerAgentOptions()) ?? "codex",
-    attachments: [],
-  });
 }
 
 /** 只读草稿，不删除（避免 Strict Mode 双挂载把首条吃掉）。 */
@@ -130,7 +121,19 @@ function hydrateComposerAgents(detail: AgentWorkDetailView): AgentWorkDetailView
   };
 }
 
-function recoverInterruptedRun(detail: AgentWorkDetailView): AgentWorkDetailView {
+/**
+ * 「上次执行已中断」的本地收尾。
+ *
+ * `hasActiveRun` 由调用方探针后显式传入：服务端还有 run 在跑时这轮**没有**中断，
+ * 不能放开 `can_send`，否则用户会在同一轮里再发一句。探针结果不让本函数自己猜。
+ */
+function recoverInterruptedRun(
+  detail: AgentWorkDetailView,
+  hasActiveRun: boolean,
+): AgentWorkDetailView {
+  // 服务端还在跑：交给接回路径，别动状态。
+  if (hasActiveRun) return detail;
+
   const interrupted = !detail.can_send || detail.status.state === "running";
   if (!interrupted) return detail;
 
@@ -185,6 +188,8 @@ export function buildEmptyWorkDetail(
       summary: null,
     },
     comparison: null,
+    selection: null,
+    appraisal: null,
     browser_live: {
       frame_id: null,
       url: "about:blank",
@@ -196,8 +201,6 @@ export function buildEmptyWorkDetail(
     browser_history: [],
     composer_placeholder: "补充筛选条件或修改任务…",
     can_send: !seedPrompt,
-    cli_session_id: null,
-    cli_session_runtime_id: null,
     ...composerFields(seed?.agent_id, seed?.model_id),
   };
 }
@@ -205,7 +208,10 @@ export function buildEmptyWorkDetail(
 /** 加载工作详情的返回结构。 */
 export interface AgentWorkLoadResult {
   detail: AgentWorkDetailView;
+  /** 首页草稿带过来的首条消息；有值就要发出去。 */
   pendingSend: ComposerSubmitPayload | null;
+  /** 服务端仍在跑的 run；有值就要接回去，而不是当「上次执行已中断」。 */
+  activeRunId: string | null;
 }
 
 /** 同 work 并发 load 共用一个 Promise，避免 Strict Mode 打两次 GET。 */
@@ -231,12 +237,12 @@ async function loadAgentWorkDetailOnce(workId: string): Promise<AgentWorkLoadRes
   const seedDraft = peekWorkDraft(workId);
   const localSnapshot = peekWorkSnapshot(workId);
 
-  let saved: AgentWorkDetailView | null = null;
-  try {
-    saved = await fetchAgentWorkDetail(workId);
-  } catch {
-    // 读库失败则走本地
-  }
+  // 探针与详情并发打：两者互不依赖，串行只是白等一个来回。
+  const [saved, activeRunId] = await Promise.all([
+    fetchAgentWorkDetail(workId).catch(() => null),
+    fetchActiveAgentRun(workId).catch(() => null),
+  ]);
+  const live = activeRunId !== null;
 
   const savedMessages = saved?.messages?.length ?? 0;
   const localMessages = localSnapshot?.messages?.length ?? 0;
@@ -244,16 +250,18 @@ async function loadAgentWorkDetailOnce(workId: string): Promise<AgentWorkLoadRes
   if (saved && savedMessages > 0) {
     if (seedDraft) clearWorkDraft(workId);
     return {
-      detail: recoverInterruptedRun(hydrateComposerAgents(saved)),
+      detail: recoverInterruptedRun(hydrateComposerAgents(saved), live),
       pendingSend: null,
+      activeRunId,
     };
   }
 
   if (localSnapshot && localMessages > 0) {
     if (seedDraft) clearWorkDraft(workId);
     return {
-      detail: recoverInterruptedRun(hydrateComposerAgents(localSnapshot)),
+      detail: recoverInterruptedRun(hydrateComposerAgents(localSnapshot), live),
       pendingSend: null,
+      activeRunId,
     };
   }
 
@@ -261,18 +269,21 @@ async function loadAgentWorkDetailOnce(workId: string): Promise<AgentWorkLoadRes
     return {
       detail: buildEmptyWorkDetail(workId, seedDraft),
       pendingSend: seedDraft,
+      activeRunId: null,
     };
   }
 
   if (saved) {
     return {
-      detail: recoverInterruptedRun(hydrateComposerAgents(saved)),
+      detail: recoverInterruptedRun(hydrateComposerAgents(saved), live),
       pendingSend: null,
+      activeRunId,
     };
   }
 
   return {
     detail: buildEmptyWorkDetail(workId),
     pendingSend: null,
+    activeRunId: null,
   };
 }

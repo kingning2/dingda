@@ -45,7 +45,7 @@ export function TypePillRow({ activeChipId, onPick }: TypePillRowProps) {
             size="sm"
             className={cn(
               "h-[34px] rounded-full px-[11px] text-[13px]",
-              active && "border-accent/40 bg-accent/30 text-accent-foreground",
+              active && "border-selected/40 bg-selected/30 text-text-strong",
             )}
             onClick={() => onPick(chip.id)}
             aria-pressed={active}

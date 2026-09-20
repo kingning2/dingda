@@ -14,6 +14,7 @@
  */
 
 import type {
+  AgentWorkChildView,
   AgentWorkDetailView,
   AgentWorkMessageView,
   AgentWorkProductItem,
@@ -26,6 +27,38 @@ import type { ChatBlock, ChatBlockOf, ChatTurn } from "./types";
 /** 一个步骤挂着的商品。 */
 function productsForStep(items: AgentWorkProductItem[], stepId: string): AgentWorkProductItem[] {
   return items.filter((item) => item.step_id === stepId);
+}
+
+/**
+ * 是否是扫码登录步骤。
+ *
+ * 优先看后端 kind；老会话可能只有 ``dingda://login/`` URL（当时还挂在 browser_crawl 上）。
+ */
+function isLoginStep(step: AgentWorkStepView): boolean {
+  if (step.kind === "login") return true;
+  return Boolean(step.page?.url?.startsWith("dingda://login/"));
+}
+
+/** 步骤 → 聊天块：登录走独立块，其余走通用 step 块。 */
+function blockForStep(
+  messageId: string,
+  step: AgentWorkStepView,
+  detail: AgentWorkDetailView,
+): ChatBlock {
+  if (isLoginStep(step)) {
+    return {
+      kind: "login",
+      id: `${messageId}-login-${step.id}`,
+      step,
+    };
+  }
+  return {
+    kind: "step",
+    id: `${messageId}-step-${step.id}`,
+    step,
+    pageUrl: resolveStepPageUrl(detail, step),
+    products: productsForStep(detail.products.items, step.id),
+  };
 }
 
 /**
@@ -47,10 +80,67 @@ function resolveStepPageUrl(detail: AgentWorkDetailView, step: AgentWorkStepView
 }
 
 /**
+ * 子会话是否还在跑。
+ *
+ * `phase` 是**服务端**的 AgentPhase 原文，前端不认识它的枚举（只认识 status 的
+ * state）—— 这里只判断「有没有到终态」，剩下的交给后端下发的 status 徽标。
+ */
+function isChildRunning(phase: string): boolean {
+  return phase !== "completed" && phase !== "failed" && phase !== "cancelled";
+}
+
+/**
+ * 子块内部的块。
+ *
+ * 子会话的结构本来就是一条助手消息（步骤 + 思考 + 正文 + 自己的 timeline），
+ * 所以直接复用消息调度，而不是给子块另写一套渲染。
+ *
+ * **`detail` 必须传**：子块步骤的 id 是带 `{runId}:` 前缀的命名空间 id，
+ * 但挂商品靠的是 `productsForStep(detail.products.items, step.id)` ——
+ * 不传 detail 就拿不到商品，子块里的步骤会掉商品条。
+ *
+ * `phase` 传 null：子块内部不做打字动画（实时感来自后端按帧中继的增量），
+ * 否则每个历史子块都会重播一遍打字。
+ */
+function scheduleChildBlocks(
+  child: AgentWorkChildView,
+  detail: AgentWorkDetailView,
+  blockId: string,
+): ChatBlock[] {
+  const timeline = child.timeline ?? [];
+  if (timeline.length > 0) {
+    return fromTimeline(
+      blockId,
+      timeline,
+      child.steps ?? [],
+      detail,
+      null,
+      { startedAt: null, durationSec: null },
+      [],
+    );
+  }
+  // 刚派工、还没吐 timeline 时不返回空：用平铺字段兜底，
+  // 否则子块会在「已派工、正在起」这段最需要看到反馈的时间里显示成空的。
+  return fromLegacy(
+    {
+      id: blockId,
+      role: "assistant",
+      content: child.content ?? "",
+      created_at: "",
+      thinking: child.thinking ?? "",
+      steps: child.steps ?? [],
+    },
+    detail,
+    null,
+  );
+}
+
+/**
  * 新格式：按 timeline 条目顺序铺开（思考 ↔ 工具 ↔ 正文交错）。
  *
  * 这是「逐层展开」而不是递归 —— 目前最深处只有 3 层（消息 → timeline 条目 → 块），
- * 循环比递归清楚。若将来 timeline 支持嵌套（如子 Agent 的子时间线），再换递归。
+ * 循环比递归清楚。子会话自带的 timeline 由 `scheduleChildBlocks` 走同一条路径排，
+ * 所以嵌套层级不会失控。
  */
 function fromTimeline(
   messageId: string,
@@ -59,6 +149,7 @@ function fromTimeline(
   detail: AgentWorkDetailView,
   phase: AgentRunPhase | null,
   meta: { startedAt?: string | null; durationSec?: number | null },
+  children: AgentWorkChildView[] = [],
 ): ChatBlock[] {
   const lastIndex = timeline.length - 1;
   // 当前阶段真正在流入的块类型；phase 为 null（不在运行中）时没有任何块该流式。
@@ -97,12 +188,22 @@ function fromTimeline(
       // 查不到就跳过：后端格式演进过，老库里的 timeline 条目可能对不上现在的 steps。
       // 此时少渲染一个块，而不是让整页抛错。
       if (!step) continue;
+      out.push(blockForStep(messageId, step, detail));
+      continue;
+    }
+
+    if (entry.kind === "child") {
+      // timeline 条目只存子会话的 run_id，子块本体在 message.children 里 —— 与 step 同理，
+      // 同一份数据不存两处。查不到就跳过（老库里的 timeline 可能对不上）。
+      const child = children.find((item) => item.run_id === entry.id);
+      if (!child) continue;
+      const blockId = `${messageId}-child-${child.run_id}`;
       out.push({
-        kind: "step",
-        id: `${messageId}-step-${step.id}`,
-        step,
-        pageUrl: resolveStepPageUrl(detail, step),
-        products: productsForStep(detail.products.items, step.id),
+        kind: "child",
+        id: blockId,
+        child,
+        blocks: scheduleChildBlocks(child, detail, blockId),
+        streaming: isChildRunning(child.phase),
       });
       continue;
     }
@@ -137,13 +238,7 @@ function fromLegacy(
   }
 
   for (const step of message.steps ?? []) {
-    out.push({
-      kind: "step",
-      id: `${message.id}-step-${step.id}`,
-      step,
-      pageUrl: resolveStepPageUrl(detail, step),
-      products: productsForStep(detail.products.items, step.id),
-    });
+    out.push(blockForStep(message.id, step, detail));
   }
 
   if (message.content?.trim()) {
@@ -152,6 +247,19 @@ function fromLegacy(
       id: `${message.id}-text`,
       text: message.content,
       streaming: streamingKind === "text",
+    });
+  }
+
+  // 子块在旧格式里没有 timeline 条目可挂，只能按数组顺序补在末尾。
+  // 少了这段，一份「有子会话但没有 timeline」的消息会把子会话整个吞掉。
+  for (const child of message.children ?? []) {
+    const blockId = `${message.id}-child-${child.run_id}`;
+    out.push({
+      kind: "child",
+      id: blockId,
+      child,
+      blocks: scheduleChildBlocks(child, detail, blockId),
+      streaming: isChildRunning(child.phase),
     });
   }
 
@@ -199,6 +307,7 @@ export function scheduleMessage(
         startedAt: message.thinking_started_at ?? message.created_at,
         durationSec: message.thinking_duration_sec ?? null,
       },
+      message.children ?? [],
     );
   }
   return fromLegacy(message, detail, streaming ? phase : null);

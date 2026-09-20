@@ -17,6 +17,10 @@ import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase"
 import { CodexActivityIndicator } from "../blocks/thinking-orb";
 import type { ChatBlock } from "./types";
 
+function isStepRunning(state: string): boolean {
+  return state === "running" || state === "browsing" || state === "pending";
+}
+
 /** 把秒数格式化成 Codex TUI 的紧凑形式。 */
 function formatElapsed(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
@@ -109,9 +113,34 @@ export function resolveWorkingDetails(
   }
 
   if (phase === "executing" || phase === "live" || phase === "products") {
+    const login = [...blocks]
+      .reverse()
+      .find((block): block is Extract<ChatBlock, { kind: "login" }> => block.kind === "login");
     const step = [...blocks]
       .reverse()
       .find((block): block is Extract<ChatBlock, { kind: "step" }> => block.kind === "step");
+    // 扫码等待优先：登录块在跑时状态行应写「扫码登录」，不要被已结束的工具步骤盖住
+    const active =
+      login && isStepRunning(login.step.status.state)
+        ? login
+        : step?.step.status.state === "running"
+          ? step
+          : login ?? step;
+    if (active?.kind !== "login" && step?.step.status.state !== "running") {
+      const child = [...blocks]
+        .reverse()
+        .find(
+          (block): block is Extract<ChatBlock, { kind: "child" }> =>
+            block.kind === "child" && block.streaming,
+        );
+      if (child?.child.step) {
+        return `${child.child.label || child.child.role} · ${child.child.step}`;
+      }
+    }
+    if (active?.kind === "login") {
+      const s = active.step;
+      return s.hint ? `${s.label} · ${s.hint}` : s.label;
+    }
     if (step) return step.step.hint ? `${step.step.label} · ${step.step.hint}` : step.step.label;
   }
 

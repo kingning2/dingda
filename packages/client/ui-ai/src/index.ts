@@ -27,11 +27,11 @@ export { CodexActivityIndicator, ThinkingOrb } from "./blocks/thinking-orb";
 
 export { Products } from "./panel/products";
 export { ComparisonResults } from "./panel/comparison-results";
+export { SelectionResults } from "./panel/selection-results";
 export { Settings } from "./panel/settings";
 
 export {
   stashWorkDraft,
-  stashWorkPrompt,
   stashWorkSnapshot,
   clearWorkDraft,
   loadAgentWorkDetail,

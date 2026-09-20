@@ -14,18 +14,25 @@
 
 import { blocksForPhase } from "./schedule";
 import { ChatBlock } from "./chat-block";
+import { BlockEntrance } from "./block-entrance";
 import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
 import type { ChatRenderContext, ChatTurn as ChatTurnData } from "./types";
-
+import type { ReactNode } from "react";
 /** 一轮对话：用户消息 + 助手消息（含时间线与块序列）。 */
 export function ChatTurn({
   turn,
   runPhase,
   context,
+  status = null,
+  newBlockIds = null,
 }: {
   turn: ChatTurnData;
   runPhase: AgentRunPhase | null;
   context: ChatRenderContext;
+  /** 当前轮尾部状态；只有最末活动轮由 Chat 传入。 */
+  status?: ReactNode | null;
+  /** 本轮里还没登记过的块 id；历史块不在这个集合里。 */
+  newBlockIds?: Set<string> | null;
 }) {
   const assistantBlocks = blocksForPhase(turn.blocks, runPhase);
 
@@ -39,11 +46,17 @@ export function ChatTurn({
       {assistantBlocks.length > 0 ? (
         <div className="space-y-4 py-3">
           {assistantBlocks.map((block) => (
-            <ChatBlock key={block.id} block={block} context={context} />
+            <BlockEntrance
+              key={block.id}
+              active={Boolean(newBlockIds?.has(block.id))}
+            >
+              <ChatBlock block={block} context={context} />
+            </BlockEntrance>
           ))}
+          {status ? <BlockEntrance active={Boolean(status)}>{status}</BlockEntrance> : null}
         </div>
       ) : (
-        <div className="h-2" aria-hidden />
+        status ? <div className="py-3">{status}</div> : <div className="h-2" aria-hidden />
       )}
     </section>
   );

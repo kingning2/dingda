@@ -1,9 +1,9 @@
 /**
- * AI 工作详情状态：加载、自动发送 draft、持久化、发送/重发/取消。
+ * AI 工作详情状态：加载、自动发送 draft、接回在跑的 run、持久化、发送/重发/取消。
  *
  * 职责：
- *   - 从 SQLite 加载工作详情。
- *   - 若存在草稿（首页提交后暂存），自动发送。
+ *   - 从 SQLite 加载工作详情，并探一次「服务端还有没有 run 在跑」。
+ *   - 若存在草稿（首页提交后暂存），自动发送；若服务端还在跑，接回去看直播。
  *   - 运行时状态更新（SSE 事件折叠后的 detail + phase）。
  *   - 持久化：debounce 写回 SQLite，页面卸载时 flush。
  *   - 发送/重发/取消编排。
@@ -11,8 +11,11 @@
  * 设计说明：
  *   - `applyRef` 解决 effect stale closure：加载 effect 里用 `applyRef.current`
  *     而不是闭包捕获的 `applyDetailUpdate`，确保 generation 校验后用的是最新回调。
- *   - `autoSendByWork` / `mountCountByWork` 是模块级 Map，跨实例共享，
- *     用于防止 StrictMode 双 mount 导致重复发送。
+ *   - `autoRunByWork` / `mountCountByWork` 是模块级 Map，跨实例共享：
+ *     前者防止 StrictMode 双 mount 把同一轮跑两遍，后者区分「真的离开了页面」
+ *     与「只是 StrictMode 的卸载/重挂」。
+ *   - 离开页面只 `detach`（不叫停）：run 的生命周期归服务端，重进这个 work
+ *     会重新探针并接回来。
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,12 +25,12 @@ import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { truncateBeforeUserMessage } from "@v2/ui-agent/run/reducer";
 import { clearWorkDraft, loadAgentWorkDetail, stashWorkSnapshot } from "../work/session";
-import { send, type SendHandle } from "../work/send";
+import { attach, send, type SendHandle } from "../work/send";
 
 const PERSIST_DEBOUNCE_MS = 800;
 
-/** 防止 StrictMode 双 mount 重复发送。 */
-const autoSendByWork = new Map<string, SendHandle>();
+/** 这个 work 当前在跟随的那一轮运行；防止 StrictMode 双 mount 重复起手。 */
+const autoRunByWork = new Map<string, SendHandle>();
 const mountCountByWork = new Map<string, number>();
 
 export interface WorkDetailState {
@@ -117,7 +120,7 @@ export function useWorkDetail(workId: string, serverReady: boolean): WorkDetailS
     };
   }, [flushPersist]);
 
-  // 加载详情 + 自动发送 draft
+  // 加载详情 + 起手这一轮（发首条草稿 / 接回服务端还在跑的 run）
   useEffect(() => {
     if (!serverReady) return;
 
@@ -134,19 +137,35 @@ export function useWorkDetail(workId: string, serverReady: boolean): WorkDetailS
       .then(async (result) => {
         if (cancelled || generation !== loadGenerationRef.current) return;
         applyRef.current(result.detail, { hydrate: true });
-        if (!result.pendingSend) return;
 
-        clearWorkDraft(workId);
-        let handle = autoSendByWork.get(workId);
-        if (!handle) {
-          handle = send(result.detail, result.pendingSend, (next, nextPhase) => {
-            if (generation !== loadGenerationRef.current) return;
-            applyRef.current(next, { runPhase: nextPhase });
-          });
-          autoSendByWork.set(workId, handle);
+        const onUpdate = (next: AgentWorkDetailView, nextPhase: AgentRunPhase) => {
+          if (generation !== loadGenerationRef.current) return;
+          applyRef.current(next, { runPhase: nextPhase });
+        };
+
+        /**
+         * 两条起手路径，都不走就只是看历史。
+         *
+         * 草稿优先：它意味着这一轮还没发出去，而探针命中的是上一轮 —— 但两者
+         * 不会同时出现（草稿只在页面上没有任何消息时存在，那种 work 不会有在跑的 run）。
+         */
+        const startRun = (): SendHandle | null => {
+          const draft = result.pendingSend;
+          if (draft) {
+            clearWorkDraft(workId);
+            return send(result.detail, draft, onUpdate);
+          }
+          const activeRunId = result.activeRunId;
+          return activeRunId ? attach(result.detail, activeRunId, onUpdate) : null;
+        };
+
+        let handle = autoRunByWork.get(workId) ?? startRun();
+        if (!handle) return;
+        if (!autoRunByWork.has(workId)) {
+          autoRunByWork.set(workId, handle);
           void handle.promise.finally(() => {
-            if (autoSendByWork.get(workId) === handle) {
-              autoSendByWork.delete(workId);
+            if (autoRunByWork.get(workId) === handle) {
+              autoRunByWork.delete(workId);
             }
           });
         }
@@ -155,7 +174,7 @@ export function useWorkDetail(workId: string, serverReady: boolean): WorkDetailS
           await handle.promise;
         } catch (err) {
           if (!cancelled && generation === loadGenerationRef.current) {
-            setError(err instanceof Error ? err.message : "发送失败，请重试");
+            setError(err instanceof Error ? err.message : "执行失败，请重试");
           }
         } finally {
           if (activeSendRef.current === handle) {
@@ -172,20 +191,22 @@ export function useWorkDetail(workId: string, serverReady: boolean): WorkDetailS
 
     return () => {
       cancelled = true;
-      const handle = autoSendByWork.get(workId) ?? activeSendRef.current;
+      const handle = autoRunByWork.get(workId) ?? activeSendRef.current;
       const nextCount = (mountCountByWork.get(workId) ?? 1) - 1;
       if (nextCount <= 0) mountCountByWork.delete(workId);
       else mountCountByWork.set(workId, nextCount);
 
       queueMicrotask(() => {
         if ((mountCountByWork.get(workId) ?? 0) > 0) return;
-        void handle?.cancel();
-        if (autoSendByWork.get(workId) === handle) {
-          autoSendByWork.delete(workId);
+        // run 的生命周期归服务端：离开页面只停止跟随，不叫停 —— 重进能接回来。
+        // 登记表也清掉，否则下次进这个 work 会复用一个已经停掉的句柄。
+        if (autoRunByWork.get(workId) === handle) {
+          autoRunByWork.delete(workId);
         }
         if (activeSendRef.current === handle) {
           activeSendRef.current = null;
         }
+        handle?.detach();
       });
     };
   }, [workId, serverReady]);
@@ -264,15 +285,10 @@ export function useWorkDetail(workId: string, serverReady: boolean): WorkDetailS
     (agentId: string, modelId: string | null) => {
       const current = detailRef.current;
       if (!current) return;
-      const sameRuntime =
-        Boolean(current.cli_session_id) &&
-        (current.cli_session_runtime_id ?? current.composer_agent_id) === agentId;
       applyDetailUpdate({
         ...current,
         composer_agent_id: agentId,
         composer_model_id: modelId,
-        cli_session_id: sameRuntime ? current.cli_session_id : null,
-        cli_session_runtime_id: sameRuntime ? agentId : null,
       });
     },
     [applyDetailUpdate],

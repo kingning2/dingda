@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@v2/ui-primitives/dialog";
+import { StatTile } from "@v2/ui-primitives/stat-tile";
 import { cn } from "@v2/ui-primitives/utils";
 
 interface AccountsPanelProps {
@@ -473,38 +474,23 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
                   ) : null}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+              <dl className="grid grid-cols-2 gap-2">
                 {profile.followers != null ? (
-                  <div className="rounded-md border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">粉丝</div>
-                    <div className="font-medium">{profile.followers}</div>
-                  </div>
+                  <StatTile label="粉丝" value={String(profile.followers)} />
                 ) : null}
                 {profile.following != null ? (
-                  <div className="rounded-md border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">关注</div>
-                    <div className="font-medium">{profile.following}</div>
-                  </div>
+                  <StatTile label="关注" value={String(profile.following)} />
                 ) : null}
                 {profile.sold_count != null ? (
-                  <div className="rounded-md border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">卖出</div>
-                    <div className="font-medium">{profile.sold_count}</div>
-                  </div>
+                  <StatTile label="卖出" value={String(profile.sold_count)} />
                 ) : null}
                 {profile.purchase_count != null ? (
-                  <div className="rounded-md border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">买过</div>
-                    <div className="font-medium">{profile.purchase_count}</div>
-                  </div>
+                  <StatTile label="买过" value={String(profile.purchase_count)} />
                 ) : null}
                 {profile.collection_count != null ? (
-                  <div className="rounded-md border px-3 py-2">
-                    <div className="text-xs text-muted-foreground">收藏</div>
-                    <div className="font-medium">{profile.collection_count}</div>
-                  </div>
+                  <StatTile label="收藏" value={String(profile.collection_count)} />
                 ) : null}
-              </div>
+              </dl>
             </div>
           ) : null}
           <DialogFooter>

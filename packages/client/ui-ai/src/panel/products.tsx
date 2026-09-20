@@ -7,9 +7,11 @@ import { useRef, useState, type MouseEvent } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ExternalLink, Radar } from "lucide-react";
 import type {
+  AgentWorkAppraisalView,
   AgentWorkComparisonView,
   AgentWorkProductItem,
   AgentWorkProductsView,
+  AgentWorkSelectionView,
 } from "@v2/contracts/ai-work";
 import { pushAppAlert } from "@v2/runtime/app-alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
@@ -19,7 +21,9 @@ import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives
 import { cn } from "@v2/ui-primitives/utils";
 import { openProductPreview } from "@v2/ui-crawler/product-preview";
 import { addMonitorTargets } from "@v2/ui-monitor/monitor-api";
+import { AppraisalResults } from "./appraisal-results";
 import { ComparisonResults } from "./comparison-results";
+import { SelectionResults } from "./selection-results";
 
 /** 单行预估高度（含间距）。 */
 const ROW_ESTIMATE_PX = 112;
@@ -28,6 +32,8 @@ const ROW_GAP_PX = 12;
 interface ProductsProps {
   products: AgentWorkProductsView;
   comparison?: AgentWorkComparisonView | null;
+  selection?: AgentWorkSelectionView | null;
+  appraisal?: AgentWorkAppraisalView | null;
   className?: string;
 }
 
@@ -170,8 +176,20 @@ function ProductVirtualList({
 }
 
 /** 右侧固定结果面板。 */
-export function Products({ products, comparison, className }: ProductsProps) {
+export function Products({ products, comparison, selection, appraisal, className }: ProductsProps) {
   const { items, total, status } = products;
+
+  // 鉴定优先：一次任务里出现了鉴定载荷，用户问的就是「这一件值不值得买」，
+  // 结论在判词卡里。它比选品更具体 —— 选品回答「卖什么」，鉴定回答「这一件」。
+  if (appraisal) {
+    return <AppraisalResults appraisal={appraisal} />;
+  }
+
+  // 选品优先于比价：一次任务里两个都出现过时，用户问的是「卖什么」，
+  // 结论在选品表里；比价只是选品路上的一个支线。
+  if (selection) {
+    return <SelectionResults selection={selection} />;
+  }
 
   if (comparison) {
     return <ComparisonResults comparison={comparison} />;

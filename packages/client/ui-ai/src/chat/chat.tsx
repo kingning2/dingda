@@ -23,6 +23,7 @@ import { ChatBlock } from "./chat-block";
 import { ChatTurn } from "./chat-turn";
 import { blocksForPhase, scheduleTurns } from "./schedule";
 import { useStickyAndFollow } from "./use-sticky-and-follow";
+import { collectChatBlockIds } from "./chat-block-appearance";
 import {
   WorkingIndicator,
   isActivelyStreaming,
@@ -30,6 +31,7 @@ import {
   shouldShowWorking,
 } from "./working-status";
 import type { ChatRenderContext, ChatTurn as ChatTurnData } from "./types";
+import { useActiveLlmCredential } from "@v2/ui-model-config/use-active-credential";
 
 /** 一轮的估算高度；真实高度由 measureElement 测出来后覆盖。 */
 const TURN_ESTIMATED_HEIGHT = 320;
@@ -41,6 +43,8 @@ export interface ChatProps {
   detail: AgentWorkDetailView;
   /** 可选的 Agent 列表，由上层提供（layout 已算好，避免重复取一次）。 */
   agents: ComposerAgentOption[];
+  /** 本地服务是否就绪；用于加载当前模型凭据。 */
+  serverReady?: boolean;
   busy?: boolean;
   /** 当前会话的前端运行阶段；历史回放时为 null。 */
   runPhase?: AgentRunPhase | null;
@@ -59,6 +63,7 @@ type ChatRow =
 export function Chat({
   detail,
   agents,
+  serverReady = false,
   busy = false,
   runPhase = null,
   error = null,
@@ -67,6 +72,7 @@ export function Chat({
   onResubmitUser,
 }: ChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const activeCredential = useActiveLlmCredential(serverReady);
   // 历史回放时 busy 为 false，阶段一律按 null 处理，避免残留的旧阶段影响渲染。
   const activePhase = busy ? runPhase : null;
 
@@ -74,6 +80,15 @@ export function Chat({
     () => scheduleTurns(detail, busy, activePhase),
     [detail, busy, activePhase],
   );
+
+  // 首次挂载的历史块全部视为已出现过；之后新增的块才获得一次入场动画。
+  const initialBlockIds = useMemo(() => collectChatBlockIds(turns), []);
+  const seenBlockIdsRef = useRef(initialBlockIds);
+
+  useEffect(() => {
+    const ids = collectChatBlockIds(turns);
+    ids.forEach((id) => seenBlockIdsRef.current.add(id));
+  }, [turns]);
 
   const rows = useMemo<ChatRow[]>(() => {
     const list: ChatRow[] = turns.map((turn, turnIndex) => ({
@@ -147,6 +162,13 @@ export function Chat({
     activePhaseView?.hint ?? null,
   );
   const activeAssistant = [...detail.messages].reverse().find((m) => m.role === "assistant");
+  const workingStatus = showWorking ? (
+    <WorkingIndicator
+      label={activePhaseView?.workingLabel ?? "Working"}
+      details={workingDetails}
+      startedAt={activeAssistant?.thinking_started_at ?? activeAssistant?.created_at}
+    />
+  ) : null;
 
   const stickyTurn = turns[stickyIndex] ?? null;
   const stickyUser = stickyPinned ? (stickyTurn?.user ?? null) : null;
@@ -188,6 +210,8 @@ export function Chat({
                       // 阶段只对最末一轮有效：历史轮次永远静态铺开。
                       runPhase={item.turnIndex === turns.length - 1 ? activePhase : null}
                       context={context}
+                      status={item.turnIndex === turns.length - 1 ? workingStatus : null}
+                      newBlockIds={seenBlockIdsRef.current}
                     />
                   )}
                 </div>
@@ -199,20 +223,13 @@ export function Chat({
 
       <ComposerFooter
         agents={agents}
+        serverReady={serverReady}
+        activeCredential={activeCredential}
         defaultAgentId={detail.composer_agent_id}
         defaultModelId={detail.composer_model_id}
         placeholder={detail.composer_placeholder}
         disabled={!detail.can_send && !busy}
         busy={busy}
-        status={
-          showWorking ? (
-            <WorkingIndicator
-              label={activePhaseView?.workingLabel ?? "Working"}
-              details={workingDetails}
-              startedAt={activeAssistant?.thinking_started_at ?? activeAssistant?.created_at}
-            />
-          ) : null
-        }
         onSend={onSend}
         onCancel={onCancel}
         onInputActivity={keepFollowingToEnd}

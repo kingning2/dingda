@@ -3,6 +3,7 @@ import {
   Bot,
   Folder,
   Home,
+  KeyRound,
   LogOut,
   PanelLeftClose,
   Radar,
@@ -14,8 +15,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { NAV_ITEMS } from "@v2/ui-home/mock-data";
-import { supportsExternalAgents } from "@v2/runtime/capabilities";
-import { entryPath, entryViewFromPathname } from "@v2/routes/paths";
+import { entryPath, entryViewFromPathname, paths } from "@v2/routes/paths";
 import { Button } from "@v2/ui-primitives/button";
 import { Kbd } from "@v2/ui-primitives/kbd";
 import { Avatar, AvatarFallback } from "@v2/ui-primitives/avatar";
@@ -46,10 +46,7 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
   const navigate = useNavigate();
   const location = useLocation();
   const activeView = entryViewFromPathname(location.pathname);
-  const showExternalAgents = supportsExternalAgents();
-  const navItems = NAV_ITEMS.filter(
-    (item) => !("requiresExternalAgents" in item && item.requiresExternalAgents) || showExternalAgents,
-  );
+  const navItems = NAV_ITEMS;
 
   return (
     <nav
@@ -93,7 +90,7 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
                   variant={active ? "secondary" : "ghost"}
                   className={cn(
                     "h-9 w-full justify-start gap-2.5 px-2.5 text-[13px] font-medium",
-                    active && "bg-accent/30 text-accent-foreground",
+                    active && "bg-selected/30 text-text-strong",
                   )}
                   onClick={() => navigate(entryPath(item.id))}
                   aria-current={active ? "page" : undefined}
@@ -108,18 +105,20 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
 
         <div className="flex flex-col gap-1 px-2">
           <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" className="h-auto w-full justify-start gap-2 px-2 py-1.5" />
-              }
-            >
-              <Avatar className="size-7">
-                <AvatarFallback className="bg-primary text-xs text-primary-foreground">叮</AvatarFallback>
-              </Avatar>
-              <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium">叮答用户</span>
-              <Settings className="size-3.5 shrink-0 text-muted-foreground" />
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-auto w-full justify-start gap-2 px-2 py-1.5">
+                <Avatar className="size-7">
+                  <AvatarFallback className="bg-primary text-xs text-primary-foreground">叮</AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium">叮答用户</span>
+                <Settings className="size-3.5 shrink-0 text-muted-foreground" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" side="top" className="w-48">
+              <DropdownMenuItem onClick={() => navigate(paths.modelConfig)}>
+                <KeyRound className="size-4" />
+                模型配置
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate(entryPath("accounts"))}>
                 <Settings className="size-4" />
                 账号

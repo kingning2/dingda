@@ -1,0 +1,21 @@
+{
+  "name": "@v2/ui-model-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "模型配置：模型凭据列表、供应商选择与连通性检测",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "@tanstack/react-form": "^1.33.5",
+    "lucide-react": "^1.38.0",
+    "@v2/contracts": "workspace:*",
+    "@v2/runtime": "workspace:*",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}

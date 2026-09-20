@@ -2,17 +2,25 @@
  * 把 Agent SSE 事件折叠成助手消息状态。
  * 步骤块（kind / page / status）只接受后端下发的 step / page，前端不猜。
  * timeline 按事件到达顺序交错（思考 ↔ 工具 ↔ 正文），与服务端日志一致。
+ * 子会话（worker）事件走 childEvent 信封，折叠进独立子块，不摊进父的平铺步骤。
  */
 
 import type { AgentEvent } from "@v2/contracts/agent-event";
 import type {
+  AgentWorkChildView,
   AgentWorkDetailView,
   AgentWorkMessageView,
   AgentWorkStepView,
+  AgentWorkStatusView,
   AgentWorkTimelineEntry,
 } from "@v2/contracts/ai-work";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "./phase";
 import { STATUS_TONE } from "../status-tone";
+
+/** 扫码登录帧的约定 URL（后端 login 工具推的），与爬取直播帧区分。 */
+function isLoginFrameUrl(url: string | null | undefined): boolean {
+  return Boolean(url?.startsWith("dingda://login/"));
+}
 
 /** 一条助手消息在运行中的完整状态；每来一个 SSE 事件就整体替换一次。 */
 export interface AgentRunMessageState {
@@ -24,8 +32,26 @@ export interface AgentRunMessageState {
   timeline: AgentWorkTimelineEntry[];
   error: string | null;
   completed: boolean;
-  /** 本轮 SSE 下发的 CLI session / thread id。 */
-  sessionId: string | null;
+  /** 本轮派出的子会话（worker）。 */
+  children: AgentChildRunState[];
+}
+
+/**
+ * 一个子会话的运行态。
+ *
+ * `phase` / `status` 是**服务端**的 AgentPhase（pending/running/needs_repair/…），
+ * `run` 是子会话自己的整份前端运行态 —— 直接复用 `reduceAgentEvent` 递归折叠，
+ * 于是子会话的步骤、正文、思考、时间线不必另写一套。
+ */
+export interface AgentChildRunState {
+  runId: string;
+  role: string;
+  label: string;
+  phase: string;
+  step: string | null;
+  summary: string;
+  status: AgentWorkStatusView;
+  run: AgentRunMessageState;
 }
 
 /** 新建一条空的助手消息状态，起始阶段为 starting。 */
@@ -38,7 +64,7 @@ export function createAgentRunMessageState(): AgentRunMessageState {
     timeline: [],
     error: null,
     completed: false,
-    sessionId: null,
+    children: [],
   };
 }
 
@@ -109,6 +135,96 @@ function patchStep(
   });
 }
 
+/** 服务端 AgentPhase → 子块状态徽标。 */
+function childStatus(phase: string, errorCode?: string | null): AgentWorkStatusView {
+  if (phase === "completed") {
+    return { state: "ready", label: "已完成", hint: null, badge_class: STATUS_TONE.ready };
+  }
+  if (phase === "failed" || phase === "cancelled") {
+    return {
+      state: "error",
+      label: phase === "cancelled" ? "已取消" : "失败",
+      hint: errorCode ?? null,
+      badge_class: STATUS_TONE.failed,
+    };
+  }
+  if (phase === "needs_repair") {
+    return {
+      state: "pending",
+      label: "待修复",
+      hint: errorCode ?? null,
+      badge_class: STATUS_TONE.pending,
+    };
+  }
+  return { state: "running", label: "执行中", hint: null, badge_class: STATUS_TONE.active };
+}
+
+/** 新建一个空子块；内层是一份完整的运行态，直接复用 reducer。 */
+function createChildRunState(runId: string, role: string): AgentChildRunState {
+  const name = (role || "worker").trim() || "worker";
+  return {
+    runId,
+    role: name,
+    label: name === "worker" ? "worker 子会话" : `${name} 子会话`,
+    phase: "pending",
+    step: null,
+    summary: "",
+    status: childStatus("pending"),
+    run: createAgentRunMessageState(),
+  };
+}
+
+/** 子块入时间线；同 runId 不重复。 */
+function appendChildSegment(
+  timeline: AgentWorkTimelineEntry[],
+  runId: string,
+): AgentWorkTimelineEntry[] {
+  if (timeline.some((entry) => entry.kind === "child" && entry.id === runId)) return timeline;
+  return [...timeline, { kind: "child", id: runId }];
+}
+
+/** 按 runId 找到子块并用 patch 更新；没有则以空子块为底新建。 */
+function withChild(
+  state: AgentRunMessageState,
+  runId: string,
+  role: string,
+  patch: (child: AgentChildRunState) => AgentChildRunState,
+): AgentRunMessageState {
+  const key = (runId || "").trim();
+  if (!key) return state;
+  const idx = state.children.findIndex((item) => item.runId === key);
+  if (idx < 0) {
+    const children = [...state.children, patch(createChildRunState(key, role))];
+    return { ...state, children, timeline: appendChildSegment(state.timeline, key) };
+  }
+  const children = [...state.children];
+  children[idx] = patch(children[idx]);
+  return { ...state, children };
+}
+
+/** 父会话收尾：仍未收尾的子块标「已中断」，别让界面永远转圈。 */
+function settleChildren(children: AgentChildRunState[]): AgentChildRunState[] {
+  return children.map((child) => {
+    if (
+      child.phase === "completed" ||
+      child.phase === "failed" ||
+      child.phase === "cancelled"
+    ) {
+      return child;
+    }
+    return {
+      ...child,
+      status: {
+        state: "pending",
+        label: "已中断",
+        hint: "父会话已结束，子会话未收尾",
+        badge_class: STATUS_TONE.pending,
+      },
+      run: { ...child.run, completed: true },
+    };
+  });
+}
+
 /**
  * 把单个 SSE 事件折叠进状态，返回新对象（不改原状态）。
  *
@@ -157,8 +273,9 @@ export function reduceAgentEvent(
       let step = { ...incoming };
       let replacedLive = false;
 
-      // OpenCode 常在工具结束后才发 tool_use：直播帧先落在 browser-live，这里挪到对应工具下
-      if (step.kind === "browser_crawl" || step.id) {
+      // 工具结束后才发 tool_use 时：直播帧先落在 browser-live，这里挪到对应工具下。
+      // 登录块不接管 browser-live —— 那是爬取截图，不能糊到扫码卡上。
+      if (step.kind !== "login" && (step.kind === "browser_crawl" || step.id)) {
         const liveIdx = steps.findIndex((item) => item.id === "browser-live");
         if (liveIdx >= 0 && steps[liveIdx]?.page?.screenshot_url) {
           const live = steps[liveIdx];
@@ -215,10 +332,23 @@ export function reduceAgentEvent(
         screenshot_url: event.screenshot_url,
       };
       if (!page.screenshot_url) return state;
-      // OpenCode 工具完成前不发 tool_use：帧会先到，需合成直播步骤
-      let idx = state.steps.findIndex(
-        (step) => step.kind === "browser_crawl" && step.status.state === "running",
-      );
+      const loginFrame = isLoginFrameUrl(page.url);
+      // 帧可以点名挂哪一块：掉线恢复的二维码必须钉在「扫码登录」块上，否则会被
+      // 还在跑的搜索块抢走。登录帧优先挂进行中的 login 块；普通帧挂 browser_crawl。
+      let idx = event.stepId
+        ? state.steps.findIndex((step) => step.id === event.stepId)
+        : -1;
+      if (idx < 0 && loginFrame) {
+        idx = state.steps.findIndex(
+          (step) => step.kind === "login" && step.status.state === "running",
+        );
+      }
+      if (idx < 0) {
+        // 工具完成前不发 tool_use：帧会先到，需合成直播步骤
+        idx = state.steps.findIndex(
+          (step) => step.kind === "browser_crawl" && step.status.state === "running",
+        );
+      }
       if (idx < 0) {
         idx = state.steps.findIndex((step) => step.id === "browser-live");
       }
@@ -226,66 +356,50 @@ export function reduceAgentEvent(
       let timeline = state.timeline;
       if (idx < 0) {
         steps.push({
-          id: "browser-live",
-          label: page.title || "浏览器直播",
+          id: loginFrame ? "login-pending" : "browser-live",
+          label: page.title || (loginFrame ? "扫码登录" : "浏览器直播"),
           hint: page.focus_label ?? null,
-          kind: "browser_crawl",
+          kind: loginFrame ? "login" : "browser_crawl",
           status: STEP_RUNNING,
           page,
         });
-        timeline = appendStepSegment(timeline, "browser-live");
+        timeline = appendStepSegment(timeline, steps[steps.length - 1]!.id);
       } else {
         const prev = steps[idx];
+        const keepLogin = prev.kind === "login" || loginFrame;
         steps[idx] = {
           ...prev,
           // 步骤标题优先：后端已按工具还原出「搜索商品 · 闲鱼」这类动作文案，
           // 直播帧的页面标题只该落在 page.title（页卡头部已渲染），不能反过来覆盖它。
           label: prev.label || page.title,
           hint: page.focus_label ?? prev.hint,
-          kind: "browser_crawl",
+          // 登录帧绝不能把 login 块改写成 browser_crawl（否则前端又回到直播页卡）
+          kind: keepLogin ? "login" : prev.kind || "browser_crawl",
           status: prev.status.state === "running" ? prev.status : STEP_RUNNING,
           page,
         };
       }
-      return { ...state, phase: "live", steps, timeline };
-    }
-    case "fileChanged":
-      return state;
-    case "session": {
-      const sid = event.sessionId?.trim();
-      if (!sid) return state;
-      return { ...state, sessionId: sid };
+      // 扫码等待不是「浏览器直播」：状态行继续显示 Working，避免 LIVE / Browsing 误导
+      return { ...state, phase: loginFrame ? "executing" : "live", steps, timeline };
     }
     case "agentPhase": {
-      // 子会话阶段：挂一条简短步骤，便于看到「走到哪」
-      const label = `${event.role}:${event.phase}${event.step ? ` · ${event.step}` : ""}`;
-      const id = `agent-phase-${event.runId}`;
-      return {
-        ...state,
-        phase: state.phase === "starting" ? "executing" : state.phase,
-        steps: upsertStep(state.steps, {
-          id,
-          label,
-          kind: "tool",
-          status: {
-            state:
-              event.phase === "completed"
-                ? "ready"
-                : event.phase === "failed" || event.phase === "cancelled"
-                  ? "error"
-                  : "running",
-            label: event.phase,
-            hint: event.errorCode ?? null,
-            badge_class:
-              event.phase === "completed"
-                ? STATUS_TONE.ready
-                : event.phase === "failed" || event.phase === "cancelled"
-                  ? STATUS_TONE.failed
-                  : STATUS_TONE.active,
-          },
-        }),
-        timeline: appendStepSegment(state.timeline, id),
-      };
+      // 父会话自己不发 agentPhase（只有子会话会推），role=parent 时不建块
+      if (event.role === "parent") return state;
+      const next = withChild(state, event.runId, event.role, (child) => ({
+        ...child,
+        phase: event.phase,
+        step: event.step ?? child.step,
+        summary: event.summary ?? child.summary,
+        status: childStatus(event.phase, event.errorCode),
+      }));
+      return next.phase === "starting" ? { ...next, phase: "executing" } : next;
+    }
+    case "childEvent": {
+      // 子会话事件：递归喂给子块自己的运行态，不写进父的 steps / timeline
+      return withChild(state, event.childRunId, event.role, (child) => ({
+        ...child,
+        run: reduceAgentEvent(child.run, event.event, options),
+      }));
     }
     case "error":
       if (!event.message) return state;
@@ -314,6 +428,8 @@ export function reduceAgentEvent(
             }
           : step,
       );
+      // 父 SSE 一关就不会再有子会话事件进来，别让子块永远转圈
+      const children = settleChildren(state.children);
       // CLI 非 0 退出且没发过 error 事件时，也要让用户看到失败，而不是静默「已完成」
       if (event.exitCode !== 0 && !state.error) {
         const message = `Agent 异常退出（exitCode=${event.exitCode}）`;
@@ -329,6 +445,7 @@ export function reduceAgentEvent(
             state.content ? `\n\n${errOnly}` : errOnly,
           ),
           steps,
+          children,
           completed: true,
         };
       }
@@ -336,6 +453,7 @@ export function reduceAgentEvent(
         ...state,
         phase: state.error ? "failed" : "completed",
         steps,
+        children,
         completed: true,
       };
     }
@@ -370,14 +488,37 @@ export function applyRunStateToAssistantMessage(
     thinking_duration_sec,
     steps: state.steps.length > 0 ? state.steps : message.steps,
     timeline: state.timeline.length > 0 ? state.timeline : message.timeline,
+    children: state.children.length > 0 ? state.children.map(toChildView) : message.children,
   };
+}
+
+/** 子会话运行态 → 落库视图（内层 run 摊平成步骤 / 时间线 / 正文）。 */
+function toChildView(child: AgentChildRunState): AgentWorkChildView {
+  return {
+    run_id: child.runId,
+    role: child.role,
+    label: child.label,
+    phase: child.phase,
+    status: child.status,
+    step: child.step,
+    steps: child.run.steps,
+    timeline: child.run.timeline,
+    content: child.run.content,
+    thinking: child.run.thinking,
+    summary: child.summary,
+  };
+}
+
+/** 步骤是否是「带截图的爬取步」（直播帧的候选）。 */
+function hasCrawlFrame(step: AgentWorkStepView): boolean {
+  return step.kind === "browser_crawl" && Boolean(step.page?.screenshot_url);
 }
 
 /**
  * 把运行态写回整份详情：消息、全局状态、浏览器直播帧、可发送标志。
  *
- * 直播帧取时间线上**最后一个**带截图的 browser_crawl 步骤，这样重进会话还能看到最后一帧，
- * 而不是空白。
+ * 直播帧取**最后一个**带截图的 browser_crawl 步骤，这样重进会话还能看到最后一帧，
+ * 而不是空白。父自己没在爬时（活都派给 worker 了）回落到最新子块里的帧。
  */
 export function applyRunStateToDetail(
   detail: AgentWorkDetailView,
@@ -398,9 +539,12 @@ export function applyRunStateToDetail(
     badge_class: phaseView.badgeClass,
   };
 
-  const crawl = [...state.steps]
-    .reverse()
-    .find((step) => step.kind === "browser_crawl" && step.page?.screenshot_url);
+  const crawl =
+    [...state.steps].reverse().find(hasCrawlFrame) ??
+    [...state.children]
+      .reverse()
+      .flatMap((child) => [...child.run.steps].reverse())
+      .find(hasCrawlFrame);
 
   const browser_live = crawl?.page
     ? {
@@ -426,12 +570,6 @@ export function applyRunStateToDetail(
     status,
     can_send: state.completed,
     browser_live,
-    ...(state.sessionId
-      ? {
-          cli_session_id: state.sessionId,
-          cli_session_runtime_id: detail.composer_agent_id ?? detail.cli_session_runtime_id ?? null,
-        }
-      : {}),
   };
 }
 
@@ -449,9 +587,6 @@ export function truncateBeforeUserMessage(
     messages: detail.messages.slice(0, idx),
     comparison: null,
     can_send: true,
-    // 截断后 CLI 历史对不上，丢掉 session，下一轮当新会话
-    cli_session_id: null,
-    cli_session_runtime_id: null,
     status: {
       state: "ready",
       label: "已完成",
@@ -464,7 +599,6 @@ export function truncateBeforeUserMessage(
 /**
  * 乐观发送：先把用户消息与一条空的助手消息塞进详情，再等 SSE 推进。
  *
- * 换 Agent 时丢掉旧 CLI session —— 历史对不上，继续用会串上下文。
  * 标题只在首轮生成，取用户输入前 24 字。
  */
 export function createOptimisticSendDetail(
@@ -500,10 +634,6 @@ export function createOptimisticSendDetail(
         : userText.trim()
       : detail.title;
 
-  const sameRuntime =
-    Boolean(detail.cli_session_id) &&
-    (detail.cli_session_runtime_id ?? detail.composer_agent_id) === agentId;
-
   return {
     assistantMessageId,
     detail: {
@@ -513,9 +643,6 @@ export function createOptimisticSendDetail(
       comparison: null,
       composer_agent_id: agentId,
       composer_model_id: modelId ?? null,
-      // 换 Agent 时丢掉旧 CLI session
-      cli_session_id: sameRuntime ? detail.cli_session_id : null,
-      cli_session_runtime_id: sameRuntime ? agentId : null,
       status: {
         state: AGENT_RUN_PHASE_MAP.starting.statusState,
         label: AGENT_RUN_PHASE_MAP.starting.label,

@@ -3,7 +3,7 @@
  *
  * 职责：
  *   把 Agent 工具返回的原始 output（结构由后端 CLI 决定，前端不保证）解析成
- *   商品列表与比价视图，并按 id 合并进已有结果。
+ *   商品列表、比价视图、选品候选与单品鉴定，并按 id 合并进已有结果。
  *
  * 设计说明：
  *   - 「商品结果」不是后端的事件类型，所以这一步只能由知道业务语义的一方显式调用 ——
@@ -18,10 +18,15 @@
  */
 
 import type {
+  AgentWorkAppraisalItemView,
+  AgentWorkAppraisalView,
   AgentWorkComparisonItemView,
   AgentWorkComparisonView,
   AgentWorkProductItem,
   AgentWorkProductsView,
+  AgentWorkSelectionExcludedView,
+  AgentWorkSelectionItemView,
+  AgentWorkSelectionView,
 } from "@v2/contracts/ai-work";
 import type { CrawlProductItem } from "@v2/contracts/crawler";
 import { isArray, isObject, isString } from "@v2/runtime/guards";
@@ -278,6 +283,175 @@ export function mergeComparison(
     rounds: roundOffset + next.rounds,
     queries: [...(current.queries ?? []), ...next.queries],
   };
+}
+
+/** 从工具输出里抽选品视图；不是 product_selection 形状就返回 null。 */
+export function extractSelection(output: unknown): AgentWorkSelectionView | null {
+  const record = outputRecord(output);
+  if (record === null || record.kind !== "product_selection") return null;
+  const rawItems = isArray(record.candidates, null);
+  if (rawItems === null) return null;
+
+  const items: AgentWorkSelectionItemView[] = [];
+  for (const row of rawItems) {
+    const item = isObject(row, null);
+    if (item === null) continue;
+    const keyword = String(item.keyword ?? "").trim();
+    const platform = String(item.platform ?? "").trim();
+    if (!keyword || !platform) continue;
+    items.push({
+      id: `${platform}:${keyword}`,
+      keyword,
+      platform,
+      score: asNumber(item.score),
+      evidence_coverage: asNumber(item.evidence_coverage),
+      sample_size: asNumber(item.sample_size) ?? 0,
+      detail_size: asNumber(item.detail_size) ?? 0,
+      distinct_sellers: asNumber(item.distinct_sellers) ?? 0,
+      price_p25: asNumber(item.price_p25),
+      price_median: asNumber(item.price_median),
+      price_p75: asNumber(item.price_p75),
+      demand_total: asNumber(item.demand_total),
+      sold_count: asNumber(item.sold_count) ?? 0,
+      on_sale_count: asNumber(item.on_sale_count) ?? 0,
+      state_known: asNumber(item.state_known) ?? 0,
+      availability: String(item.availability ?? ""),
+      evidence_status: String(item.evidence_status ?? ""),
+      reasons: textList(item.reasons),
+      evidence_gaps: textList(item.evidence_gaps),
+      dimensions: numberRecord(item.dimensions),
+    });
+  }
+
+  const excluded: AgentWorkSelectionExcludedView[] = [];
+  for (const row of isArray(record.excluded, [])) {
+    const item = isObject(row, null);
+    if (item === null) continue;
+    const keyword = String(item.keyword ?? "").trim();
+    if (!keyword) continue;
+    excluded.push({
+      keyword,
+      platform: String(item.platform ?? "").trim(),
+      error_code: String(item.error_code ?? "").trim(),
+    });
+  }
+
+  const partial = record.partial === true;
+  return {
+    kind: "product_selection",
+    platforms: textList(record.platforms),
+    items,
+    excluded,
+    partial,
+    reason: isString(record.reason, null),
+    status: {
+      state: items.length > 0 ? "ready" : "error",
+      label: items.length > 0 ? (partial ? "已完成（不完整）" : "已完成") : "没取到样本",
+      hint:
+        items.length > 0
+          ? `${items.length} 个候选已打分`
+          : String(record.message ?? "候选都没取到可用样本"),
+      badge_class:
+        items.length > 0
+          ? "bg-emerald-500/15 text-emerald-600"
+          : "bg-red-500/15 text-red-700",
+    },
+  };
+}
+
+/**
+ * 从工具输出里抽鉴定视图；不是 product_appraisal 形状就返回 null。
+ *
+ * 与 `extractSelection` 同一层判断：`kind` 对不上就整个放弃，不猜。
+ */
+export function extractAppraisal(output: unknown): AgentWorkAppraisalView | null {
+  const record = outputRecord(output);
+  if (record === null || record.kind !== "product_appraisal") return null;
+
+  const target = appraisalRow(record.target);
+  const comparables: AgentWorkAppraisalItemView[] = [];
+  for (const row of isArray(record.comparables, [])) {
+    const parsed = appraisalRow(row);
+    if (parsed !== null) comparables.push(parsed);
+  }
+
+  // 判词是结论的主语：缺了它这张卡没什么可说的，按失败处理而不是给个空壳。
+  const verdictLabel = String(record.verdict_label ?? "").trim();
+  const ok = target !== null && verdictLabel !== "";
+
+  return {
+    kind: "product_appraisal",
+    query: String(record.query ?? "").trim(),
+    score: asNumber(record.score),
+    verdict: String(record.verdict ?? "").trim(),
+    verdict_label: verdictLabel,
+    verdict_reason: String(record.verdict_reason ?? "").trim(),
+    evidence_coverage: asNumber(record.evidence_coverage),
+    dimensions: numberRecord(record.dimensions),
+    reasons: textList(record.reasons),
+    evidence_gaps: textList(record.evidence_gaps),
+    target,
+    comparables,
+    spread: asNumber(record.spread),
+    price_p25: asNumber(record.price_p25),
+    price_median: asNumber(record.price_median),
+    price_p75: asNumber(record.price_p75),
+    sample_size: asNumber(record.sample_size) ?? 0,
+    partial: record.partial === true,
+    message: isString(record.message, null),
+    status: {
+      state: ok ? "ready" : "error",
+      label: ok ? (record.partial === true ? "已完成（不完整）" : "已完成") : "鉴定没做成",
+      hint: ok
+        ? `${verdictLabel}${comparables.length > 1 ? ` · 同款 ${comparables.length - 1} 条` : ""}`
+        : String(record.message ?? "本商品详情没拉到"),
+      badge_class: ok
+        ? "bg-emerald-500/15 text-emerald-600"
+        : "bg-red-500/15 text-red-700",
+    },
+  };
+}
+
+/** 鉴定表一行；`item_id` 与 `title` 缺一不可 —— 缺了渲染出来点不开也认不出。 */
+function appraisalRow(row: unknown): AgentWorkAppraisalItemView | null {
+  const item = isObject(row, null);
+  if (item === null) return null;
+  const id = String(item.item_id ?? item.id ?? "").trim();
+  const title = String(item.title ?? "").trim();
+  if (!id || !title) return null;
+  return {
+    id,
+    title,
+    price: String(item.price ?? ""),
+    platform: String(item.platform ?? ""),
+    url: String(item.url ?? ""),
+    seller: isString(item.seller_nick, null),
+    image_url: isString(item.image_url, null),
+    want_count: textOrNull(item.want_count),
+    browse_count: textOrNull(item.browse_count),
+    sold_state: textOrNull(item.sold_state),
+    is_target: item.is_target === true,
+    price_delta_pct: asNumber(item.price_delta_pct),
+  };
+}
+
+/** 字符串数组；非数组或元素不是字符串就丢那一条。 */
+function textList(value: unknown): string[] {
+  return isArray(value, [])
+    .map((entry) => String(entry ?? "").trim())
+    .filter(Boolean);
+}
+
+/** 数字字典（维度分）；丢掉非数字的值，不猜。 */
+function numberRecord(value: unknown): Record<string, number> {
+  const record = isObject(value, null);
+  if (record === null) return {};
+  const out: Record<string, number> = {};
+  for (const [key, entry] of Object.entries(record)) {
+    const num = asNumber(entry);
+    if (num !== null) out[key] = num;
+  }
+  return out;
 }
 
 /**
