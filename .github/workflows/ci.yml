@@ -58,7 +58,14 @@ jobs:
 
       # 集成测试（-m integration）需要本机浏览器与真实会话，只在本地跑
       - name: pytest
-        run: uv run pytest packages-py/api/tests -m "not integration"
+        shell: bash
+        run: set -o pipefail && uv run pytest packages-py/api/tests -m "not integration" --tb=short -q 2>&1 | tee pytest-output.log | tail -3
+
+      # 失败时把末段输出写进 run summary（公开可读），便于无 token 排查
+      - name: pytest 失败输出
+        if: failure()
+        shell: bash
+        run: tail -n 80 pytest-output.log >> "$GITHUB_STEP_SUMMARY"
 
   rust:
     name: rust（cargo check）
@@ -78,4 +85,10 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: cargo check
-        run: cargo check --workspace --all-targets
+        shell: bash
+        run: set -o pipefail && cargo check --workspace --all-targets 2>&1 | tee cargo-output.log | tail -3
+
+      - name: cargo 失败输出
+        if: failure()
+        shell: bash
+        run: tail -n 100 cargo-output.log >> "$GITHUB_STEP_SUMMARY"
