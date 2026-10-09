@@ -1,0 +1,55 @@
+name: 🐛 Bug 报告
+description: 报告安装包或源码运行的问题
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！**安全漏洞请勿在此提交**，走 [私下漏洞报告](https://github.com/kingning2/dingda/security/advisories/new)。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么？
+      description: 期望行为 vs 实际行为；复现步骤越具体越好
+    validations:
+      required: true
+  - type: dropdown
+    id: env-os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: env-source
+    attributes:
+      label: 运行方式
+      options:
+        - 安装包（Releases 下载）
+        - 源码运行（pnpm tauri dev）
+        - 仅 Web 联调（pnpm dev）
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本
+      description: 安装包版本号或 commit hash
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图
+      description: 终端输出、devtools 报错或截图（注意隐去账号 Cookie 等敏感信息）
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: 确认
+      options:
+        - label: 已搜索 Issue 列表确认没有重复
+          required: true
+        - label: 已按 CONTRIBUTING.md 过本地门禁（源码运行时）

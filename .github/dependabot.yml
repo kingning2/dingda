@@ -1,0 +1,26 @@
+# Dependabot 版本更新
+# 说明：uv（pip）生态的 Dependabot 支持尚不成熟，Python 依赖暂用
+# `uv lock --upgrade` 手动月更；其余三个生态自动开 PR。
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      js-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "cargo"
+    directory: "/packages-rs"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

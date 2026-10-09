@@ -44,6 +44,10 @@
 
 ## Get Started
 
+### 下载安装包（普通用户）
+
+到 [Releases](https://github.com/kingning2/dingda/releases) 下载对应平台的安装包，开箱即用，无需任何开发环境。
+
 ### 开发运行
 
 ```bash
@@ -104,3 +108,9 @@ packages-py/        Python uv workspace（见根 pyproject.toml）
 
 更多目录说明见 [`AGENTS.md`](AGENTS.md)、[`packages/README.md`](packages/README.md)、
 [`packages-rs/README.md`](packages-rs/README.md) 与 [`packages-py/api/src/api/README.md`](packages-py/api/src/api/README.md)。
+
+参与贡献请读 [`CONTRIBUTING.md`](CONTRIBUTING.md)；安全漏洞走 [`SECURITY.md`](SECURITY.md) 的私密报告渠道。
+
+## License
+
+本项目基于 [Apache-2.0](LICENSE) 开源。
