@@ -19,7 +19,7 @@
     "@wdio/mocha-framework": "^9.31.7",
     "@wdio/spec-reporter": "^9.31.2",
     "@wdio/tauri-service": "^1.4.0",
-    "@wdio/types": "^9.31.2",
+    "@wdio/types": "^10.0.0",
     "@types/node": "^22",
     "typescript": "~5.8.3"
   }
