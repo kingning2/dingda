@@ -35,5 +35,6 @@
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^4.6.0",
     "vite": "^7.0.4"
-  }
+  },
+  "license": "Apache-2.0"
 }

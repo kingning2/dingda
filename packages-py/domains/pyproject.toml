@@ -1,4 +1,5 @@
 [project]
+license = { text = "Apache-2.0" }
 name = "domains"
 version = "0.1.0"
 description = "DingDa 应用服务层骨架：账号 / 渠道编排 / 运行时快照 / 知识库。"

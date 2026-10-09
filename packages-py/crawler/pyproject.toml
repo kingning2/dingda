@@ -1,4 +1,5 @@
 [project]
+license = { text = "Apache-2.0" }
 name = "crawler"
 version = "0.1.0"
 description = "DingDa 平台采集层：搜索 / 详情 / 解析 / Snapshot / 去重。只经 contracts 的 BrowserPort 用浏览器，禁止 import browser/playwright。"

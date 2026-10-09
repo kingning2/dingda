@@ -1,6 +1,7 @@
 [package]
 name = "camoufox"
 version = "0.1.0"
+license.workspace = true
 edition = "2021"
 description = "Camoufox 运行时定位与解压"
 

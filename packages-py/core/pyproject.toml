@@ -1,4 +1,5 @@
 [project]
+license = { text = "Apache-2.0" }
 name = "core"
 version = "0.1.0"
 description = "DingDa 底座：配置 / 日志 / 全局错误 / 上下文压缩。不认识任何业务域。"

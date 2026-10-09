@@ -1,4 +1,5 @@
 [project]
+license = { text = "Apache-2.0" }
 name = "tools"
 version = "0.1.0"
 description = "DingDa Tool 边界：Agent 可调用契约 + 实现（search/product/login/snapshot…）。插座在此落地为具体实现。"

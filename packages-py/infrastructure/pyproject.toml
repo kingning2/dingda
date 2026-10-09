@@ -1,4 +1,5 @@
 [project]
+license = { text = "Apache-2.0" }
 name = "infrastructure"
 version = "0.1.0"
 description = "DingDa 进程级基建：产品 SQLite 与 EventBus。不是业务层。"

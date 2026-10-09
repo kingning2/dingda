@@ -6,5 +6,6 @@
   "description": "路由契约：路径常量与解析（无 React）",
   "exports": {
     "./*": "./src/*.js"
-  }
+  },
+  "license": "Apache-2.0"
 }

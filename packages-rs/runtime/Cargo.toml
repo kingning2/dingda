@@ -1,6 +1,7 @@
 [package]
 name = "runtime"
 version = "0.1.0"
+license.workspace = true
 edition = "2021"
 description = "外部 CLI Agent Runtime：定义、探测、托管下载、模型发现"
 
