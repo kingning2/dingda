@@ -9,8 +9,8 @@
     "./*": "./src/*.js"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.11",
-    "lucide-react": "^1.38.0",
+    "@tanstack/react-virtual": "^3.14.13",
+    "lucide-react": "^1.52.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "@v2/app-state": "workspace:*",
