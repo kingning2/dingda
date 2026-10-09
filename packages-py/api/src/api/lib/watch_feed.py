@@ -5,7 +5,7 @@
     把 ProductOutput 映射成 ProductSnapshot 供后台轮询使用。
 
 设计说明：
-    - 插头放在 api：只有这一层同时依赖 ``domains``（插座）与 ``tools``（实现）
+    - 插头放在 api/lib：只有这一层同时依赖 ``domains``（插座）与 ``tools``（实现）
     - 后台轮询**不能有任何交互**，所以两处都要关：
       1. ``allow_login_recovery=False``：会话过期不弹扫码窗，让这次轮询失败，
          由 token 调度器去静默续期

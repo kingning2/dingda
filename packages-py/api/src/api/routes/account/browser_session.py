@@ -1,4 +1,8 @@
-"""账号 HTTP 路由（读/删 + 偏好 PATCH；登录态由扫码/探活侧写入）。"""
+"""预览浏览器会话端点。
+
+职责：
+    商品预览注入用：返回已映射域名的 cookie 与 localStorage。
+"""
 
 from __future__ import annotations
 
@@ -7,28 +11,15 @@ import logging
 from fastapi import APIRouter, Query
 
 from contracts.account import (
-    AccountDeleteResponse,
-    AccountListResponse,
-    AccountPatchRequest,
     AccountPlatform,
-    AccountProfileResponse,
-    AccountUpsertResponse,
     BrowserCookieItem,
     BrowserSessionResponse,
 )
 from tools.account_cookie import resolve_browser_session
-from domains.account.service import get_account_service
 
 logger = logging.getLogger("dingda.api.account")
 
-router = APIRouter(prefix="/v1/accounts", tags=["accounts"])
-
-
-@router.get("", response_model=AccountListResponse)
-def list_accounts(
-    platform: AccountPlatform | None = Query(default=None),
-) -> AccountListResponse:
-    return get_account_service().list(platform=platform)
+router = APIRouter(prefix="/v1/accounts")
 
 
 @router.get("/browser-session", response_model=BrowserSessionResponse)
@@ -71,28 +62,3 @@ def get_browser_session(
         cookies=cookies,
         local_storage=session.local_storage,
     )
-
-
-@router.get("/{account_id}/profile", response_model=AccountProfileResponse)
-def get_account_profile(account_id: str) -> AccountProfileResponse:
-    return get_account_service().profile_page(account_id)
-
-
-@router.patch("/{account_id}", response_model=AccountUpsertResponse)
-def patch_account(account_id: str, request: AccountPatchRequest) -> AccountUpsertResponse:
-    return get_account_service().patch(account_id, request)
-
-
-@router.post("/{account_id}/connect", response_model=AccountUpsertResponse)
-def connect_account(account_id: str) -> AccountUpsertResponse:
-    return get_account_service().connect(account_id)
-
-
-@router.post("/{account_id}/disconnect", response_model=AccountUpsertResponse)
-def disconnect_account(account_id: str) -> AccountUpsertResponse:
-    return get_account_service().disconnect(account_id)
-
-
-@router.delete("/{account_id}", response_model=AccountDeleteResponse)
-def delete_account(account_id: str) -> AccountDeleteResponse:
-    return get_account_service().delete(account_id)

@@ -1,4 +1,8 @@
-"""运行时状态 HTTP 路由。"""
+"""运行时快照端点。
+
+职责：
+    返回当前 RuntimeService 快照，供壳层与设置页读取。
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from fastapi import APIRouter
 
 from domains.runtime import RuntimeService
 
-router = APIRouter(prefix="/v1/runtime", tags=["runtime"])
+router = APIRouter()
 _runtime = RuntimeService()
 
 

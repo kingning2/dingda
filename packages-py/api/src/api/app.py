@@ -5,10 +5,10 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.router import api_router
-from core.config import Settings
-from api.exceptions import register_exception_handlers
 from api.boot.lifespan import create_lifespan
+from api.exceptions import register_exception_handlers
+from api.routes import api_router
+from core.config import Settings
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:

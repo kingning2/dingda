@@ -31,7 +31,10 @@ def test_qr_start_and_check_success() -> None:
         cookie="a=1; b=2",
     )
 
-    with patch("api.channel.get_channel_qr_service") as mock_get:
+    with (
+        patch("api.routes.channel.qr_start.get_channel_qr_service") as mock_get,
+        patch("api.routes.channel.qr_check.get_channel_qr_service", mock_get),
+    ):
         service = mock_get.return_value
         service.start.return_value = start_payload
         service.check.return_value = check_payload
@@ -51,7 +54,7 @@ def test_qr_cancel_endpoint() -> None:
     client = TestClient(app)
     payload = QrCancelResponse(ok=True, session_id="qr-test", detail="已取消扫码")
 
-    with patch("api.channel.get_channel_qr_service") as mock_get:
+    with patch("api.routes.channel.qr_cancel.get_channel_qr_service") as mock_get:
         service = mock_get.return_value
         service.cancel.return_value = payload
         resp = client.post("/v1/channel/qr/cancel", json={"session_id": "qr-test"})

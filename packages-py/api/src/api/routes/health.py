@@ -1,4 +1,8 @@
-"""健康检查 HTTP 路由。"""
+"""健康检查端点。
+
+职责：
+    返回存活状态，供 Rust 壳层探活（不触发完整预热）。
+"""
 
 from __future__ import annotations
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from enum import StrEnum
 
-from api.watch_feed import fetch_product
+from api.lib.watch_feed import fetch_product
 from core.logging import info
 from domains.account.token_scheduler import schedule_xianyu_token_scheduler
 from domains.watch.scheduler import schedule_watch_scheduler

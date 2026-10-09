@@ -99,13 +99,13 @@ def test_manual_poll_records_point_and_detail_exposes_history(
     set_db_path(tmp_path / "watch.db")
     target = _add(client)["targets"][0]
 
-    with patch("api.watch.fetch_product", new=_fetcher(ok=True, price_text="¥100", sold_state="on_sale")):
+    with patch("api.routes.watch.poll.fetch_product", new=_fetcher(ok=True, price_text="¥100", sold_state="on_sale")):
         polled = client.post("/v1/watch/poll", json={"target_ids": [target["target_id"]]}).json()
     assert polled["polled"] == 1
     assert polled["succeeded"] == 1
     assert polled["results"][0]["price"] == 100.0
 
-    with patch("api.watch.fetch_product", new=_fetcher(ok=True, price_text="¥80", sold_state="sold")):
+    with patch("api.routes.watch.poll.fetch_product", new=_fetcher(ok=True, price_text="¥80", sold_state="sold")):
         client.post("/v1/watch/poll", json={"target_ids": [target["target_id"]]})
 
     detail = client.get(f"/v1/watch/targets/{target['target_id']}").json()
@@ -119,7 +119,7 @@ def test_manual_poll_records_point_and_detail_exposes_history(
 def test_manual_poll_caps_batch_size(tmp_path: Path, client: TestClient) -> None:
     set_db_path(tmp_path / "watch.db")
     ids = [_add(client, str(1000 + index))["targets"][0]["target_id"] for index in range(8)]
-    with patch("api.watch.fetch_product", new=_fetcher(ok=True, price_text="¥50")):
+    with patch("api.routes.watch.poll.fetch_product", new=_fetcher(ok=True, price_text="¥50")):
         body = client.post("/v1/watch/poll", json={"target_ids": ids}).json()
     assert body["polled"] == 5
 
@@ -159,11 +159,11 @@ def test_summary_reports_sold_and_dropped(tmp_path: Path, client: TestClient) ->
     set_db_path(tmp_path / "watch.db")
     dropped = _add(client, "1001")["targets"][0]
     sold = _add(client, "1002")["targets"][0]
-    with patch("api.watch.fetch_product", new=_fetcher(ok=True, price_text="¥100", sold_state="on_sale")):
+    with patch("api.routes.watch.poll.fetch_product", new=_fetcher(ok=True, price_text="¥100", sold_state="on_sale")):
         client.post("/v1/watch/poll", json={"target_ids": [dropped["target_id"], sold["target_id"]]})
-    with patch("api.watch.fetch_product", new=_fetcher(ok=True, price_text="¥70", sold_state="on_sale")):
+    with patch("api.routes.watch.poll.fetch_product", new=_fetcher(ok=True, price_text="¥70", sold_state="on_sale")):
         client.post("/v1/watch/poll", json={"target_ids": [dropped["target_id"]]})
-    with patch("api.watch.fetch_product", new=_fetcher(ok=True, price_text="¥100", sold_state="sold")):
+    with patch("api.routes.watch.poll.fetch_product", new=_fetcher(ok=True, price_text="¥100", sold_state="sold")):
         client.post("/v1/watch/poll", json={"target_ids": [sold["target_id"]]})
 
     summary = client.get("/v1/watch/summary").json()
@@ -178,7 +178,7 @@ def test_poll_failure_is_reported_without_adding_point(tmp_path: Path, client: T
     set_db_path(tmp_path / "watch.db")
     target = _add(client)["targets"][0]
     with patch(
-        "api.watch.fetch_product",
+        "api.routes.watch.poll.fetch_product",
         new=_fetcher(ok=False, error_code="channel.risk", error_message="风控"),
     ):
         body = client.post("/v1/watch/poll", json={"target_ids": [target["target_id"]]}).json()

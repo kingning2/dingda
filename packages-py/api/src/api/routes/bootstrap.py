@@ -1,4 +1,8 @@
-"""壳层首屏所需的轻量 bootstrap 接口。"""
+"""壳层首屏 bootstrap 端点。
+
+职责：
+    立即返回壳层快照，并在后台触发完整预热；首屏不等 DB。
+"""
 
 from __future__ import annotations
 
