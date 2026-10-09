@@ -38,7 +38,7 @@ packages-py/tools/src/tools/          # 能力边界在这里，不要在 agent/
 
 不要建 `packages-py/agent/src/agent/tools/` 第二套实现。Agent 只通过 Tool Registry 选工具。
 
-现存空骨架在 ``packages-py/agent/src/agent/``。**新代码写这里**，不要再往 ``domains/`` 堆 Agent。`api/agent.py` 应调用 `src.agent`。
+现存空骨架在 ``packages-py/agent/src/agent/``。**新代码写这里**，不要再往 ``domains/`` 堆 Agent。`api/routes/agent/` 应调用 `src.agent`。
 
 ## Agent Core
 
@@ -80,7 +80,7 @@ Workflow 可以组合 Agent、Tool，但不能直接绕过 Tool 调用底层 Bro
 ## 依赖
 
 ```text
-api/agent.py
+api/routes/agent/（目录）
   → workflows 或 core.Agent
     → tools.registry  (按名字调用)
       → tools（registry / search / product）

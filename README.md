@@ -78,6 +78,16 @@ pnpm dev
 
 ## Repository
 
+三个可运行入口：
+
+```text
+Web 应用        apps/web            pnpm dev            浏览器直联 Server 联调
+Python Server   packages-py/api     python -m api       唯一状态持有方（HTTP/SSE :8787）
+桌面客户端      packages-rs/client  pnpm tauri dev      壳 = Web + Server + OS 能力
+```
+
+桌面壳在本地起停 Python Server，Web 界面经 HTTP/SSE 调它；脱离壳也能 Web 联调（默认 API `http://127.0.0.1:8787`）。
+
 ```text
 apps/web/           Web 应用装配（React + Vite 根）
   └─ public/        品牌资源与截图（Vite publicDir，按 `/xxx` 引用）
@@ -87,7 +97,7 @@ packages/           前端 pnpm 工作区（见 packages/README.md）
 packages-rs/        Rust workspace（成员包，见 packages-rs/README.md）
   └─ client/        Tauri 客户端（起停 Server、OS 能力、外部 CLI）
 packages-py/        Python uv workspace（见根 pyproject.toml）
-  ├─ api/            FastAPI 装配与入口（`python -m api`）
+  ├─ api/            FastAPI 装配与入口（`python -m api`；路由一端点一文件在 api/routes/）
   ├─ contracts/      零依赖线协议 DTO 与端口
   └─ …               core / infrastructure / browser / crawler / tools / cli / domains
 ```
