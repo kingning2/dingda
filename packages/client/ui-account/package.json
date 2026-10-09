@@ -6,7 +6,7 @@
   "description": "账号域：账号列表、扫码登录、登录态告警",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "lucide-react": "^1.38.0",

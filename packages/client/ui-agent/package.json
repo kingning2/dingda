@@ -6,7 +6,7 @@
   "description": "Agent 域：外部 CLI Runtime 探测与运行态",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

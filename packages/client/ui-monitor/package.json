@@ -6,7 +6,7 @@
   "description": "商品监控：监控列表、价格历史与变更事件",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "lucide-react": "^1.38.0",

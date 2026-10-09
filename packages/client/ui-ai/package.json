@@ -6,7 +6,7 @@
   "description": "AI 消息渲染：消息块、Markdown、思考过程",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.11",

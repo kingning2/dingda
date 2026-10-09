@@ -6,7 +6,7 @@
   "description": "输入区：Prompt 编辑器、附件、Agent 选择",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "lucide-react": "^1.38.0",

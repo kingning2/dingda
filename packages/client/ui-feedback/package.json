@@ -5,7 +5,7 @@
   "type": "module",
   "description": "反馈层：全局错误边界与告警宿主",
   "exports": {
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "lucide-react": "^1.38.0",

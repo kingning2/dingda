@@ -5,7 +5,7 @@
   "type": "module",
   "description": "采集域：商品详情拉取与商品预览浮层",
   "exports": {
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "@tauri-apps/plugin-opener": "^2",

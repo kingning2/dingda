@@ -5,7 +5,7 @@
   "type": "module",
   "description": "首页域：首屏、项目条、类型入口",
   "exports": {
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "lucide-react": "^1.38.0",

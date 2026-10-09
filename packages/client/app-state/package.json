@@ -6,7 +6,7 @@
   "description": "跨域共享 UI 状态：启动探测结果（Agent 运行时 / 平台账号 / 最近会话）",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "zustand": "^5.0.15",

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "窗口骨架：应用外壳、标题栏、导航栏、主区域布局",
   "exports": {
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "lucide-react": "^1.38.0",

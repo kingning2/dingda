@@ -5,7 +5,7 @@
   "type": "module",
   "description": "无业务的原子组件（shadcn 生成物）与 cn 工具",
   "exports": {
-    "./*": "./src/*"
+    "./*": "./src/*.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
