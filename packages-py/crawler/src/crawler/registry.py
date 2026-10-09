@@ -33,6 +33,11 @@ def is_api_platform(platform: str) -> bool:
     return platform in _API_SOURCES
 
 
+def has_browser_platform(platform: str) -> bool:
+    """Browser Source 注册表是否有该平台（供 Tool 在 acquire 浏览器前 fail-fast）。"""
+    return platform in _BROWSER_SOURCES
+
+
 def create_crawler(
     platform: str,
     browser: BrowserPort,

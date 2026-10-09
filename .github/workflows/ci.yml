@@ -92,4 +92,4 @@ jobs:
       - name: cargo 失败输出
         if: failure()
         shell: bash
-        run: grep -E "^error" cargo-output.log | head -8 | while IFS= read -r line; do echo "::error::${line:0:180}"; done
+        run: tail -n 10 cargo-output.log | while IFS= read -r line; do echo "::error::${line:0:180}"; done

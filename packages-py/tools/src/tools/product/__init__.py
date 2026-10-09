@@ -28,7 +28,7 @@ from tools.account_cookie import resolve_crawl_cookie
 from crawler.core.base import BrowserSessionOptions
 from crawler.core.live import META_LIVE_CALLBACK, META_LIVE_ENABLED
 from crawler.core.types import CrawlContext
-from crawler.registry import cookies_for, create_crawler
+from crawler.registry import cookies_for, create_crawler, has_browser_platform
 from core.errors import AppError
 from tools.recovery import with_crawl_recovery
 
@@ -158,6 +158,12 @@ async def run_product(
         manager = get_browser_manager()
         port = None
         try:
+            # 先验平台再拿浏览器：不支持的平台 fail-fast，不浪费浏览器会话
+            if not has_browser_platform(inp.platform):
+                raise AppError(
+                    "crawler.platform_unsupported",
+                    f"不支持的爬虫平台：{inp.platform}",
+                )
             port = await manager.acquire(LaunchOptions(headless=True))
             options = BrowserSessionOptions(
                 proxy_url=inp.proxy_url,
