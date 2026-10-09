@@ -8,9 +8,9 @@
     "./*": "./src/*.js"
   },
   "dependencies": {
-    "lucide-react": "^1.38.0",
+    "lucide-react": "^1.52.0",
     "motion": "^13.1.1",
-    "react-router-dom": "^7.18.3",
+    "react-router-dom": "^7.18.4",
     "@v2/routes": "workspace:*",
     "@v2/runtime": "workspace:*",
     "@v2/ui-home": "workspace:*",
