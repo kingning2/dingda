@@ -85,6 +85,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
+      # tauri-build 编译期校验 bundle.resources 与 frontendDist 存在；
+      # 真实运行时资源由发布流程 prepare:desktop-runtime 产出，CI 只需让 glob 有匹配
+      - name: Stub bundle resources 与 frontendDist
+        run: |
+          mkdir -p packages-rs/client/resources/runtime apps/web/dist
+          echo "ci-stub" > packages-rs/client/resources/runtime/stub.txt
+          echo "<html></html>" > apps/web/dist/index.html
       - name: cargo check
         shell: bash
         run: set -o pipefail && cargo check --workspace --all-targets 2>&1 | tee cargo-output.log | tail -3
