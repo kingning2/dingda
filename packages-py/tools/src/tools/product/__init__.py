@@ -32,6 +32,7 @@ from crawler.registry import cookies_for, create_crawler
 from core.errors import AppError
 from tools.recovery import with_crawl_recovery
 
+from tools.spec import ToolSpec
 logger = logging.getLogger("dingda.tools.product")
 
 TOOL_NAME = "product"
@@ -260,3 +261,14 @@ def _comments_from_raw(value: Any) -> list[ProductComment]:
             )
         )
     return out
+
+
+spec = ToolSpec(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_model=ProductInput,
+    output_model=ProductOutput,
+    handler=run_product,  # type: ignore[arg-type]
+    timeout_s=DEFAULT_TIMEOUT_S,
+    internal_only=False,
+)

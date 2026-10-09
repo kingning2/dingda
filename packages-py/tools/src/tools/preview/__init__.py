@@ -31,6 +31,7 @@ from crawler.core.types import CrawlContext
 from core.errors import AppError
 from tools.live_push import agent_run_id, post_live_frame
 
+from tools.spec import ToolSpec
 logger = logging.getLogger("dingda.tools.preview")
 
 TOOL_NAME = "preview"
@@ -164,3 +165,14 @@ async def run_preview(inp: PreviewInput) -> PreviewOutput:
         if page is not None:
             await page.close()
         await manager.release(port)
+
+
+spec = ToolSpec(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_model=PreviewInput,
+    output_model=PreviewOutput,
+    handler=run_preview,  # type: ignore[arg-type]
+    timeout_s=DEFAULT_TIMEOUT_S,
+    internal_only=False,
+)

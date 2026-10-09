@@ -1,10 +1,13 @@
-"""Tool 注册表：按名查找并执行 Tool。
+"""Tool 注册表：自动发现 tools/ 下的工具目录并按名执行。
 
 职责：
-    聚合各 Tool 模块（契约 + run_*）；供 MCP 与产品 Agent 统一 invoke。
+    聚合各 Tool（契约 + run_*）；供 MCP 与产品 Agent 统一 invoke。
 
 设计说明：
-    - 选品：search / product / compare / preview / login（每工具一个 ``tools/<name>.py``）
+    - 每个工具一个 ``tools/<name>/`` 子包，``__init__.py`` 导出契约、run_* 与 ``spec``
+    - 注册表用 ``pkgutil.iter_modules`` 自动发现子包，读取其 ``spec`` 属性；
+      新增工具 = 新建目录 + 构造 spec（或 ``python -m tools.scaffold``），无需改本文件
+    - 支撑模块（account_cookie / recovery / live_push）保持平铺，不会被误认成工具
     - 浏览器平台经 Crawler → BrowserPort；ali1688 经 ApiCrawler → Channel
     - 不在此 import Playwright
 
@@ -14,154 +17,42 @@
 
 from __future__ import annotations
 
+import importlib
 import logging
-from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+import pkgutil
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
 from core.errors import AppError
-from tools.compare import (
-    DEFAULT_TIMEOUT_S as COMPARE_TIMEOUT_S,
-    TOOL_DESCRIPTION as COMPARE_DESCRIPTION,
-    TOOL_NAME as COMPARE_NAME,
-    CompareInput,
-    CompareOutput,
-    run_compare,
-)
 from tools.live_push import make_live_frame_handler
-from tools.login import (
-    DEFAULT_TIMEOUT_S as LOGIN_TIMEOUT_S,
-    TOOL_DESCRIPTION as LOGIN_DESCRIPTION,
-    TOOL_NAME as LOGIN_NAME,
-    LoginInput,
-    LoginOutput,
-    run_login,
-)
-from tools.preview import (
-    DEFAULT_TIMEOUT_S as PREVIEW_TIMEOUT_S,
-    TOOL_DESCRIPTION as PREVIEW_DESCRIPTION,
-    TOOL_NAME as PREVIEW_NAME,
-    PreviewInput,
-    PreviewOutput,
-    run_preview,
-)
-from tools.product import (
-    DEFAULT_TIMEOUT_S as PRODUCT_TIMEOUT_S,
-    TOOL_DESCRIPTION as PRODUCT_DESCRIPTION,
-    TOOL_NAME as PRODUCT_NAME,
-    ProductInput,
-    ProductOutput,
-    run_product,
-)
-from tools.search import (
-    DEFAULT_TIMEOUT_S as SEARCH_TIMEOUT_S,
-    TOOL_DESCRIPTION as SEARCH_DESCRIPTION,
-    TOOL_NAME as SEARCH_NAME,
-    SearchInput,
-    SearchOutput,
-    run_search,
-)
-from tools.validate import (
-    DEFAULT_TIMEOUT_S as VALIDATE_TIMEOUT_S,
-    TOOL_DESCRIPTION as VALIDATE_DESCRIPTION,
-    TOOL_NAME as VALIDATE_NAME,
-    ValidateInput,
-    ValidateOutput,
-    run_validate,
-)
+from tools.spec import ToolSpec
 
 logger = logging.getLogger("dingda.tools.registry")
 
-
-@dataclass(frozen=True)
-class ToolSpec:
-    """单个 Tool 的注册信息。"""
-
-    name: str
-    description: str
-    input_model: type[BaseModel]
-    output_model: type[BaseModel]
-    handler: Callable[..., Awaitable[BaseModel]]
-    timeout_s: float
-    # 只给特定 agent 用（如修复子 agent 的校验工具）：默认面不暴露
-    internal_only: bool = False
+_SKIP = {"scaffold"}
+# registry 是普通模块没有 __path__；用文件位置定位包目录
+_TOOLS_PATH = [str(Path(__file__).resolve().parent)]
 
 
-def _spec(
-    name: str,
-    description: str,
-    input_model: type[BaseModel],
-    output_model: type[BaseModel],
-    handler: Callable[..., Awaitable[BaseModel]],
-    timeout_s: float,
-    *,
-    internal_only: bool = False,
-) -> ToolSpec:
-    return ToolSpec(
-        name=name,
-        description=description,
-        input_model=input_model,
-        output_model=output_model,
-        handler=handler,
-        timeout_s=timeout_s,
-        internal_only=internal_only,
-    )
+def _discover() -> dict[str, ToolSpec]:
+    """扫描 tools/ 下的子包，收集每个包导出的 ``spec``。"""
+    found: dict[str, ToolSpec] = {}
+    for info in pkgutil.iter_modules(_TOOLS_PATH):
+        if not info.ispkg or info.name in _SKIP:
+            continue
+        module = importlib.import_module(f"tools.{info.name}")
+        spec = getattr(module, "spec", None)
+        if isinstance(spec, ToolSpec):
+            found[spec.name] = spec
+        else:
+            logger.warning("tool package %s has no spec；已跳过", info.name)
+    logger.info("registry discovered %s tools: %s", len(found), sorted(found))
+    return found
 
 
-_TOOLS: dict[str, ToolSpec] = {
-    SEARCH_NAME: _spec(
-        SEARCH_NAME,
-        SEARCH_DESCRIPTION,
-        SearchInput,
-        SearchOutput,
-        run_search,  # type: ignore[arg-type]
-        SEARCH_TIMEOUT_S,
-    ),
-    PRODUCT_NAME: _spec(
-        PRODUCT_NAME,
-        PRODUCT_DESCRIPTION,
-        ProductInput,
-        ProductOutput,
-        run_product,  # type: ignore[arg-type]
-        PRODUCT_TIMEOUT_S,
-    ),
-    COMPARE_NAME: _spec(
-        COMPARE_NAME,
-        COMPARE_DESCRIPTION,
-        CompareInput,
-        CompareOutput,
-        run_compare,  # type: ignore[arg-type]
-        COMPARE_TIMEOUT_S,
-    ),
-    PREVIEW_NAME: _spec(
-        PREVIEW_NAME,
-        PREVIEW_DESCRIPTION,
-        PreviewInput,
-        PreviewOutput,
-        run_preview,  # type: ignore[arg-type]
-        PREVIEW_TIMEOUT_S,
-    ),
-    LOGIN_NAME: _spec(
-        LOGIN_NAME,
-        LOGIN_DESCRIPTION,
-        LoginInput,
-        LoginOutput,
-        run_login,  # type: ignore[arg-type]
-        LOGIN_TIMEOUT_S,
-    ),
-    # 只给修复子 agent 用：靠 DINGDA_VALIDATE_URL 回打修复现场那个页面
-    VALIDATE_NAME: _spec(
-        VALIDATE_NAME,
-        VALIDATE_DESCRIPTION,
-        ValidateInput,
-        ValidateOutput,
-        run_validate,  # type: ignore[arg-type]
-        VALIDATE_TIMEOUT_S,
-        internal_only=True,
-    ),
-}
+_TOOLS: dict[str, ToolSpec] = _discover()
 
 
 def list_tools() -> list[ToolSpec]:

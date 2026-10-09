@@ -387,7 +387,7 @@ packages-py/browser/src/browser/               # manager / session / context / a
 |----|----------|
 | 产品 HTTP | `packages-py/contracts/src/contracts/` ↔ `packages/contracts/src/` |
 | CLI Agent 事件 | Python SSE ↔ `packages/contracts/src/agent-event.ts`（壳探测不推事件） |
-| Tool | `packages-py/tools/src/tools/`（产品 Agent 与 CLI skill 共用；每工具一文件 + registry） |
+| Tool | `packages-py/tools/src/tools/`（产品 Agent 与 CLI skill 共用；每工具一目录 + registry 自动发现） |
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。
 
@@ -421,5 +421,5 @@ packages-py/browser/src/browser/               # manager / session / context / a
 ✅ packages-py/agent/src/agent/core/…
 ✅ packages-py/crawler/src/crawler/sources/xianyu/crawler.py
 ✅ packages-py/browser/src/browser/adapters/camoufox.py
-✅ packages-py/tools/src/tools/search.py
+✅ packages-py/tools/src/tools/search/__init__.py
 ```

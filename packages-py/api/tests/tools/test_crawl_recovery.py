@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from core.errors import AppError, session_expired_error

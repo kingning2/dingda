@@ -23,6 +23,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, Field
 
+from tools.spec import ToolSpec
 logger = logging.getLogger("dingda.tools.validate")
 
 TOOL_NAME = "validate_selectors"
@@ -75,3 +76,14 @@ async def run_validate(inp: ValidateInput) -> ValidateOutput:
         body.get("error"),
     )
     return ValidateOutput(payload=body)
+
+
+spec = ToolSpec(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_model=ValidateInput,
+    output_model=ValidateOutput,
+    handler=run_validate,  # type: ignore[arg-type]
+    timeout_s=DEFAULT_TIMEOUT_S,
+    internal_only=True,
+)

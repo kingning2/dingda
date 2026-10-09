@@ -26,6 +26,7 @@ from contracts.channel import QrStartRequest
 from domains.channel.qr_service import get_channel_qr_service
 from core.errors import AppError
 
+from tools.spec import ToolSpec
 logger = logging.getLogger("dingda.tools.login")
 
 TOOL_NAME = "login"
@@ -228,3 +229,14 @@ async def _push_qr_frame(
         await on_live_frame(payload)
     except Exception:  # noqa: BLE001
         logger.debug("login live frame push failed", exc_info=True)
+
+
+spec = ToolSpec(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_model=LoginInput,
+    output_model=LoginOutput,
+    handler=run_login,  # type: ignore[arg-type]
+    timeout_s=DEFAULT_TIMEOUT_S,
+    internal_only=False,
+)

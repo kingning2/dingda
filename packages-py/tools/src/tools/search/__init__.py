@@ -33,6 +33,7 @@ from core.errors import AppError
 from tools.product import ProductComment
 from tools.recovery import with_crawl_recovery
 
+from tools.spec import ToolSpec
 logger = logging.getLogger("dingda.tools.search")
 
 _AUTH_CODES = frozenset({"account.session_expired", "account.cookie_required"})
@@ -570,3 +571,14 @@ def _raw_str(raw: Any, key: str) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+spec = ToolSpec(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_model=SearchInput,
+    output_model=SearchOutput,
+    handler=run_search,  # type: ignore[arg-type]
+    timeout_s=DEFAULT_TIMEOUT_S,
+    internal_only=False,
+)

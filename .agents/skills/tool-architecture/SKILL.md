@@ -24,15 +24,21 @@ description: 约束叮答 Tool 契约与实现边界。编写 crawler.search_pro
 
 ```text
 packages-py/tools/src/tools/
-├── registry.py
-├── search.py      # 契约 + run_search
-├── product.py     # 契约 + run_product
+├── registry.py        # pkgutil 自动发现工具目录
+├── spec.py            # ToolSpec 定义
+├── scaffold.py        # python -m tools.scaffold <name> 生成新工具骨架
+├── search/            # 每个工具一个目录
+│   └── __init__.py    # 契约 + run_search + spec = ToolSpec(...)
+├── product/
+│   └── __init__.py
 └── …
 ```
 
 按现有包习惯放在 `packages-py/tools/src/tools/`，不要新建顶层 `tools/`，也不要在 `agent/tools/` 再写一套实现。
 
-CLI skill 不是第二套能力模型：新 Tool 先在 `tools/<name>.py` 落地（Schema + `run_*`），再挂 `registry.py`；CLI skill 与产品 Agent **共用**同一 Executor（`tools.cli` 只是入口）。
+CLI skill 不是第二套能力模型：新 Tool 用 `python -m tools.scaffold <name>` 生成目录，
+把 `run_*` 换成真实实现即自动被 `registry.py` 发现；CLI skill 与产品 Agent **共用**同一 Executor
+（`tools.cli` 只是入口）。
 
 ## 契约流
 
@@ -64,12 +70,13 @@ search
 product
 ```
 
-## 单文件 Tool vs registry
+## 工具目录 vs registry
 
 | 层 | 放什么 | 谁依赖 |
 |----|--------|--------|
-| `tools/<name>.py` | 名字、描述、Input/Output、超时、`run_*` | registry、测试 |
-| `registry.py` | 按名查找、执行 | Agent Executor、`tools.cli` |
+| `tools/<name>/__init__.py` | 名字、描述、Input/Output、超时、`run_*`、`spec` | registry 自动发现、测试 |
+| `tools/spec.py` | `ToolSpec` 定义 | 各工具目录、registry |
+| `registry.py` | `pkgutil` 自动发现、按名查找、执行 | Agent Executor、`tools.cli` |
 
 Agent Core 只经 `registry.call_tool`。禁止直接 import Crawler Source / Playwright。
 
@@ -126,13 +133,12 @@ async def run_search(inp: SearchInput) -> SearchOutput:
 
 ## 新增 Tool 清单
 
-1. 在 `packages-py/tools/src/tools/<name>.py` 写名字 + Input + Output + `run_*`
-2. `run_*` 只调 Crawler/Browser Port，不调平台私有包细节之外的捷径
-3. 注册到 `registry.py`
-4. 需要给 CLI 用时，`tools.cli` 用同一 registry 注册
-5. 加超时/取消/事件
-6. 单测只测 Schema 与假 Port，不启动浏览器
-7. 不改 Agent Core（除非 Planner 的允许列表要加名字）
+1. `uv run python -m tools.scaffold <name>` 生成 `packages-py/tools/src/tools/<name>/__init__.py` 骨架
+2. 把 `run_<name>` 换成真实逻辑：只调 Crawler/Browser Port，不调平台私有包细节之外的捷径
+3. 无需手工注册：`registry.py` 自动发现；`tools.cli` 子命令同步出现
+4. 加超时/取消/事件
+5. 单测只测 Schema 与假 Port，不启动浏览器
+6. 不改 Agent Core（除非 Planner 的允许列表要加名字）
 
 ## 检查清单
 

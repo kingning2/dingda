@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field, model_validator
 from crawler.sources.ali1688.compare import compare_products
 from core.errors import AppError
 
+from tools.spec import ToolSpec
 logger = logging.getLogger("dingda.tools.compare")
 
 TOOL_NAME = "compare"
@@ -232,3 +233,14 @@ def _as_float(value: object) -> float | None:
         return float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
+
+
+spec = ToolSpec(
+    name=TOOL_NAME,
+    description=TOOL_DESCRIPTION,
+    input_model=CompareInput,
+    output_model=CompareOutput,
+    handler=run_compare,  # type: ignore[arg-type]
+    timeout_s=DEFAULT_TIMEOUT_S,
+    internal_only=False,
+)
