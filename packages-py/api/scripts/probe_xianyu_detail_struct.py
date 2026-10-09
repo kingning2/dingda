@@ -11,12 +11,12 @@ from urllib.parse import urlencode
 _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT))
 
-from browser.adapters.camoufox import CamoufoxAdapter
-from contracts.browser_port import LaunchOptions
-from channels.cookie_header import parse_cookie_header
-from channels.xianyu.cookies import to_browser_cookies
-from channels.xianyu.slider import clear_risk_cookies, try_solve_slider
-from infrastructure.db import accounts as account_repo
+from browser.adapters.camoufox import CamoufoxAdapter  # noqa: E402  （脚本 sys.path 引导后的项目导入）
+from contracts.browser_port import LaunchOptions  # noqa: E402  （脚本 sys.path 引导后的项目导入）
+from channels.cookie_header import parse_cookie_header  # noqa: E402  （脚本 sys.path 引导后的项目导入）
+from channels.xianyu.cookies import to_browser_cookies  # noqa: E402  （脚本 sys.path 引导后的项目导入）
+from channels.xianyu.slider import clear_risk_cookies, try_solve_slider  # noqa: E402  （脚本 sys.path 引导后的项目导入）
+from infrastructure.db import accounts as account_repo  # noqa: E402  （脚本 sys.path 引导后的项目导入）
 
 OUT = _ROOT / "tmp" / "xianyu_detail_dom_probe"
 ITEM_ID = "1027680267393"

@@ -16,7 +16,6 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 from browser.sync import submit_on_sync_browser
 from channels.base import QrLoginChannel

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Protocol, TypeVar
+from typing import Protocol, TypeVar
 
 from contracts.browser_port import Page
 from core.errors import AppError

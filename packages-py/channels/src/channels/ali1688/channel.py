@@ -20,7 +20,6 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any
 
 from browser.sync import submit_on_sync_browser, sync_headless_page
 from channels.ali1688.ak import extract_ak_keys, save_ak

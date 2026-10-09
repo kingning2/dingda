@@ -38,7 +38,6 @@ if str(_ROOT) not in sys.path:
 
 from browser.adapters.camoufox import CamoufoxAdapter  # noqa: E402
 from contracts.browser_port import LaunchOptions, Page  # noqa: E402
-from channels.cookie_header import parse_cookie_header  # noqa: E402
 from crawler.core.base import BrowserSessionOptions  # noqa: E402
 from crawler.core.types import CrawlContext  # noqa: E402
 from crawler.extraction import fingerprint as fp  # noqa: E402

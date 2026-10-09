@@ -1,0 +1,81 @@
+# PR / push 门禁：前端（依赖健康 + 类型 + 构建 + 单测）、Python（ruff + 单测）、Rust（cargo check）。
+# 发布不在本文件 —— push main 的自动 tag + 安装包构建走 desktop-release.yml。
+# 命令与本地一致（pnpm build/test、uv、cargo），任何一条都能在本机复跑。
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: web（pnpm build 门禁 + vitest）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      # build 串起 check:deps + check:unused --strict + tsc（全仓库）+ vite build
+      - name: pnpm build
+        run: pnpm build
+
+      - name: vitest
+        run: pnpm test
+
+  python:
+    name: python（ruff + pytest）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: uv sync --frozen
+        run: uv sync --frozen
+
+      # 显式钉住规则集：ruff 0.16 起默认规则集大幅扩张（I001/RUF100/BLE001…），
+      # 钉 E4,E7,E9,F 保证跨版本确定；要收紧时在根 pyproject.toml 配 [tool.ruff] 再改这里。
+      - name: ruff check
+        run: uv run --with ruff ruff check packages-py --select E4,E7,E9,F
+
+      # 集成测试（-m integration）需要本机浏览器与真实会话，只在本地跑
+      - name: pytest
+        run: uv run pytest packages-py/api/tests -m "not integration"
+
+  rust:
+    name: rust（cargo check）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      # 与 desktop-release.yml 的 Linux 构建环境保持一致（tauri v2 需要.webkit2gtk-4.1）
+      - name: Install Tauri Linux deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: cargo check
+        run: cargo check --workspace --all-targets
