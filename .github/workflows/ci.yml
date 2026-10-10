@@ -131,6 +131,11 @@ jobs:
         shell: bash
         run: set -o pipefail && cargo check --workspace --all-targets 2>&1 | tee cargo-output.log | tail -3
 
+      # 单测已在 #[cfg(test)] 内（client/runtime/python），与 check 同环境可直接跑
+      - name: cargo test
+        shell: bash
+        run: set -o pipefail && cargo test --workspace 2>&1 | tee cargo-test-output.log | grep -E "^test result" | tail -14
+
       - name: cargo 失败输出
         if: failure()
         shell: bash

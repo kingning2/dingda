@@ -41,7 +41,7 @@ Last reviewed: 2026-02-14（初版，基线数字为当日实测）
 | Python 覆盖率（pytest-cov，11 包汇总） | 64%（12177 语句 / 4434 未覆盖） | 不得下降；新代码走「变更行 ≥ 80%」 |
 | `pnpm audit --prod` | 24 项（3 low / 11 moderate / 9 high / 1 critical） | 不得增长，只减不增 |
 | 前端产物 dist/assets/*.js 总字节 | 1 022 432（≈ 998 kB） | 不得增长 |
-| Rust | `cargo check --workspace --all-targets` 通过；已有 `#[cfg(test)]` 但 CI 未跑 `cargo test` | 接入 `cargo test` 后回填 |
+| Rust | `cargo check --workspace --all-targets` 通过；`cargo test --workspace` 32 用例全绿（CI 已接线） | 不得出现失败用例 |
 
 复测命令：
 

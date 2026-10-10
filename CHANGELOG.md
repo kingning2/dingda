@@ -15,7 +15,7 @@
   （`/spec` `/plan` `/build` `/test` `/constraints` `/review` `/webperf` `/code-simplify` `/ship`）
 - **质量约束体系**：新增 `CONSTRAINTS.md`（地板规则 + 棘轮基线 + 例外表）、
   `pnpm check:fast`（floor-guard + layers-guard）、CI `floor` 阻断 job 与
-  `observe` 观察期 job（分层 / gitleaks / pnpm audit）
+  `observe` 观察期 job（分层 / gitleaks / pnpm audit）；rust job 追加 `cargo test --workspace`
 - **架构决策记录**：`docs/adr/`（仓库形态、uv 工作区拆分、分层铁律、约束棘轮）
 - **Agent 单测**：`AgentService` 工具循环 10 项单测（api/tests/agent）
 
