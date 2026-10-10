@@ -38,12 +38,15 @@ pnpm dev              # 仅 Web 联调（API 默认 http://127.0.0.1:8787）
 ## 提交前过门禁（与 CI 一致）
 
 ```bash
+pnpm check:fast                 # < 5s：floor-guard（地板）+ layers-guard（分层）
 pnpm build                      # 前端：check:deps + check:unused --strict + tsc + vite build
 pnpm test                       # vitest（85 用例）
 uv run ruff check packages-py --select E4,E7,E9,F
 uv run pytest packages-py/api/tests -m "not integration"   # 集成测试只在本地跑
 cargo check --workspace --all-targets
 ```
+
+阈值与方向见 [`CONSTRAINTS.md`](CONSTRAINTS.md)；覆盖/审计基线改动需同步回填该文件。
 
 CI（`.github/workflows/ci.yml`）在 Linux 上跑同一组命令；`-m integration` 的用例需要本机浏览器与真实会话，不进 CI。
 

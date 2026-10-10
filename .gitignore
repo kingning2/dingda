@@ -63,3 +63,7 @@ _tmp_*
 .env
 .env.*
 !.env.example
+
+# 覆盖率产物（CONSTRAINTS.md 棘轮基线的测量中间物）
+.coverage
+coverage/

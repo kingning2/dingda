@@ -9,6 +9,7 @@
     "check:deps": "node scripts/check-workspace-deps.mjs",
     "check:unused": "node scripts/check-unused.mjs",
     "check:unused:strict": "node scripts/check-unused.mjs --strict",
+    "check:fast": "node scripts/check/floor-guard.mjs && node scripts/check/layers-guard.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "pnpm --filter @v2/app-web preview",
@@ -63,6 +64,7 @@
     "@types/react-dom": "^19.1.6",
     "@types/react-transition-group": "^4.4.12",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "^5.0.3",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vitest": "^5.0.0"

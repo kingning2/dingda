@@ -15,6 +15,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  floor:
+    name: floor（CONSTRAINTS 地板守卫，阻断）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # floor-guard 需要 merge-base，浅克隆跑不了（守卫把 2 当异常而非干净）
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: floor-guard
+        run: node scripts/check/floor-guard.mjs
+
+  observe:
+    name: constraints-observe（观察期：分层 / 密钥 / 依赖审计）
+    runs-on: ubuntu-latest
+    # 观察期策略见 CONSTRAINTS.md：两周无误报后逐项转阻断
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: layers-guard
+        run: node scripts/check/layers-guard.mjs
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: pnpm audit（high 以上不增长）
+        run: pnpm audit --prod --audit-level high
+
   web:
     name: web（pnpm build 门禁 + vitest）
     runs-on: ubuntu-latest

@@ -1,0 +1,4 @@
+# floor-guard 内容检查的路径例外（每行一个前缀）。
+# 用途仅限「定义/讨论检查模式」的文档；产品代码的静音例外请走 CONSTRAINTS.md 例外表。
+.agents/
+scripts/check/
