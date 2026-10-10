@@ -15,7 +15,8 @@ const base = (() => {
 // git diff --no-index 在两侧不同时恒退出 1（新文件的常态），这种输出要保留；
 // 其余失败一律视为 null，null 永远不能当"干净"。
 const git = (args, { diffExit = false } = {}) => {
-  try { return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+  // maxBuffer 默认 1 MiB：大改动（整目录删除）的 diff 会超限抛 ENOBUFS，误报「could not diff」
+  try { return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 }); }
   catch (e) { return diffExit && e.status === 1 && typeof e.stdout === 'string' ? e.stdout : null; }
 };
 const bail = (msg) => { console.error('floor-guard: ' + msg); process.exit(2); };
@@ -31,9 +32,10 @@ if (!mergeBase) bail('no merge base against ' + base + '（浅克隆先 git fetc
 const tracked = git(['diff', '--unified=0', mergeBase, '--']);
 if (tracked === null) bail('could not diff against ' + mergeBase);
 // 未跟踪文件不用 git diff --no-index（Windows 上 /dev/null 不可靠），直接合成等价 diff。
-const untrackedFiles = git(['ls-files', '--others', '--exclude-standard']);
+// -z：NUL 分隔且不做 quotepath 转义，中文文件名保持原始 UTF-8。
+const untrackedFiles = git(['ls-files', '--others', '--exclude-standard', '-z']);
 if (untrackedFiles === null) bail('could not list untracked files');
-const untracked = untrackedFiles.split('\n').filter(Boolean).map((f) => {
+const untracked = untrackedFiles.split('\0').filter(Boolean).map((f) => {
   let body = '';
   try { body = readFileSync(f, 'utf8'); } catch { bail('could not read untracked file ' + f); }
   const n = body.split('\n').length;
