@@ -9,7 +9,7 @@
     cd server
     .venv\\Scripts\\python.exe scripts/e2e_dom_repair.py --platform xianyu --item-id 1027680267393
     .venv\\Scripts\\python.exe scripts/e2e_dom_repair.py --platform xiaohongshu --keyword 咖啡 --headed
-    .venv\\Scripts\\python.exe scripts/e2e_dom_repair.py --platform xianyu --item-id 1 --runtime claude --keep
+    .venv\\Scripts\\python.exe scripts/e2e_dom_repair.py --platform xianyu --item-id 1 --model m-repair --keep
 
 设计说明：
     - 不改产品代码：只做「清空配置 → 跑产品修复 → 比对」的外壳
@@ -565,9 +565,9 @@ def main() -> None:
         help="empty=选择器清空；stale=塞过期选择器",
     )
     parser.add_argument(
-        "--runtime",
+        "--model",
         default="",
-        help="外部 CLI：codex / claude / opencode；不给则跟随应用里用户选的 agent",
+        help="修复模型（DINGDA_DOM_REPAIR_MODEL）；不给则退回 DINGDA_LLM_MODEL",
     )
     parser.add_argument("--rounds", type=int, default=3, help="AI 修复轮数上限")
     parser.add_argument("--headed", action="store_true", help="有头（可看直播画面）")
@@ -579,11 +579,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.runtime.strip():
-        os.environ["DINGDA_DOM_REPAIR_RUNTIME"] = args.runtime.strip()
+    if args.model.strip():
+        os.environ["DINGDA_DOM_REPAIR_MODEL"] = args.model.strip()
     else:
-        # 不指定就清掉，让子 agent 跟随用户在选择里配的 agent
-        os.environ.pop("DINGDA_DOM_REPAIR_RUNTIME", None)
+        # 不指定就清掉，让修复模型退回 DINGDA_LLM_MODEL
+        os.environ.pop("DINGDA_DOM_REPAIR_MODEL", None)
     os.environ["DINGDA_DOM_REPAIR_ROUNDS"] = str(args.rounds)
     os.environ.setdefault("DINGDA_DOM_REPAIR", "1")
 

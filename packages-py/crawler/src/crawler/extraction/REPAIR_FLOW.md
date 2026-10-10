@@ -3,6 +3,11 @@
 多平台（闲鱼 / 小红书）AI 辅助 DOM 自动修复的**现状快照**：编排全链路、验证脚本挂载点、
 以及真机跑过的结果与修掉的 bug。
 
+> 时代背景：早期版本的修复提案由**外部 CLI Agent**（codex / claude / opencode）产出；
+> 外部 CLI 已整体移除，`propose_dom_patch` 现在走**内置 LLM**（模型由
+> `DINGDA_DOM_REPAIR_MODEL` 环境变量指定）。下文「真机结果」「修掉的 bug」
+> 保留外部 CLI 时代的历史验证记录，仅作回溯用。
+
 ---
 
 ## 一、编排链路（现状）
@@ -32,7 +37,7 @@ flowchart TD
     VAL -- "不通过" --> AI
 
     AI["AI 轮 最多 max_rounds"] --> SNAP["DomSnapshot<br/>url / item_id / current_selectors / 精简树"]
-    SNAP --> CLI["propose_dom_patch<br/>run_cli runtime = codex / claude / opencode"]
+    SNAP --> LLM["propose_dom_patch<br/>内置 LLM（DINGDA_DOM_REPAIR_MODEL）"]
     CLI --> PARSE["_extract_json 抠补丁"]
     PARSE -- "解析失败" --> NEXT{"还有轮数?"}
     PARSE -- "成功" --> VAL2["adapter.evaluate_extract 验证"]
@@ -89,7 +94,6 @@ flowchart LR
 cd server
 .venv/Scripts/python.exe scripts/e2e_dom_repair.py --platform xianyu --item-id <id>
 .venv/Scripts/python.exe scripts/e2e_dom_repair.py --platform xiaohongshu --keyword 咖啡 --mode crawler
-.venv/Scripts/python.exe scripts/e2e_dom_repair.py --platform xianyu --item-id <id> --runtime claude
 ```
 
 `--mode repair` 直接调编排（两种平台都确定）；`--mode crawler` 走平台 `detail()`
@@ -97,27 +101,12 @@ cd server
 
 ---
 
-## 三、真机结果
+## 三、真机结果（外部 CLI 时代，历史记录）
 
 | runtime | 平台 | 模式 | 结果 | 说明 |
 | --- | --- | --- | --- | --- |
 | codex（默认） | 闲鱼 | repair | **PASS** | AI 自出 `desc: [class*="desc--"]` 等，与原始选择器完全不同但抽取逐字段一致 |
 | codex（默认） | 小红书 | crawler | **PASS** | `via=detail_dom_repair`，标题 + 作者全对 |
-| opencode | 闲鱼 | repair | **FAIL** | opencode 自身起不来，非本链路问题（见下） |
-
-### opencode 不可用（环境问题，非链路 bug）
-
-```
-repair cli error: Unexpected server error. Check server logs for details.
-```
-
-独立于本仓库复现：裸跑 `opencode run "..."` 同样报错。三层原因：
-
-1. `~/.config/opencode/opencode.json` **没配默认 model** → 会话记录里 `model=undefined` → 服务端报错。
-2. 显式指定 `openrouter/~anthropic/...` → `This model is not available in your region.`
-3. 换 opencode 自带免费模型 → `unknown certificate verification error`（TLS/证书链）。
-
-要在本机用 opencode 当修复 runtime，需先在其配置里选一个在本区域可用、且证书链正常的模型。
 
 ---
 
@@ -167,9 +156,9 @@ repair cli error: Unexpected server error. Check server logs for details.
 做完后重跑（`xianyu_...155339.json`）：`MCP 服务器：未注入（bare 隔离）`、
 五个字段（含 `seller_name`）全对、`source=ai` —— 这轮是**干净**的 PASS。
 
-**残留风险**：本机 codex 是 `--sandbox danger-full-access`，cwd 隔离只挡住了「顺手翻当前目录」，
-挡不住它主动用绝对路径去读仓库。要彻底封死得靠 sandbox 策略（Windows 上 codex 似乎收不紧），
-或者干脆换一个能在本机正常工作的 runtime。
+**残留风险（外部 CLI 时代，已随 CLI 移除消亡）**：当年的 codex 是
+`--sandbox danger-full-access`，cwd 隔离挡不住它用绝对路径读仓库；内置 LLM 直接在
+Python 进程内调 API，不存在这个问题。
 
 
 ### 附带发现：dump 没暴露卖家子树

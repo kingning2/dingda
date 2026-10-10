@@ -18,7 +18,6 @@ from crawler.extraction.fingerprint import (
     save_fingerprint,
 )
 from crawler.extraction.repair import gates
-from crawler.extraction.repair.bridge import ValidationBridge
 from crawler.extraction.repair.dump import dump_dom_tree
 from crawler.extraction.repair.persist import persist_patch
 from crawler.extraction.repair.types import (
@@ -46,7 +45,6 @@ async def repair_detail_dom(
     if not gates.try_acquire_platform(platform):
         return RepairResult(ok=False, error="crawler.dom_repair_busy")
 
-    bridge: ValidationBridge | None = None
     try:
         roots = adapter.dump_roots()
         tree = await dump_dom_tree(page, roots=roots)
@@ -85,11 +83,6 @@ async def repair_detail_dom(
             last_payload = payload
             last_reason = str(payload.get("error") or "payload-not-ok")
 
-        # AI 轮之前起校验桥：子 agent 能自己回打「正在修的这一页」试跑选择器，
-        # 不必等下一轮才知道对不对
-        bridge = ValidationBridge(page, adapter, item_id=item_id)
-        validate_url = bridge.start()
-
         rounds = gates.max_rounds()
         last_err = "dom_repair_failed"
         for round_i in range(1, rounds + 1):
@@ -114,12 +107,12 @@ async def repair_detail_dom(
                 platform,
                 item_id,
             )
-            from cli.repair.propose import propose_dom_patch
+            from crawler.extraction.repair.propose import propose_dom_patch
 
-            patch = await propose_dom_patch(snap, validate_url=validate_url)
+            patch = await propose_dom_patch(snap)
             if patch is None:
                 last_err = "crawler.dom_repair_failed"
-                last_reason = "cli-no-json：CLI 没吐出可解析的 JSON 补丁"
+                last_reason = "no-json：LLM 没吐出可解析的 JSON 补丁"
                 continue
             # 再 dump 一次防中途变风控页
             tree = await dump_dom_tree(page, roots=roots)
@@ -142,8 +135,6 @@ async def repair_detail_dom(
 
         return RepairResult(ok=False, error=last_err)
     finally:
-        if bridge is not None:
-            bridge.stop()
         gates.release_platform(platform)
 
 
