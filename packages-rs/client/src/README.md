@@ -9,7 +9,6 @@ Tauri 壳本体。只做**编排**：组装 Builder、登记 IPC、起停 Python
 lib.rs / main.rs
   └─ commands/         invoke 给 React
         ├─ api.rs          → python   （Server 状态）
-        ├─ agent_runtime.rs→ agent / runtime
         ├─ dialog.rs       纯 OS 对话框
         ├─ frontend.rs     → common   （日志）
         └─ os.rs           纯 OS 打开目录
@@ -18,12 +17,10 @@ packages-rs/
   ├─ common/      日志出口 + 路径解析 + 平台标签
   ├─ camoufox/    Camoufox 定位与解压
   ├─ python/      Python 子进程生命周期与启动环境
-  ├─ runtime/     外部 CLI Runtime 定义 / 探测 / 下载
-  ├─ agent/       CLI Agent 目录与探测（IPC DTO）
   └─ client/      ← 本包（唯一可执行体）
 ```
 
-依赖方向（单向，无环）：`common ← camoufox ← python ← client`、`common ← runtime ← agent ← client`。
+依赖方向（单向，无环）：`common ← camoufox ← python ← client`。
 
 ## 本目录文件
 
@@ -64,7 +61,6 @@ Windows release 隐藏控制台；`client::run()`。几乎无逻辑。
 | `logging.rs`、`paths.rs`、`platform.rs` | `packages-rs/common/` |
 | `camoufox.rs` | `packages-rs/camoufox/` |
 | `python/` | `packages-rs/python/` |
-| `runtime/` | `packages-rs/runtime/` |
-| `agent/` | `packages-rs/agent/` |
+| `agent_runtime.rs`（外部 CLI IPC，已移除） | — |
 
 新增能力优先加到对应成员包，不要在壳里再堆模块。

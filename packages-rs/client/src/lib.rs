@@ -74,11 +74,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::api::get_api_base_url,
             commands::api::get_server_status,
-            commands::agent_runtime::list_agent_runtimes_command,
-            commands::agent_runtime::list_agent_registry_command,
-            commands::agent_runtime::probe_agent_runtime,
-            commands::agent_runtime::login_agent_runtime,
-            commands::agent_runtime::download_agent_runtime,
             commands::dialog::pick_file,
             commands::dialog::pick_folder,
             commands::frontend::log_frontend_error,
