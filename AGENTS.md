@@ -92,5 +92,10 @@
 | `.agents/skills/rust-coding/SKILL.md` | Rust 示例驱动 |
 | `.agents/skills/frontend-coding/SKILL.md` | 前端示例驱动 |
 | `.agents/skills/*-architecture/` | Agent / Crawler / Browser / Tool / 前端 架构边界 |
+| `.agents/skills/`（工作流包，25 个） | spec / plan / build / test / review / ship 生命周期与质量门禁（TDD、安全、性能、调试等），来源 [agent-skills](https://github.com/addyosmani/agent-skills)（MIT），共享清单在 `.agents/references/` |
 
 涉及架构边界时动手前先打开 `layers.md` + 对应 `*-architecture/SKILL.md`。
+
+6.1 工作流包按需路由（description 触发），不替代第 2/3 节的架构与编码规范；
+    生命周期命令入口见 `.pi/prompts/`（`/spec` `/plan` `/build` `/test` `/constraints`
+    `/review` `/webperf` `/code-simplify` `/ship`）。

@@ -2,6 +2,12 @@
 
 本仓库**只有这一套**架构开发规范。不要在 `~/.cursor/skills` 再写平行的目录/依赖规范。
 
+> 另有一套**工作流/生命周期技能包**（25 个，来自 [agent-skills](https://github.com/addyosmani/agent-skills)，
+> MIT，见 [LICENSE-agent-skills](../references/LICENSE-agent-skills)）：spec / plan / build / test /
+> review / ship 流程与 TDD、安全、性能等质量门禁，按需路由，命令入口在 `.pi/prompts/`，
+> 共享清单在 [`../references/`](../references/)。它管**怎么干活**，下面这张表管**代码长什么样、
+> 分层怎么走**——两者不互相替代，也禁止用它另起第二套架构/编码规范。
+
 ## 先读
 
 1. [layers.md](layers.md) — 真实目录、两个 Agent、**IPC 决策**、依赖方向
