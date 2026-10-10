@@ -99,11 +99,14 @@ class AgentService:
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": text},
         ]
-        tools = _openai_tools()
-        client = _llm_client()
-        model = _model_name()
 
         try:
+            # LLM 客户端与工具清单的构建也会失败（如未配 key），必须与循环同处
+            # try 内，保证 SSE 流收到 error + runCompleted 兜底事件而非裸异常。
+            tools = _openai_tools()
+            client = _llm_client()
+            model = _model_name()
+
             for round_i in range(_MAX_ROUNDS):
                 to_send = compress_messages(messages, model=model)
                 logger.info("agent llm round=%s messages=%s", round_i + 1, len(to_send))
