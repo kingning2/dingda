@@ -5,8 +5,7 @@
  *   集中状态徽标（badge）的 Tailwind 类串 —— 与后端 DTO 的 `badge_class` 字段同形状。
  *
  * 设计说明：
- *   - 这几个类串原先散在 5 个文件里重复出现 20 次（agent-runtime / agent-runtime-scan /
- *     agent-event-reducer / agent-run-phase / agent-runtime-card），改一次配色要改五处。
+ *   - 这几个类串原先散在多个文件里重复出现，改一次配色要改多处。
  *     收敛到这里之后，语义名（neutral / active / ready / pending / failed）比色号更好读，
  *     也避免了「同一个绿在 A 文件是 emerald-600、在 B 文件写成 emerald-500」这类漂移。
  *   - **后端下发的 `badge_class` 不经过这里** —— 那是服务端的判断，前端只在自己的

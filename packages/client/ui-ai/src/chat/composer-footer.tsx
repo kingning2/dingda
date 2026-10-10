@@ -52,7 +52,6 @@ export const ComposerFooter = memo(function ComposerFooter({
           agents={agents}
           defaultAgentId={defaultAgentId}
           defaultModelId={defaultModelId}
-          hideAgentPicker
           showPromptGlyph
           placeholder={placeholder ?? "Ask Codex to do anything"}
           disabled={disabled}

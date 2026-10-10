@@ -14,7 +14,6 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { NAV_ITEMS } from "@v2/ui-home/mock-data";
-import { supportsExternalAgents } from "@v2/runtime/capabilities";
 import { entryPath, entryViewFromPathname } from "@v2/routes/paths";
 import { Button } from "@v2/ui-primitives/button";
 import { Kbd } from "@v2/ui-primitives/kbd";
@@ -46,10 +45,7 @@ export function EntryNavRail({ open, onOpenSearch, onToggleRail }: EntryNavRailP
   const navigate = useNavigate();
   const location = useLocation();
   const activeView = entryViewFromPathname(location.pathname);
-  const showExternalAgents = supportsExternalAgents();
-  const navItems = NAV_ITEMS.filter(
-    (item) => !("requiresExternalAgents" in item && item.requiresExternalAgents) || showExternalAgents,
-  );
+  const navItems = NAV_ITEMS;
 
   return (
     <nav

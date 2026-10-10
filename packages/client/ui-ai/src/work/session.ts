@@ -38,7 +38,7 @@ export function stashWorkDraft(workId: string, draft: ComposerSubmitPayload): vo
 export function stashWorkPrompt(workId: string, prompt: string): void {
   stashWorkDraft(workId, {
     message: prompt,
-    agent_id: resolveDefaultAgentId(getComposerAgentOptions()) ?? "codex",
+    agent_id: resolveDefaultAgentId(getComposerAgentOptions()),
     attachments: [],
   });
 }
@@ -119,14 +119,10 @@ function composerFields(agentId?: string | null, modelId?: string | null) {
 }
 
 function hydrateComposerAgents(detail: AgentWorkDetailView): AgentWorkDetailView {
-  const agents = getComposerAgentOptions();
   return {
     ...detail,
-    composer_agents: agents,
-    composer_agent_id:
-      detail.composer_agent_id && agents.some((agent) => agent.id === detail.composer_agent_id)
-        ? detail.composer_agent_id
-        : resolveDefaultAgentId(agents),
+    composer_agents: getComposerAgentOptions(),
+    composer_agent_id: resolveDefaultAgentId([]),
   };
 }
 

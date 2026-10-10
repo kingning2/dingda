@@ -6,7 +6,6 @@
 export {
   ACCOUNT_PLATFORMS,
   getDiscoveryAccounts,
-  getDiscoveryAgents,
   useDiscoveryStore,
 } from "./discovery-store";
 export type { DiscoveryState } from "./discovery-store";

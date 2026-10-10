@@ -8,7 +8,6 @@
 import { ArrowLeft, Loader2, Package, Settings2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useServer } from "@v2/runtime/server-provider";
-import { useComposerAgentOptions } from "@v2/ui-composer/composer-agents";
 import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
@@ -27,7 +26,6 @@ interface LayoutProps {
 /** AI 工作页入口（对外 AiWorkView）。 */
 export function Layout({ workId, onBack }: LayoutProps) {
   const server = useServer();
-  const liveAgents = useComposerAgentOptions();
   const {
     detail,
     loading,
@@ -36,7 +34,6 @@ export function Layout({ workId, onBack }: LayoutProps) {
     handleSend,
     handleResubmitUser,
     handleCancel,
-    handleSettingsChange,
   } = useWorkDetail(workId, server.ready);
   const {
     sideTab,
@@ -78,20 +75,13 @@ export function Layout({ workId, onBack }: LayoutProps) {
     );
   }
 
-  const composerAgents =
-    detail.composer_agents.length > 0 ? detail.composer_agents : liveAgents;
+  const composerAgents = detail.composer_agents;
 
   const sidePanel =
     sideTab === "results" ? (
       <Products products={detail.products} comparison={detail.comparison ?? null} />
     ) : (
-      <Settings
-        agents={composerAgents}
-        agentId={detail.composer_agent_id ?? null}
-        modelId={detail.composer_model_id ?? null}
-        disabled={!detail.can_send}
-        onChange={handleSettingsChange}
-      />
+      <Settings disabled={!detail.can_send} />
     );
 
   return (

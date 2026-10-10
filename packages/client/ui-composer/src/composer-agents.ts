@@ -1,70 +1,34 @@
 import { useMemo } from "react";
-import type { ComposerAgentOption } from "@v2/contracts/composer";
-import type { AgentRuntimeItem } from "@v2/contracts/agent-runtime";
-import { useDiscoveryStore } from "@v2/app-state";
 
-/** 自研产品 Agent 未开放前，不出现在输入框/设置里。 */
-const HIDDEN_PRODUCT_AGENT_IDS = new Set(["dingda", "product"]);
+/**
+ * Composer 的 Agent 选项。
+ *
+ * 外部 CLI Agent 已移除，产品只剩内置 dingda：不出列表、不发选项，
+ * 发送时 agent_id 固定为 "dingda"。
+ */
 
-function toComposerOptions(agents: AgentRuntimeItem[]): ComposerAgentOption[] {
-  return agents
-    .filter((agent) => agent.available && !HIDDEN_PRODUCT_AGENT_IDS.has(agent.id))
-    .map((agent) => ({
-      id: agent.id,
-      name: agent.name,
-      is_default: agent.is_default,
-      preferred_model_id: agent.preferred_model_id ?? null,
-      models: agent.models ?? [],
-    }));
+/** 产品 Agent 固定 id（与后端 run_work 的 runtime_id 对齐）。 */
+export const PRODUCT_AGENT_ID = "dingda";
+
+/** 已接入（PATH 可探测）的 Agent，供输入框选择。外部 CLI 移除后恒为空。 */
+export function getComposerAgentOptions(): [] {
+  return [];
 }
 
-/** 已接入（PATH 可探测）的 Agent，供输入框选择。 */
-export function getComposerAgentOptions(): ComposerAgentOption[] {
-  return toComposerOptions(useDiscoveryStore.getState().agents);
-}
-
-export function resolveDefaultAgentId(agents: ComposerAgentOption[]): string | null {
-  if (agents.length === 0) return null;
-  return agents.find((agent) => agent.is_default)?.id ?? agents[0]?.id ?? null;
-}
-
-export function resolveModelId(
-  agent: ComposerAgentOption | undefined,
-  modelId: string | null,
-): string | null {
-  if (!agent?.models?.length) return null;
-  if (modelId && agent.models.some((model) => model.id === modelId)) {
-    return modelId;
-  }
-  const preferred = agent.preferred_model_id?.trim() || null;
-  if (preferred && agent.models.some((model) => model.id === preferred)) {
-    return preferred;
-  }
-  return agent.models[0]?.id ?? null;
+export function resolveDefaultAgentId(_agents: unknown[]): string {
+  void _agents;
+  return PRODUCT_AGENT_ID;
 }
 
 export function resolveComposerSelection(
-  agents: ComposerAgentOption[],
-  agentId: string | null,
-  modelId: string | null,
-): { agentId: string | null; modelId: string | null } {
-  const resolvedAgentId =
-    agentId && agents.some((agent) => agent.id === agentId)
-      ? agentId
-      : resolveDefaultAgentId(agents);
-  if (!resolvedAgentId) {
-    return { agentId: null, modelId: null };
-  }
-  const agent = agents.find((item) => item.id === resolvedAgentId);
-  return {
-    agentId: resolvedAgentId,
-    modelId: resolveModelId(agent, modelId),
-  };
+  _agents: unknown[],
+  _agentId: string | null,
+  _modelId: string | null,
+): { agentId: string; modelId: null } {
+  return { agentId: PRODUCT_AGENT_ID, modelId: null };
 }
 
-/** 订阅探测结果，输入框 Agent 列表随之更新。 */
-export function useComposerAgentOptions(): ComposerAgentOption[] {
-  // 必须先取稳定引用再 map：selector 里每次 new 数组会触发 Zustand 无限重渲染
-  const agents = useDiscoveryStore((state) => state.agents);
-  return useMemo(() => toComposerOptions(agents), [agents]);
+/** 订阅探测结果，输入框 Agent 列表随之更新。外部 CLI 移除后恒为空。 */
+export function useComposerAgentOptions(): [] {
+  return useMemo(() => [], []);
 }

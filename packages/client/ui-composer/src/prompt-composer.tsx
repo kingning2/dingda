@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Paperclip, Square } from "lucide-react";
 import type { ComposerAgentOption, ComposerAttachmentView, ComposerSubmitPayload } from "@v2/contracts/composer";
-import { ComposerAgentPicker } from "./composer-agent-picker";
 import { ComposerAttachments } from "./composer-attachments";
 import {
   filesToComposerAttachments,
@@ -21,8 +20,6 @@ interface PromptComposerProps {
   defaultAgentId?: string | null;
   defaultModelId?: string | null;
   defaultMessage?: string;
-  /** 隐藏 Agent 选择器（由外部设置面板接管）。 */
-  hideAgentPicker?: boolean;
   /** Codex TUI 风格：在输入行左侧显示 `›`。 */
   showPromptGlyph?: boolean;
   onSubmit: (payload: ComposerSubmitPayload) => void;
@@ -43,7 +40,6 @@ export function PromptComposer({
   defaultAgentId = null,
   defaultModelId = null,
   defaultMessage = "",
-  hideAgentPicker = false,
   showPromptGlyph = false,
   onSubmit,
   onCancel,
@@ -117,7 +113,7 @@ export function PromptComposer({
     const trimmed = message.trim();
     onSubmit({
       message: trimmed,
-      agent_id: resolvedAgentId ?? "codex",
+      agent_id: resolvedAgentId ?? "dingda",
       model_id: resolvedModelId,
       attachments: attachments.map((item) => ({ ...item })),
     });
@@ -183,18 +179,6 @@ export function PromptComposer({
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          {requiresExternalAgent && !hideAgentPicker ? (
-            <ComposerAgentPicker
-              agents={agents}
-              agentId={resolvedAgentId}
-              modelId={resolvedModelId}
-              onChange={(nextAgentId, nextModelId) => {
-                setAgentId(nextAgentId);
-                setModelId(nextModelId);
-              }}
-              disabled={disabled || busy}
-            />
-          ) : null}
           <Button
             type="button"
             variant="ghost"

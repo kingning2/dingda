@@ -9,15 +9,12 @@
  *   - 本模块只做编排与状态推进；「工具输出 → 商品/比价视图」的解析在 agent-output.ts。
  *   - 前端**不猜**后端语义：`hasProducts` 由这里解析出结果后显式告知 reducer，
  *     因为「商品结果」不是后端的事件类型。
- *   - 换 Agent 时丢掉旧 CLI session：历史对不上，继续用会串上下文。
- *   - 冷启动（无 session）时把叮答侧历史交给服务端压缩注入，前端只负责裁剪长度。
  */
 
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import type {
   AgentWorkComparisonView,
   AgentWorkDetailView,
-  AgentWorkMessageView,
 } from "@v2/contracts/ai-work";
 import type { CrawlProductItem } from "@v2/contracts/crawler";
 import {
@@ -28,7 +25,6 @@ import {
 } from "@v2/ui-agent/run/reducer";
 import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { startAgentRunWithEvents } from "@v2/ui-agent/run/stream";
-import { useDiscoveryStore } from "@v2/app-state";
 import { extractComparison, extractProducts, mergeComparison, mergeProducts } from "./agent-output";
 
 /** 一次运行的句柄：拿 runId、等结束、主动取消。 */
@@ -40,24 +36,6 @@ export interface SendHandle {
 
 /** 运行更新回调：同时返回对话快照和当前前端阶段。 */
 export type SendUpdate = (next: AgentWorkDetailView, phase: AgentRunPhase) => void;
-
-/** 注入历史的上限：条数与单条字符数。太长的历史对模型没用，只是浪费上下文。 */
-const CONTEXT_MAX_MESSAGES = 30;
-const CONTEXT_MAX_CHARS = 2000;
-
-/** 换 Agent 冷启动：从 work 消息抽出可注入的先前对话（不含本轮正在发的那句）。 */
-function buildContextMessages(
-  messages: AgentWorkMessageView[],
-): Array<{ role: string; content: string }> {
-  return messages
-    .filter((item) => item.role === "user" || item.role === "assistant")
-    .map((item) => ({
-      role: item.role,
-      content: item.content.trim().slice(0, CONTEXT_MAX_CHARS),
-    }))
-    .filter((item) => item.content)
-    .slice(-CONTEXT_MAX_MESSAGES);
-}
 
 /**
  * 发起一次运行。
@@ -79,14 +57,7 @@ export function send(
     };
   }
 
-  const runtimeId = (payload.agent_id || detail.composer_agent_id || "codex").trim();
-  if (runtimeId === "dingda" || runtimeId === "product") {
-    return {
-      runId: "blocked",
-      promise: Promise.reject(new Error("产品 Agent 尚未开放，请在设置里选择 Codex / Claude")),
-      cancel: async () => undefined,
-    };
-  }
+  const runtimeId = "dingda";
 
   // 先把用户消息与一条空的助手消息塞进 detail，再等 SSE 推进 —— 让用户立刻看到自己发的内容。
   const { detail: optimistic, assistantMessageId } = createOptimisticSendDetail(
@@ -102,28 +73,10 @@ export function send(
   let runState = createAgentRunMessageState();
   onUpdate(snapshot, runState.phase);
 
-  // Tauri 扫描到的 CLI 绝对路径；目录里没有就交给服务端按 PATH 找。
-  const catalogCommand =
-    useDiscoveryStore.getState().agents.find((agent) => agent.id === runtimeId)?.command?.trim() ||
-    null;
-
-  const resumeSession =
-    snapshot.cli_session_id &&
-    (snapshot.cli_session_runtime_id ?? snapshot.composer_agent_id) === runtimeId
-      ? snapshot.cli_session_id
-      : null;
-  // 无 CLI session（含换 Agent）时把叮答侧历史交给服务端压缩注入
-  const contextMessages = resumeSession ? null : buildContextMessages(detail.messages);
-
   const handle = startAgentRunWithEvents(
     {
-      runtimeId,
+      workId: detail.work_id,
       prompt: message,
-      modelId: payload.model_id,
-      platformHint: payload.crawl_platform ?? null,
-      executable: catalogCommand,
-      sessionId: resumeSession,
-      contextMessages,
     },
     (event) => {
       // 工具结果先解析一遍：既决定阶段（products / executing），也拿到要并进 detail 的数据。

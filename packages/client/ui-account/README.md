@@ -26,7 +26,7 @@
 ## 发现逻辑归本域
 
 `src/account-discovery.ts` 是账号发现的实现（启动拉全部平台 / 登录后刷单平台），
-写 `@v2/app-state` 的 accounts 切片。与 `@v2/ui-agent/agent-runtime-scan` 各管各的，
+写 `@v2/app-state` 的 accounts 切片。与 `@v2/ui-agent/recent-works` 各管各的，
 需要「两边一起做」的启动编排在 `apps/web/src/boot`。
 
 ## 边界
