@@ -17,7 +17,7 @@ description: 约束叮答 Tool 契约与实现边界。编写 crawler.search_pro
 
 - 给产品 Agent 加能力
 - 写 CLI skill 注入的工具（`packages-py/cli/src/cli/skills/`，经 `tools.cli` 暴露）
-- 把 Crawler / Browser / Snapshot 暴露给 Agent 或外部 CLI
+- 把 Crawler / Browser / Snapshot 暴露给 Agent 之外的直接调用方
 - 改工具名、参数、错误码、超时
 
 ## 目标目录
@@ -93,7 +93,7 @@ Agent Core 只经 `registry.call_tool`。禁止直接 import Crawler Source / Pl
 | 调用方 | 路径 |
 |--------|------|
 | 产品 Agent | `registry.call` |
-| 外部 CLI（Codex 等） | Skill 注入的 `tools.cli` → 同一 `registry.call` |
+| 开发者自省 | `python -m tools.cli list`（只读，不执行） |
 | 前端手动爬虫 | **可以不经 Tool**，HTTP → Crawler 应用服务 → 同一 Crawler Core |
 
 不要为 CLI 单独再写一个 `XianyuSearch` 而产品 Agent 用另一套参数。

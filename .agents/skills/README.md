@@ -32,7 +32,7 @@
 - 新业务目录：`packages-py/{agent,crawler,browser,tools}/src/<pkg>/`（uv 工作区）。
 - 禁止 Agent → Playwright / SQLite / 闲鱼。
 - 前端是 pnpm 工作区：应用装配在 `apps/web`，业务域在 `packages/client/ui-*`（没有仓库根 `src/`）。
-- 前端主开发在浏览器；外部 CLI Agent 仅桌面注入（`@v2/runtime/capabilities`）。
+- 前端主开发在浏览器；桌面壳能力（对话框 / 窗口）仅客户端（`@v2/runtime/capabilities`）。
 - 前端包依赖单向无环，叶子包（`app-state` / `runtime` / `routes` / `contracts`）不许引业务包。
 - 写 Python / Rust 时必须按 `python-coding` / `rust-coding` Skill 里的示例形状落笔。
 - 写前端必须按 `frontend-coding` 的示例形状落笔：**一个功能块一个文件**、

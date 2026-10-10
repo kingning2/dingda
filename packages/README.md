@@ -36,9 +36,9 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-mo
 | [client/ui-layout/](client/ui-layout/README.md) | 外壳、标题栏、导航栏、主区域、路由出口 | 窗口骨架、侧栏、页面切换动效 |
 | [client/ui-feedback/](client/ui-feedback/README.md) | 错误边界与告警宿主 | 报错怎么展示 |
 | [client/ui-ai/](client/ui-ai/README.md) | AI 消息渲染、Markdown、思考过程 | 消息气泡、代码块 |
-| [client/ui-composer/](client/ui-composer/README.md) | 输入区、附件、Agent 选择 | 打字框 |
+| [client/ui-composer/](client/ui-composer/README.md) | 输入区、附件 | 打字框 |
 | [client/ui-account/](client/ui-account/README.md) | 账号、扫码登录、登录态告警 | 账号相关 |
-| [client/ui-agent/](client/ui-agent/README.md) | 外部 CLI Runtime 探测与运行态 | Agent 探测 |
+| [client/ui-agent/](client/ui-agent/README.md) | 内置 Agent 运行态与最近工作 | Agent 运行态 |
 | [client/ui-crawler/](client/ui-crawler/README.md) | 商品详情拉取与商品预览浮层 | 商品预览 |
 | [client/ui-monitor/](client/ui-monitor/README.md) | 商品监控：监控列表、价格历史、变更事件 | 商品卖不卖得掉 / 有没有降价 |
 | [client/ui-workflow/](client/ui-workflow/README.md) | 工作流画布：ReactFlow 装配、节点骨架、端口与连线协议 | 节点画布编排 |
@@ -52,7 +52,7 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-mo
 
 拆包之前这些问题是看不见的 —— 单棵源码树里「谁引谁」没有强制力。
 
-1. **转发壳会把环藏起来。** `ui-agent/agent-runtime-scan.ts` 曾经整篇是
+1. **转发壳会把环藏起来。** `ui-agent/agent-runtime-scan.ts` 曾经过是（已删）
    `export { ... } from "@v2/ui-crawler/discovery-scan"`，于是依赖图看起来像
    `ui-agent → ui-crawler → ui-agent`。转发壳删掉、实现归位后环才消失。
    **不要为了「兼容旧 import」留转发文件**，直接改调用方。

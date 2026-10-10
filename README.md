@@ -17,7 +17,7 @@
 ## Introduction
 
 叮答是一个桌面端选品工作台：React 界面 + Tauri 壳 + Python Server。  
-你在对话里描述需求，外部 CLI Agent（Codex / Claude / OpenCode）调用内置工具完成搜索、详情、比价与预览；爬虫过程可实时直播，撞风控或 DOM 改版时会自动恢复。
+你在对话里描述需求，内置 Agent（dingda）调用内置工具完成搜索、详情、比价与预览；撞风控或 DOM 改版时会自动恢复。
 
 架构与分层约束见 [`AGENTS.md`](AGENTS.md)。
 
@@ -99,7 +99,7 @@ packages/           前端 pnpm 工作区（见 packages/README.md）
   ├─ contracts/     与 Python 的线协议类型
   └─ client/        业务域包（ui-agent / ui-account / ui-ai / …）与机制包（runtime / app-state / routes）
 packages-rs/        Rust workspace（成员包，见 packages-rs/README.md）
-  └─ client/        Tauri 客户端（起停 Server、OS 能力、外部 CLI）
+  └─ client/        Tauri 客户端（起停 Server、OS 能力）
 packages-py/        Python uv workspace（见根 pyproject.toml）
   ├─ api/            FastAPI 装配与入口（`python -m api`；路由一端点一文件在 api/routes/）
   ├─ contracts/      零依赖线协议 DTO 与端口

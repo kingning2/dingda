@@ -8,6 +8,19 @@
 
 ## [Unreleased]
 
+### 移除
+
+- **外部 CLI Agent 整链删除**（ADR-0005）：Python `packages-py/cli` 包与
+  `/v1/agent/runtimes*` 端点（扫描 / 偏好 / 默认 / 外部 run / 直播帧 / 取消）、
+  Rust `packages-rs/agent` + `packages-rs/runtime` crate 与 `client` 的
+  `agent_runtime` 命令、前端 `/agents` 页与 Composer Agent 选择器、
+  `supportsExternalAgents()` 能力位与 `agent-runtime` 契约。
+  AI 能力统一内置 Agent（`agent_id="dingda"`，模型由 `DINGDA_LLM_*` 决定）：
+  前端发送链接通 `POST /v1/agent/works/{workId}/run`，Composer 隐藏选择器，
+  取消 = AbortController abort（服务端继续跑完落库）；`/assets` `/integrations`
+  重定向 `/accounts`；DOM 修复链 `propose_dom_patch` 改内置 LLM
+  （`DINGDA_DOM_REPAIR_MODEL`）。
+
 ### 新增
 
 - **工作流技能包**：引入 agent-skills（MIT）25 个生命周期技能至 `.agents/skills/`，

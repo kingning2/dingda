@@ -249,7 +249,7 @@ export { loadCachedToolRuntimes, probeSingleTool /* ... */ } from "./integration
 
 ## 示例 D：字段级容错用判定器，不写类型判定型三元
 
-后端 / 外部 CLI / `sessionStorage` 给的字段，形状不保证。这类「判定 + 兜底」不要写
+后端 / `sessionStorage` 给的字段，形状不保证。这类「判定 + 兜底」不要写
 `typeof x === "string" ? x : ""`，用项目里的共享判定器模块：
 
 ```ts

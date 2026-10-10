@@ -51,89 +51,61 @@ pub async fn start_background(&self, app: AppHandle) -> Result<(), PythonLifecyc
 
 ---
 
-## 示例 B：多实现插座（Definition + registry）
+## 示例 B：一命令一文件 + 集中登记（client/commands）
 
-### 插座类型 — `runtime/types.rs`（节选）
+### 命令 — `client/src/commands/dialog.rs`（节选）
 
 ```rust
-//! Runtime 公共类型：Definition 是各 CLI 插头必须填的插座。
+//! 系统文件选择对话框。
 
-/// 一个外部 CLI Agent 的静态定义（插座字段）。
-pub struct RuntimeDefinition {
-    pub id: &'static str,
-    pub binary: &'static str,
-    pub build_args: BuildArgsFn,
-    pub discover_models: DiscoverModelsFn,
-    // ...
+use tauri::AppHandle;
+
+/// 打开文件选择框；用户取消返回 `None`。
+#[tauri::command]
+pub async fn pick_file(app: AppHandle) -> Result<Option<String>, String> {
+    // blocking dialog 丢到 spawn_blocking，别卡 async 运行时
 }
 ```
 
-### 插头 — `runtime/defs/codex.rs`
+### 登记 — `client/src/lib.rs`
 
 ```rust
-//! Codex CLI 插头：二进制、参数构建与模型发现。
-
-use super::build_args::codex_build_args;
-use crate::runtime::types::RuntimeDefinition;
-
-pub const CODEX: RuntimeDefinition = RuntimeDefinition {
-    id: "codex",
-    name: "Codex",
-    binary: "codex",
-    build_args: codex_build_args,
+.invoke_handler(tauri::generate_handler![
+    commands::api::get_api_base_url,
+    commands::dialog::pick_file,
     // ...
-};
-```
-
-### 注册 — `runtime/registry.rs`
-
-```rust
-//! 外部 CLI Runtime 注册表：按 id 取插头，调用方禁止大 match。
-
-use crate::runtime::defs::{CLAUDE, CODEX /* ... */};
-use crate::runtime::types::RuntimeDefinition;
-
-static RUNTIME_REGISTRY: &[&RuntimeDefinition] = &[&CODEX, &CLAUDE /* ... */];
-
-/// 按 id 查找 Runtime 插头。
-pub fn find_runtime(id: &str) -> Option<&'static RuntimeDefinition> {
-    RUNTIME_REGISTRY.iter().copied().find(|def| def.id == id)
-}
+])
 ```
 
 ### 错误示范（禁止）
 
 ```rust
-// ❌ 业务里堆 match
-match runtime_id.as_str() {
-    "codex" => launch_codex(...),
-    "claude" => launch_claude(...),
-    _ => Err("unknown".into()),
-}
+// ❌ 业务里散落 if/else 选 invoke 目标
+let cmd = if is_dialog { "pick_file" } else { "pick_folder" };
 
-// ❌ 文件名重复：runtime/defs/codex_runtime_def.rs
+// ❌ 文件名重复：commands/dialog_command.rs
 ```
 
-新增 CLI：只加 `defs/<id>.rs` + registry 一行，不改调用方分支。
+新增 command：`commands/` 加文件 + `mod.rs` 一行 + `generate_handler!` 一行，不改调用方结构。
 
 ---
 
-## 示例 C：探测流程日志
+## 示例 C：生命周期流程日志
 
-目标路径：`packages-rs/agent/src/probe.rs`
+目标路径：`packages-rs/python/src/lifecycle.rs`
 
 ```rust
-//! 按 Agent id 探测本机安装与鉴权状态。
+//! Python Server 子进程生命周期：拉起 → 探活 → 优雅退出。
 
-/// 探测单个 Agent：解析路径 → 跑 version/login 探针 → 汇总结果。
-pub async fn probe_agent_by_id(agent_id: &str) -> Result<AgentRuntimeProbeResult, String> {
-    eprintln!("[agent] probe start id={agent_id}");
-    let detection = detect_runtime(agent_id).await?;
-    eprintln!(
-        "[agent] probe done id={agent_id} available={} version={:?}",
-        detection.available, detection.version
-    );
-    Ok(detection.into_probe_result())
+use crate::events::EventSink;
+
+impl PythonLifecycle {
+    /// 后台拉起：spawn → 探活 `/health` → emit `server-ready` / `server-error`。
+    pub async fn start_background(&self, events: &dyn EventSink) -> Result<(), PythonLifecycleError> {
+        log::info!("python spawn begin port={}", self.config().port);
+        self.spawn(events).await?;
+        self.wait_until_healthy(events).await
+    }
 }
 ```
 
@@ -145,8 +117,7 @@ pub async fn probe_agent_by_id(agent_id: &str) -> Result<AgentRuntimeProbeResult
 
 | 位置 | 正确 | 错误 |
 |------|------|------|
-| `runtime/defs/` | `codex.rs` `claude.rs` | `codex_def.rs` `codex_lib.rs` |
-| `runtime/parsers/` | `opencode.rs` | `opencode_parser_impl.rs` |
+| `client/src/commands/` | `dialog.rs` `os.rs` | `dialog_command.rs` `dialog_impl.rs` |
 | `python/` | `lifecycle.rs` | `python_lifecycle_manager.rs` |
 
 ---

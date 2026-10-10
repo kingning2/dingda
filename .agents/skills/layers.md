@@ -62,7 +62,6 @@ packages-py/             Python uv workspace（成员见根 pyproject.toml）
   tools/                 Agent 可调用工具（search / product / compare / preview）
   domains/               应用服务（account / channel / knowledge / runtime）
   agent/                 产品 Agent（planning / tool 调用 / workflow）
-  cli/                   外部 CLI runtime（spawn + SSE + skill 注入）
   api/                   FastAPI 装配与入口（唯一可 import 全部）
   # 每包形如 packages-py/<pkg>/src/<pkg>/
 ```
@@ -177,16 +176,16 @@ Python Server
 
 Desktop 壳注入（仅客户端）
   · windowChrome
-  · externalAgents（Codex/Claude/…）
   · 文件对话框 / 起停 Server
 ```
 
-| 环境 | 产品 API | 外部 CLI Agent |
-|------|----------|----------------|
+| 环境 | 产品 API | 桌面壳能力 |
+|------|----------|------------|
 | 浏览器 | 连本机 `VITE_API_BASE_URL` 或 `http://127.0.0.1:8787` | **不支持** |
-| Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`packages-rs/runtime/src/`） |
+| Tauri 客户端 | 壳注入 apiBaseUrl 后 HTTP | **支持**（`packages-rs/client/src/`） |
 
-实现入口：`packages/client/runtime/src/capabilities.ts`。UI / 扫描 / Composer 用 `supportsExternalAgents()`，不要散落 `isTauri()` 冒充业务开关。
+实现入口：`packages/client/runtime/src/capabilities.ts`。UI 用它区分浏览器 / 桌面壳，
+不要散落 `isTauri()` 冒充业务开关。
 
 桌面适配器在 `packages/client/runtime/src/`（`server.ts`、`window.ts`、`capabilities.ts`）。
 **禁止**新建 `packages/ui`、`packages/shared` 这类大杂烩包 —— 包名必须对应一个业务域（`ui-agent`）或一层机制（`runtime`）。
@@ -201,7 +200,7 @@ Desktop 壳注入（仅客户端）
 2. **不要留「兼容旧 import」的转发壳。** 转发文件会让依赖图看起来多一条边
    （`ui-agent → ui-crawler`），把环藏起来。直接改调用方，删掉转发。
 3. **跨域共享的 UI 状态放 `app-state`，不要寄居在某个业务包下。** 一旦寄居，
-   那个包就被迫认识其它域。谁写状态谁留在自己域里（`ui-agent/agent-runtime-scan`、
+   那个包就被迫认识其它域。谁写状态谁留在自己域里（`ui-agent/recent-works`、
    `ui-account/account-discovery`）。
 
 新增包时**三处必须同时改**（根 `package.json` 依赖、根 `tsconfig.json` 的 `paths` 两条、
@@ -242,7 +241,6 @@ fetch(`${apiBaseUrl}/v1/...`)
 |---------|-------------------|
 | `get_api_base_url` / `get_server_status` | 壳才知道 Python 进程起没起 |
 | `pick_file` / `pick_folder` / `show_in_folder` | OS 对话框 / 资源管理器 |
-| `list_agent_runtimes_command` / `probe_agent_runtime` / `login_agent_runtime` / `download_agent_runtime` | 读 PATH、探测登录、托管下载（不 spawn） |
 | `log_frontend_error` | Python 未就绪时仍要落到壳日志 |
 
 新增同类能力：加在 `packages-rs/client/src/commands/`，不要新开仓库或 `packages-rs/client/src/ipc/` 平行体系。
@@ -268,7 +266,7 @@ fetch(`${apiBaseUrl}/v1/...`)
 ✅ 账号/快照 SQLite 留在 Python infrastructure
 ```
 
-产品 Agent 与外部 CLI 的流式输出都走 Python SSE（`/v1/agent/...`）。壳只做探测/下载，不要再 `emit("agent-event")` 起 CLI。
+产品 Agent 的流式输出走 Python SSE（`/v1/agent/...`），前端 reducer 消费同一套事件契约。
 
 ### SQLite 归属（覆盖通用模板）
 
@@ -386,12 +384,10 @@ packages-py/browser/src/browser/               # manager / session / context / a
 | 面 | 契约位置 |
 |----|----------|
 | 产品 HTTP | `packages-py/contracts/src/contracts/` ↔ `packages/contracts/src/` |
-| CLI Agent 事件 | Python SSE ↔ `packages/contracts/src/agent-event.ts`（壳探测不推事件） |
-| Tool | `packages-py/tools/src/tools/`（产品 Agent 与 CLI skill 共用；每工具一目录 + registry 自动发现） |
+| CLI Agent 事件 | Python SSE ↔ `packages/contracts/src/agent-event.ts` |
+| Tool | `packages-py/tools/src/tools/`（每工具一目录 + registry 自动发现） |
 
 改产品 API：**先契约，再 Python，再 React**。不必为了产品 HTTP 改 Rust。
-
-改 CLI Runtime：**探测/下载**改 Tauri；**启动/流式**改 Python `cli` + `/v1/agent/runtimes/...`，再接 React。
 
 ---
 

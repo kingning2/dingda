@@ -61,9 +61,9 @@ pnpm check:deps      # node scripts/check-workspace-deps.mjs，约 0.3 秒
 ## 怎么写功能
 
 1. **产品能力**（账号、爬虫、产品 Agent、调研）：`packages-py/` + HTTP/SSE；前端 `fetch(apiBaseUrl + '/v1/...')`。
-2. **壳能力**（对话框、窗口、起停 Server、Codex/Claude 等外部 Agent）：现有 `packages-rs/client/src/commands/`，前端经 `@v2/runtime/` 下的适配器（`window.ts` / `server.ts` / `capabilities.ts`）。
+2. **壳能力**（对话框、窗口、起停 Server）：现有 `packages-rs/client/src/commands/`，前端经 `@v2/runtime/` 下的适配器（`window.ts` / `server.ts` / `capabilities.ts`）。
 3. **Web 联调**：默认 `http://127.0.0.1:8787`（或 `VITE_API_BASE_URL`）；不要用 `isTauri()` 挡住产品 HTTP。
-4. **外部 CLI Agent**：仅桌面；用 `supportsExternalAgents()`（`@v2/runtime/capabilities`）。浏览器禁止 mock Codex/Claude。
+4. **AI 能力统一内置**：产品 Agent（`agent_id="dingda"`）是唯一 Agent；模型由 Server 侧 `DINGDA_LLM_*` 决定，客户端不选型。
 
 ## 分层（跨层 import = 错）
 

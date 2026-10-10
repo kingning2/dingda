@@ -69,5 +69,8 @@ pnpm test         # < 5s：vitest；python: uv run pytest …（27s）→ 两者
 
 | ID | 规则 | 路径 | 原因 | 负责人 | 过期 |
 |----|------|------|------|--------|------|
+| E-001 | 不删测试 | `e2e/specs/agent-runtimes.spec.ts` + `api/tests/agent/`（preview/repair_spawn/roles/runtime_base/runtimes/steps）+ `api/tests/crawler/test_repair_bridge.py` + `api/tests/tools/`（skill/validate/validate_cli） | ADR-0005：外部 CLI Agent 整链移除，测试随被删功能一起消失；替代覆盖 = `test_agent_service.py`（内置 Agent）与 `ai-product-search.spec.ts`（内置 dingda 真实一轮） | dingda | 2026-03-14（随 ADR-0005 提交合入即失效） |
+| E-002 | 不删断言 | `e2e/specs/ai-product-search.spec.ts` `composer_agent_id` 断言 | 改写为固定 `AGENT_ID="dingda"`（内置 Agent），非删除 | dingda | 同 E-001 |
+| E-003 | 不删断言 | `api/tests/tools/test_registry.py` `validate_selectors` internal_only 断言 | `validate_selectors` 工具随外部 CLI 移除，断言随工具一起消失（ADR-0005） | dingda | 同 E-001 |
 
 （空。加例外 = 在此加一行 W/E 编号，守卫会盯住过期与未授权新增。）

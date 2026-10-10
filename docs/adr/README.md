@@ -9,5 +9,6 @@
 | [0002](0002-python-server-拆分为-uv-工作区.md) | 单体 server 拆为 packages-py uv 工作区 | 采纳 |
 | [0003](0003-能力归-browser-平台归-crawler.md) | 能力归 Browser、平台归 Crawler 的分层铁律 | 采纳 |
 | [0004](0004-质量约束棘轮.md) | 质量约束写进 CONSTRAINTS.md 并以守卫棘轮化 | 采纳 |
+| [0005](0005-移除外部-cli-agent.md) | 移除外部 CLI Agent，AI 能力统一内置 Agent | 采纳 |
 
 新写 ADR 拷贝 [模板](template.md)。

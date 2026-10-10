@@ -1,6 +1,6 @@
 ---
 name: frontend-architecture
-description: 约束叮答前端 pnpm 工作区结构与桌面能力注入。开发 React UI、新增/移动包、判断能力显隐、账号/爬虫 Web 联调时使用。浏览器不支持外部 Agent；客户端才注入。
+description: 约束叮答前端 pnpm 工作区结构与桌面能力注入。开发 React UI、新增/移动包、判断能力显隐、账号/爬虫 Web 联调时使用。浏览器没有桌面壳能力；客户端才有。
 ---
 
 # 前端架构开发规范
@@ -68,11 +68,12 @@ pnpm check:unused    # 跨文件未使用导出 / 孤立文件（--strict 让 CI
 
 | Capability | Web | Desktop |
 |------------|-----|---------|
+| 能力 | 浏览器 | 桌面壳 |
+|------------|-----|---------|
 | 产品 HTTP（账号/爬虫/…） | ✅ | ✅ |
-| `externalAgents` | ❌ | ✅ |
 | `windowChrome` / 文件对话框 | ❌ | ✅ |
 
-用 `supportsExternalAgents()` / `getHostCapabilities()`（`@v2/runtime/capabilities`），
+用 `getHostCapabilities()`（`@v2/runtime/capabilities`），
 禁止业务组件继续堆 `isTauri()`。
 
 路由只存在于 `apps/web` 与 `ui-layout`。业务包需要跳转时不要引 `react-router-dom`，
@@ -86,9 +87,9 @@ pnpm check:unused    # 跨文件未使用导出 / 孤立文件（--strict 让 CI
 ❌ runtime / app-state 引 @v2/ui-*（叶子包反向依赖业务包）
 ❌ 包 import "@web/*"（包依赖应用源码，方向反了）
 ❌ 外部包只在仓库根声明、使用它的包不写（靠 hoisting 兜着）
-❌ 浏览器 mock 已安装 Codex/Claude
+❌ 浏览器 mock 桌面壳能力
 ❌ 账号页强制 isTauri() 才打 HTTP
-❌ 为外部 Agent 再开一套产品 IPC
+❌ 绕过 Python Server 自建第二状态源
 ```
 
 ```text

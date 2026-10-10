@@ -13,7 +13,7 @@
 |------|------|------|------|
 | Web 应用 | `apps/web/` | `pnpm dev`（Vite :1420） | React 装配：路由表 / 页面 / `boot/` 启动编排；浏览器直联 Server 联调 |
 | Python Server | `packages-py/api/` | `uv run python -m api`（FastAPI :8787） | 唯一状态持有方；产品能力全部经 HTTP/SSE（SQLite 在 Python） |
-| 桌面客户端 | `packages-rs/client/` | `pnpm tauri dev` | 壳 = Web + Server 的打包体 + OS 能力（起停 Server、外部 CLI、对话框） |
+| 桌面客户端 | `packages-rs/client/` | `pnpm tauri dev` | 壳 = Web + Server 的打包体 + OS 能力（起停 Server、对话框） |
 
 1.1 前端是 **pnpm 工作区**，Rust 是 **Cargo 工作区**，Python 是 **uv 工作区**，三套互不干涉。
 
@@ -82,8 +82,8 @@
 5.4 禁止 `domains/*/service.py` 上帝类；新代码目录在
     `packages-py/{agent,crawler,browser,tools}/src/<pkg>/`。
 
-5.5 浏览器（Web 端）禁止 mock Codex / Claude；外部 CLI Agent 仅桌面注入，判断用
-    `supportsExternalAgents()`（`@v2/runtime/capabilities`）。
+5.5 AI 能力统一走内置产品 Agent（`agent_id="dingda"`，模型由 Server 侧 `DINGDA_LLM_*`
+    决定）；Agent / Tool 一律经 Tool → Crawler → Browser。
 
 ## 6. Skill 索引
 
