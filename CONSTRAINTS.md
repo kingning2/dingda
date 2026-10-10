@@ -27,7 +27,7 @@ Last reviewed: 2026-02-14（初版，基线数字为当日实测）
 | 测试 (py) | pytest 全绿（除 integration） | `uv run pytest packages-py/api/tests -m "not integration"` | CI / 提交前 | 阻断 |
 | 分层 | §2 分层规则机械子集（agent/tools 禁直连浏览器与存储；crawler 禁直 import playwright） | `node scripts/check/layers-guard.mjs` | CI / 提交前 | **警告**（观察期，两周后转阻断） |
 | 密钥 | 无泄漏 | gitleaks（CI observe job） | CI | **警告**（观察期） |
-| 依赖安全 | high 以上不增长，逐步清零 | `pnpm audit --prod`（CI observe job） | CI | **警告**（观察期） |
+| 依赖安全 | high 以上不增长，逐步清零 | `pnpm audit --prod`（CI observe job） | CI | **阻断**（2026-02-14 已清零） |
 | 性能/可访问性 | LCP ≤ 2500ms、CLS ≤ 0.1；axe critical/serious = 0 | lighthouse / axe 对本地 `:1420`（工具未装，装好后回填命令） | 本地预览，手动 | **警告**（未接线） |
 
 策略（2026-02-14 起）：**地板与既有 CI 门禁阻断；新接入的检查警告两周**，观察无

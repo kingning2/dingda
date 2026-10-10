@@ -23,6 +23,11 @@
 
 - Agent：未配置 LLM key 时 SSE 流不再裸抛异常，改为发 `error` + `runCompleted(1)` 兜底事件
 
+- **依赖安全清欠**：`pnpm audit --prod` 24 项（1 critical / 9 high / 11 moderate / 3 low）→ 0。
+  根因是 shadcn CLI 被声明为主题包生产依赖，把 express/undici/MCP SDK 等服务端链拖进
+  prod 图；现将 base-nova 主题 CSS vendor 进 `@v2/ui-theme`（MIT，带溯源头）并移除该依赖，
+  另以 pnpm.overrides 收口 `source-map-js`
+
 ### 工具链
 
 - pi 扩展：移植 agent-skills hooks 为 `.pi/extensions/sdd-cache.ts`（HTTP 缓存 304 复用）
