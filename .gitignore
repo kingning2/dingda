@@ -28,6 +28,10 @@ e2e/artifacts/
 # Logs
 logs
 *.log
+
+# pi 扩展运行时缓存（sdd-cache / simplify-ignore，见 .pi/extensions/README.md）
+.pi/sdd-cache/
+.pi/.simplify-ignore-cache/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
