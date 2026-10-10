@@ -1,20 +1,19 @@
 /**
- * AI 找商品 E2E：首页用 opencode 发一句「去找商品」→ 跳工作页自动开跑 → 右侧出商品结果。
+ * AI 找商品 E2E：首页发一句「去找商品」→ 跳工作页自动开跑（内置 dingda Agent）
+ * → 右侧出商品结果。
  *
- * 与另外两条 spec 的分工：`desktop-smoke` 验壳层装配，`account-qr` 验账号登录，
- * `agent-runtimes` 验 Agent 检测与模型偏好；本条验**业务链路**：
- * 用户的一句话能不能真的变成一次 Agent 运行，并在结果面板里产出商品。
+ * 与另外两条 spec 的分工：`desktop-smoke` 验壳层装配，`account-qr` 验账号登录；
+ * 本条验**业务链路**：用户的一句话能不能真的变成一次 Agent 运行，并在结果面板里
+ * 产出商品。
  *
  * ## 驱动原则
- * 全程点页面上的控件（Agent 下拉 → 输入框 → 发送按钮），**不直接打
- * `POST /v1/agent/runtimes/{id}/run`** —— 那条路会绕过「首页 stash 草稿 → 工作页
+ * 全程点页面上的控件（输入框 → 发送按钮），**不直接打
+ * `POST /v1/agent/works/{id}/run`** —— 那条路会绕过「首页 stash 草稿 → 工作页
  * 自动发送」这段真实编排，而这段恰恰是最容易坏的（hash 路由 + pendingSend）。
  * 测试进程只做旁证：跑完之后读 `GET /v1/agent/works/{work_id}` 核对落库结果。
  *
- * ## 副作用（与 agent-runtimes 对比着看）
- * - **不写用户偏好**：在首页下拉里选 opencode 只改 Composer 的组件内 state
- *   （`prompt-composer.tsx` 的 `setAgentId`），提交时作为 `agent_id` 随请求带走，
- *   不碰 `app_settings`。所以本用例**无需往返还原**。
+ * ## 副作用
+ * - **不写用户偏好**：Agent 固定内置 dingda，Composer 不再有选择器。
  * - **会新增一条 AI 工作记录**：`work-<时间戳>` 写进 `~/.dingda/v2/dingda.db`
  *   （首页 `createWorkId()` + 工作页 `PUT /v1/agent/works/{work_id}`）。
  *   后端没有删除接口，所以用例**不清理** —— 它会出现在首页「最近项目」里。
@@ -33,20 +32,16 @@
   你跑完直接打开看 `timeline.steps` 即可逐条核对 Agent 到底干了什么。
 
 ## 时间预算（本文件的常量按这个来）
- * 真实的找商品 = Agent 调 `dingda-crawl` skill → 起浏览器爬平台，skill 文档自己写明
- * 「单次通常需要 1 到 5 分钟」。再叠加 opencode 冷启动与多轮工具调用，一轮跑完常见
- * 3~10 分钟。所以等运行结束默认给 600s（`DINGDA_E2E_RUN_TIMEOUT_MS` 可调），
+ * 真实的找商品 = 内置 Agent 调搜索工具 → 起浏览器爬平台，单轮常见几分钟。
+ * 所以等运行结束默认给 600s（`DINGDA_E2E_RUN_TIMEOUT_MS` 可调），
  * 且 `wdio.conf.ts` 的 `mochaOpts.timeout` 必须大于它 —— 用例里写 `this.timeout()`
  * 在 WDIO 下不生效，别写。
  *
  * ## 前置条件：模型（最容易踩）
- * 这条用例的成败**首先取决于模型能力**，而不是用例写得对不对。找商品要先读 4 个 skill
- * 的正文，再叠多轮工具结果，实测约需 66k tokens；免费小模型（如
- * `openrouter/liquid/lfm-2.5-2.6b:free`，上限 65536）会直接报 context length 超限、
- * `exitCode=1`，用例就必然失败在「没抓到商品」上。
- * 所以跑之前用 `DINGDA_E2E_MODEL_ID` 显式指定一个上下文足够的模型；不指定时会沿用
- * 该 Agent 的首选模型，也就是 `app_settings` 里的**用户偏好** —— 那会让同一条用例在
- * 不同机器上结论不同。当前实际使用的模型每次都会打进日志首行。
+ * 这条用例的成败**首先取决于模型能力**，而不是用例写得对不对。内置 Agent 的模型
+ * 由 Server 侧 `DINGDA_LLM_*` 环境变量决定，上下文太小的模型会直接报
+ * context length 超限、`exitCode=1`，用例就必然失败在「没抓到商品」上。
+ * 当前实际使用的模型每次都会打进日志首行。
  *
  * ## 选择器
  * 一律用源码里写死的东西，不碰 CSS 类名与文案层级：
@@ -54,8 +49,6 @@
  *   - `[data-slot="textarea"]`（`ui-primitives/textarea.tsx`）—— 输入框；
  *   - `button[aria-label="发送"]` / `button[aria-label="停止生成"]`
  *     （`ui-composer/prompt-composer.tsx`）—— 发送与「正在跑」；
- *   - `[data-slot="dropdown-menu-{trigger,content,item,sub-trigger,sub-content}"]`
- *     （`ui-primitives/dropdown-menu.tsx`）—— 首页的 Agent 选择器；
  *   - 结果面板：`h2` 文本「爬取结果」的 `parentElement` 即面板根
  *     （`ui-ai/src/panel/products.tsx`），再往下取 `[data-slot="card-title"]`。
  *
@@ -77,7 +70,6 @@ import {
   lastAssistantText,
   type WorkDetailSnapshot,
 } from "../helpers/ai-work";
-import { fetchAgentRuntimes, type AgentRuntimeItem } from "../helpers/agent";
 import { waitForPort } from "../helpers/desktop";
 import {
   disableAutoFocus,
@@ -97,22 +89,8 @@ const ARTIFACT_DIR = path.resolve(here, "..", "artifacts");
 /** wdio.conf.ts 顶层已把它写入 DINGDA_PORT（同一个值传给被测应用）。 */
 const E2E_PORT = Number(process.env.DINGDA_PORT ?? 8799);
 
-/** 用哪个 Agent 跑。默认 opencode：本机已装且模型列表完整。 */
-const AGENT_ID = (process.env.DINGDA_E2E_AGENT_ID ?? "opencode").trim();
-
-/**
- * 指定用哪个模型跑；不设则沿用该 Agent 的首选模型。
- *
- * 为什么要可配：**模型能力直接决定这条用例能否完成**。找商品要先读 4 个 skill 的正文，
- * 再叠多轮工具结果，实测需要约 66k tokens；而免费的 64k 模型（如
- * `openrouter/liquid/lfm-2.5-2.6b:free`）会直接报 context length 超限、`exitCode=1`
- * （2026-09-14 实测）。更根本的是：测试的前置条件不该由 `app_settings` 里的
- * **用户偏好**决定 —— 那会让同一条用例在不同机器上跑出不同结论。
- *
- * 取值在**子菜单可见项**里匹配（全等优先，其次包含）；不滚动去找（opencode 有 374 个
- * 模型，滚动定位既慢又脆），找不到就报错并列出可见项。
- */
-const MODEL_ID = process.env.DINGDA_E2E_MODEL_ID?.trim() || null;
+/** 用哪个 Agent 跑：内置产品 Agent，固定 dingda（模型由 Server 侧 DINGDA_LLM_* 决定）。 */
+const AGENT_ID = "dingda";
 
 /**
  * 发给 Agent 的话。
@@ -314,22 +292,6 @@ function homeReady(): Promise<boolean> {
     return Boolean(document.querySelector(selector));
   }, HERO);
 }
-
-// ---------------------------------------------------------------------------
-// 临时标记（每个用途一个属性名，每次打之前先清）
-// ---------------------------------------------------------------------------
-
-/** 见 README 已知坑 4：旧的标记元素可能还挂在 DOM 里，不清就会静默点错。 */
-const AGENT_TRIGGER_ATTR = "data-e2e-agent-trigger";
-const AGENT_SUB_ATTR = "data-e2e-agent-sub";
-const AGENT_MODEL_ATTR = "data-e2e-agent-model";
-
-function clearMarker(attribute: string): Promise<void> {
-  return browser.execute<void, [string]>((attr) => {
-    document.querySelectorAll(`[${attr}]`).forEach((node) => node.removeAttribute(attr));
-  }, attribute);
-}
-
 // ---------------------------------------------------------------------------
 // 页面操作（真实点击）
 // ---------------------------------------------------------------------------
@@ -355,203 +317,6 @@ async function ensureHome(): Promise<void> {
   }
   log(SCOPE, "已在首页");
 }
-
-/** 首页 Agent 下拉的状态。 */
-function agentMenuState(): Promise<{ open: boolean; triggerText: string | null; entries: string[] }> {
-  return browser.execute(() => {
-    const text = (node: Element | null | undefined): string =>
-      (node?.textContent ?? "").replace(/\s+/g, " ").trim();
-    // 必须限定在 home-hero 内：首页右上角还有一个「用户菜单」也是 dropdown-menu-trigger，
-    // 全局 querySelector 会先命中它（textContent 是「叮叮答用户」），于是开了错的菜单。
-    // 下拉内容（content）由 base-ui Portal 挂到 body，所以它只能全局查 ——
-    // 但只要我们只点了 home-hero 内的那个 trigger，全局也就只有这一份 content。
-    const trigger = document.querySelector(
-      '[data-testid="home-hero"] [data-slot="dropdown-menu-trigger"]',
-    );
-    const content = document.querySelector('[data-slot="dropdown-menu-content"]');
-    return {
-      open: Boolean(content),
-      triggerText: trigger ? text(trigger) : null,
-      entries: content
-        ? Array.from(
-            content.querySelectorAll(
-              '[data-slot="dropdown-menu-sub-trigger"], [data-slot="dropdown-menu-item"]',
-            ),
-          ).map((node) => text(node))
-        : [],
-    };
-  });
-}
-
-/** 子菜单（模型列表）是否展开。 */
-function subMenuState(): Promise<{ open: boolean; items: string[] }> {
-  return browser.execute(() => {
-    const text = (node: Element | null | undefined): string =>
-      (node?.textContent ?? "").replace(/\s+/g, " ").trim();
-    const content = document.querySelector('[data-slot="dropdown-menu-sub-content"]');
-    return {
-      open: Boolean(content),
-      items: content
-        ? Array.from(content.querySelectorAll('[data-slot="dropdown-menu-item"]'))
-            .map((node) => text(node))
-            .slice(0, 40)
-        : [],
-    };
-  });
-}
-
-/**
- * 在首页输入框里把 Agent 切成 `agent`。
- *
- * 结构：`ComposerAgentPicker` 用 base-ui 的 Submenu —— 选中模型才会触发 `onChange`
- * （`onChange(agent.id, model.id)`），只点 Agent 那一级不会。所以必须再点一个模型。
- *
- * 选哪个模型见 `pickModel`：不指定 `DINGDA_E2E_MODEL_ID` 时取子菜单第一个（并用接口
- * 返回的模型列表交叉核对），指定时在可见项里找它 —— 两者都不滚动去找（opencode 有
- * 374 个模型，滚动定位既慢又脆）。
- */
-
-/**
- * 决定点哪个模型。
- *
- * - 指定了 `DINGDA_E2E_MODEL_ID` → 只在**可见项**里找它（全等优先，其次包含）。
- *   找不到返回 null，由调用方报错并列出可见项 —— 让人一眼看出是「模型没渲染出来」，
- *   而不是笼统的「选择失败」。
- * - 没指定 → 沿用原策略：优先接口给的首选模型，否则第一个可见项。
- */
-function pickModel(agent: AgentRuntimeItem, items: string[]): string | null {
-  if (MODEL_ID) {
-    return (
-      items.find((item) => item === MODEL_ID) ??
-      items.find((item) => item.includes(MODEL_ID)) ??
-      null
-    );
-  }
-  const models = agent.models ?? [];
-  const preferred = models.find((model) => model.id === agent.preferred_model_id)?.label ?? null;
-  return (preferred && items.includes(preferred) ? preferred : items[0]) ?? null;
-}
-
-async function selectComposerAgent(agent: AgentRuntimeItem): Promise<void> {
-  // 快路：默认（或上次）已经是目标 Agent **且模型也对**就别动下拉了 —— 子菜单点击脆，
-  // 能不点就不点。触发器文案形如 `OpenCode · <model>`。
-  // 注意：指定了 MODEL_ID 时必须连模型一起核对，否则会静默沿用用户偏好里的模型。
-  const initial = await agentMenuState();
-  const agentMatched = Boolean(initial.triggerText?.includes(agent.name));
-  const modelMatched = !MODEL_ID || Boolean(initial.triggerText?.includes(MODEL_ID));
-  if (agentMatched && modelMatched) {
-    log(SCOPE, `Agent 已是「${agent.name}」（${initial.triggerText}），跳过选择`);
-    return;
-  }
-
-  // 1) 打开下拉
-  await clearMarker(AGENT_TRIGGER_ATTR);
-  const marked = await browser.execute<boolean, [string, string]>(
-    (heroSelector, attr) => {
-      const hero = document.querySelector(heroSelector);
-      const trigger = hero?.querySelector<HTMLElement>('[data-slot="dropdown-menu-trigger"]');
-      if (!trigger) return false;
-      trigger.setAttribute(attr, "1");
-      return true;
-    },
-    HERO,
-    AGENT_TRIGGER_ATTR,
-  );
-  if (!marked) throw new Error(`首页找不到 Agent 下拉触发器\n现场快照：${await dumpContext()}`);
-
-  if (!(await agentMenuState()).open) {
-    await (await $(`[${AGENT_TRIGGER_ATTR}]`)).click();
-  }
-  if (!(await waitUntil(async () => (await agentMenuState()).open, 15_000, 300))) {
-    throw new Error(`Agent 下拉未展开\n现场快照：${await dumpContext()}`);
-  }
-
-  // 2) 点开目标 Agent 的子菜单
-  await clearMarker(AGENT_SUB_ATTR);
-  const subMarked = await browser.execute<boolean, [string, string]>(
-    (name, attr) => {
-      const content = document.querySelector('[data-slot="dropdown-menu-content"]');
-      if (!content) return false;
-      const nodes = Array.from(
-        content.querySelectorAll<HTMLElement>(
-          '[data-slot="dropdown-menu-sub-trigger"], [data-slot="dropdown-menu-item"]',
-        ),
-      );
-      const hit = nodes.find((node) => (node.textContent ?? "").includes(name));
-      if (!hit) return false;
-      hit.setAttribute(attr, "1");
-      return true;
-    },
-    agent.name,
-    AGENT_SUB_ATTR,
-  );
-  if (!subMarked) {
-    throw new Error(
-      `Agent 下拉里找不到「${agent.name}」\n可见项：${JSON.stringify((await agentMenuState()).entries)}`,
-    );
-  }
-
-  const subTrigger = await $(`[${AGENT_SUB_ATTR}]`);
-  await subTrigger.click();
-  if (!(await waitUntil(async () => (await subMenuState()).open, 8_000, 200))) {
-    // base-ui 的子菜单也可能靠 hover 打开：点不动就把指针移上去再试。
-    log(SCOPE, "点击未展开子菜单，改用指针悬停再试");
-    await subTrigger.moveTo();
-    if (!(await waitUntil(async () => (await subMenuState()).open, 8_000, 200))) {
-      throw new Error(
-        `「${agent.name}」的模型子菜单未展开\n` +
-          `可见项：${JSON.stringify((await agentMenuState()).entries)}`,
-      );
-    }
-  }
-
-  // 3) 选一个模型（策略见 pickModel）
-  const sub = await subMenuState();
-  const wanted = pickModel(agent, sub.items);
-  if (!wanted) {
-    throw new Error(
-      MODEL_ID
-        ? `模型子菜单可见项里找不到「${MODEL_ID}」\n可见项：${JSON.stringify(sub.items)}`
-        : `「${agent.name}」的模型子菜单是空的`,
-    );
-  }
-
-  const before = (await agentMenuState()).triggerText;
-  await clearMarker(AGENT_MODEL_ATTR);
-  const modelMarked = await browser.execute<boolean, [string, string]>(
-    (label, attr) => {
-      const content = document.querySelector('[data-slot="dropdown-menu-sub-content"]');
-      if (!content) return false;
-      const items = Array.from(content.querySelectorAll<HTMLElement>('[data-slot="dropdown-menu-item"]'));
-      const hit = items.find((node) => (node.textContent ?? "").trim() === label);
-      if (!hit) return false;
-      hit.setAttribute(attr, "1");
-      return true;
-    },
-    wanted,
-    AGENT_MODEL_ATTR,
-  );
-  if (!modelMarked) {
-    throw new Error(
-      `子菜单里找不到模型「${wanted}」\n可见项：${JSON.stringify(sub.items)}`,
-    );
-  }
-  await (await $(`[${AGENT_MODEL_ATTR}]`)).click();
-
-  // 判定「选中成功」看**触发器文案变化**，不看「下拉是否收起」
-  // （README 已知坑 4：点完并不必然收起）。
-  const changed = await waitUntil(async () => {
-    const state = await agentMenuState();
-    return state.triggerText !== before && Boolean(state.triggerText?.includes(agent.name));
-  }, 15_000, 300);
-  if (!changed) {
-    throw new Error(
-      `选择「${agent.name} · ${wanted}」后触发器文案未变化（${before} → ${(await agentMenuState()).triggerText}）`,
-    );
-  }
-  log(SCOPE, `已选 Agent：${(await agentMenuState()).triggerText}`);
-}
-
 /**
  * 把提示词敲进输入框。
  *
@@ -690,10 +455,7 @@ function dumpRunArtifact(name: string, payload: unknown): string | null {
 // 用例
 // ---------------------------------------------------------------------------
 
-describe("AI 找商品（外部 Agent 真实跑一轮）", () => {
-  /** 本轮要用的 Agent；环境里没有就跳过而不是失败。 */
-  let agent: AgentRuntimeItem | null = null;
-
+describe("AI 找商品（内置 Agent 真实跑一轮）", () => {
   before(async () => {
     // 壳会自己拉起 Python Server，但 WebDriver session 建好时它可能还没监听上。
     if (!(await waitForPort(E2E_PORT, 90_000))) {
@@ -702,34 +464,11 @@ describe("AI 找商品（外部 Agent 真实跑一轮）", () => {
     // 必须早于任何元素操作：去掉 tauri-service 每个命令 5 秒的自动聚焦开销。
     await disableAutoFocus();
     await waitForAppShell();
-
-    const agents = await fetchAgentRuntimes(E2E_PORT);
-    const target = agents.find((item) => item.id === AGENT_ID) ?? null;
-    if (target?.available) {
-      agent = target;
-      log(
-        SCOPE,
-        `目标 Agent=${target.name}（${target.id}）模型 ${target.models?.length ?? 0} 个，` +
-          `首选=${target.preferred_model_id ?? "（未设置）"}`,
-      );
-    } else {
-      log(
-        SCOPE,
-        `未找到可用的「${AGENT_ID}」（目录 ${agents.length} 个：${agents
-          .map((item) => `${item.id}${item.available ? "" : "(不可用)"}`)
-          .join("、")}），本轮用例将跳过。`,
-      );
-    }
+    log(SCOPE, "目标 Agent=叮答（内置 dingda，模型由 Server 侧 DINGDA_LLM_* 决定）");
   });
 
   it("首页发起找商品 → 工作页跑完 → 右侧出商品结果", async () => {
-    if (!agent) {
-      log(SCOPE, `跳过：环境里没有可用的 ${AGENT_ID}。`);
-      return;
-    }
-
     await ensureHome();
-    await selectComposerAgent(agent);
     await typePrompt(PROMPT);
     await submitPrompt();
 
@@ -812,7 +551,7 @@ describe("AI 找商品（外部 Agent 真实跑一轮）", () => {
     const snapshot = await waitForPersistedWork(workId);
     const artifact = dumpRunArtifact(`ai-search-${workId}`, {
       workId,
-      agent: agent.id,
+      agent: AGENT_ID,
       prompt: PROMPT,
       timeline,
       ui: probe,
@@ -841,8 +580,8 @@ describe("AI 找商品（外部 Agent 真实跑一轮）", () => {
     expect(matched.length).toBeGreaterThan(0);
     log(SCOPE, `落库 ${apiItems.length} 条，与页面标题重合 ${matched.length} 条`);
 
-    // —— 断言 3：确实是用目标 Agent 跑的 ——
-    expect(snapshot?.composer_agent_id ?? null).toBe(agent.id);
+    // —— 断言 3：确实是用内置 Agent 跑的 ——
+    expect(snapshot?.composer_agent_id ?? null).toBe(AGENT_ID);
 
     // 商品必须带得出来「是什么、多少钱」：标题或价格全空说明解析没落对。
     const usable = apiItems.filter((item) => item.title?.trim() && item.id?.trim());

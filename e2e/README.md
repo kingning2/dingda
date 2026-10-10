@@ -177,48 +177,30 @@ cargo test -p python
 
 **`specs/ai-product-search.spec.ts` —— AI 找商品（业务链路）：**
 
-- ✅ 首页用 opencode 发一句「去找商品」→ 跳工作页自动开跑 → 右侧「爬取结果」出商品
-- ✅ 全程点页面控件（Agent 下拉 → 输入框 → 发送），**不直接打 `/v1/agent/runtimes/{id}/run`**
+- ✅ 首页用内置 dingda 发一句「去找商品」→ 跳工作页自动开跑 → 右侧「爬取结果」出商品
+- ✅ 全程点页面控件（输入框 → 发送），**不直接打 `/v1/agent/works/{id}/run`**
 - ✅ 跑完用 `GET /v1/agent/works/{work_id}` 独立取证：落库 `products.total` 与页面一致
-- ✅ 断言「确实是用目标 Agent 跑的」（`composer_agent_id` 等于 opencode）
+- ✅ 断言「确实是用内置 Agent 跑的」（`composer_agent_id` 等于 `dingda`）
 
-驱动原则同 agent-runtimes：测试进程只做旁证。**不写用户偏好**（首页选 Agent 只改组件
-内 state，不碰 `app_settings`），但**会新增一条 AI 工作记录**（`work-<时间戳>` 写进
+驱动原则：测试进程只做旁证。**不写用户偏好**（Agent 固定内置 dingda，Composer 不再有
+选择器），但**会新增一条 AI 工作记录**（`work-<时间戳>` 写进
 `~/.dingda/v2/dingda.db`，后端无删除接口，不清理，会出现在「最近项目」）。
 
-时间预算：真实找商品 = opencode 调 `dingda-crawl` skill 起浏览器爬平台，skill 文档写明
-单次 1~5 分钟，一轮常见 3~10 分钟。所以等运行结束默认给 600s（环境变量
-`DINGDA_E2E_RUN_TIMEOUT_MS`），且 `wdio.conf.ts` 的 `mochaOpts.timeout` 已抬到 920s 覆盖它。
-干跑只验「发得出去、跑起来了、取消得掉」，不等结果：
+时间预算：真实找商品 = 内置 Agent 调搜索工具起浏览器爬平台，单轮常见几分钟。所以等
+运行结束默认给 600s（环境变量 `DINGDA_E2E_RUN_TIMEOUT_MS`），且 `wdio.conf.ts` 的
+`mochaOpts.timeout` 已抬到 920s 覆盖它。干跑只验「发得出去、跑起来了、取消得掉」，不等结果：
 
 ```bash
 DINGDA_E2E_SEARCH_DRY_RUN=1 pnpm --filter @v2/e2e exec wdio run wdio.conf.ts --spec ./specs/ai-product-search.spec.ts
 ```
 
-可选环境变量：`DINGDA_E2E_AGENT_ID`（默认 `opencode`）、`DINGDA_E2E_MODEL_ID`（默认沿用该
-Agent 的首选模型，即用户偏好）、`DINGDA_E2E_PROMPT`（默认闲鱼搜露营椅，并限定只调一次
+可选环境变量：`DINGDA_E2E_PROMPT`（默认闲鱼搜露营椅，并限定只调一次
 search、不补详情、不比价）、`DINGDA_E2E_MIN_PRODUCTS`（默认 1）。
 
-**跑之前先看模型**：这条用例的成败首先取决于模型上下文，不是用例写得对不对。找商品要先
-读 4 个 skill 正文再叠多轮工具结果，实测约需 66k tokens；免费小模型（如
-`openrouter/liquid/lfm-2.5-2.6b:free`，上限 65536）会直接报 context length 超限、
-`exitCode=1`。用 `DINGDA_E2E_MODEL_ID` 显式指定一个上下文足够的模型；不指定时会沿用
-`app_settings` 里的用户偏好，同一用例在不同机器上结论可能不同。
+**跑之前先看模型**：内置 Agent 的模型由 Server 侧 `DINGDA_LLM_*` 环境变量决定。
+上下文太小的模型会直接报 context length 超限、`exitCode=1`，用例必然失败在
+「没抓到商品」上；当前实际使用的模型每次都会打进日志首行。
 
-**`specs/agent-runtimes.spec.ts` —— Agent 检测与模型选择：**
-
-- ✅ 点侧栏导航「Agent」进页面，页面「已检测到（N）」与 `GET /v1/agent/runtimes` 一致
-- ✅ 点「扫描 Agent」跑完一次检测（含 PATH 探测 + 逐个深探测），结果与落库目录一致
-- ✅ 在卡片「可用模型」下拉里切换模型，页面回显与 `GET /v1/agent/preferences`
-  的 `default_models` 一致
-
-**副作用约定（重要）**：该用例会写 `app_settings`。
-
-- 「扫描 Agent」写 `agent_runtimes_catalog` —— 那是可重建的缓存，属按钮本职行为；
-- 模型选择写 `default_models` —— **那是用户的真实偏好**。所以用例做**往返验证**：
-  记下原值 → 换一个 → 校验 → 用 UI 改回原值再校验。还原放在 `finally`，
-  中途断言失败也不会把偏好留在改动后的值上；UI 还原失败才用接口兜底并告警。
-- 用例**不改**默认 Agent（那需要用户明确要求）。
 
 **不覆盖**（别往这里塞）：
 
@@ -248,31 +230,18 @@ search、不补详情、不比价）、`DINGDA_E2E_MIN_PRODUCTS`（默认 1）�
    看 `afterSession` 的告警输出。日志里出现「PROGRAM BLOCKED BY SECURITY POLICY」
    就是它；该提示**出现在用例跑完之后时不影响结果**，但会污染退出码。
 3. **URL（含 hash）会跨应用实例残留** —— 本层每个 spec 文件都会拉起**新的**应用实例，
-   但新实例会恢复上一个实例的 URL。实测：跟在 `agent-runtimes` 后面跑时，`desktop-smoke`
-   的实例起来就是 `#/agents`，于是首页的 `home-hero` 必然不存在（它是无条件渲染的）。
+   但新实例会恢复上一个实例的 URL。实测：上个实例停在工作页时，新实例起来就带着
+   旧 hash（如 `#/work/...`），于是首页的 `home-hero` 必然不存在（它是无条件渲染的）。
    **不是应用层持久化** —— 全仓库没有任何 `localStorage` 用法，是 WebView2 用户数据目录
    恢复了上次 URL。影响：**任何依赖「初始路由」的用例都会变成顺序相关的偶发失败**。
    解法：`desktop-smoke` 现在会先读 hash，不在首页就点侧栏「首页」归位（真实点击）再断言。
    新增 spec 时请同样把「起始路由」当成显式前置，别默认应用会停在首页。
 
 4. **用 `browser.execute` 打临时标记定位元素时，每次都要先清标记**（踩过一次，静默通过）。
-   下拉的内容容器**不随收起而卸载**，上一轮标记过的旧元素还在 DOM 里；若沿用同一个
+   弹层的内容容器**不随收起而卸载**，上一轮标记过的旧元素还在 DOM 里；若沿用同一个
    属性名又不清理，`$('[data-e2e-item]')` 按文档顺序会命中**旧元素** —— 点了等于没点。
-   同理：别用「等下拉收起」判断选中成功（实测点完并不必然收起），要等**触发器文案变化**。
-   见 `specs/agent-runtimes.spec.ts` 的 `clearMarker()` / `pickModel()`。
-5. **模型下拉的触发器曾显示 `model.id` 而不是 `model.label`**（已修，2026-09-14）。
-   症状：选完「Claude Sonnet 4.6」触发器却显示 `claude-sonnet-4-6`。
-   根因：`ui-primitives/select.tsx` 的 `Select` 就是 base-ui 的 `Select.Root` 直接再导出，
-   没传 `items`，于是 `Select.Value` 回落成原始 value。
-   修法：在调用点 `agent-runtime-card.tsx` 给 `Select` 传
-   `items={models.map((m) => ({ value: m.id, label: m.label }))}`
-   （base-ui 文档：指定 `items` 后 `<Select.Value>` 渲染选中项的 label）。
-   注意 **claude / codex 的 label ≠ id**，所以只有它们暴露了这个问题；opencode 两者相同。
-   用例按现状断言「id 或 label 皆可」，不锁死实现。
-6. **`raiseWindow()` 目前不起作用**：调 Tauri window 插件命令会被拒（壳没开
+   同理：别用「等弹层收起」判断选中成功（实测点完并不必然收起），要等**触发器文案变化**。
+5. **`raiseWindow()` 目前不起作用**：调 Tauri window 插件命令会被拒（壳没开
    `core:window:allow-{unminimize,show,set-focus}`）。窗口可见性靠系统对新窗口的默认置前。
-7. **CI 上 Edge 版本落后**：仅当切回 external 模式才相关 —— GitHub Actions runner
-   需先 `choco upgrade microsoft-edge -y`。当前 embedded 模式不读 Edge，且本层
+6. **CI 上 Edge 版本落后**：GitHub Actions runner 需先 `choco upgrade microsoft-edge -y`。
    未挂 CI（本地手动跑）。
-8. **`msedgedriver` 版本不匹配**：同上，仅 external 模式相关。多半是 PATH 里有另一个
-   旧驱动，用 `where msedgedriver.exe` 查顺序。

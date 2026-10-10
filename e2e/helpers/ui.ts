@@ -1,7 +1,7 @@
 /**
  * 页面级共享工具：探测、等待、真实点击、导航。
  *
- * account-qr 与 agent-runtimes 两条 spec 的共同底座，抽出来避免两处漂移。
+ * account-qr 与 desktop-smoke 两条 spec 的共同底座，抽出来避免两处漂移。
  *
  * ## 性能陷阱（本层最贵的一个坑，务必保留处理）
  * `@wdio/tauri-service` 的 `beforeCommand` 会对
