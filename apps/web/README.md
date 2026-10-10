@@ -30,7 +30,6 @@ pnpm preview   # vite preview
 
 ```text
 public/logo-mark.svg      →  代码里写 "/logo-mark.svg"
-public/agent-icons/*      →  代码里写 `/agent-icons/${id}.svg`
 ```
 
 **不要把 `public/` 挪回仓库根** —— `publicDir` 相对 Vite 根，挪回去不会报错，

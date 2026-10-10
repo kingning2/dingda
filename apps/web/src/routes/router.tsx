@@ -1,7 +1,6 @@
 import { createHashRouter } from "react-router-dom";
 
 import { AccountsPage } from "@web/pages/accounts-page";
-import { AgentsPage } from "@web/pages/agents-page";
 import { AssetsPage } from "@web/pages/assets-page";
 import { IntegrationsPage } from "@web/pages/integrations-page";
 import { MonitorPage } from "@web/pages/monitor-page";
@@ -50,11 +49,6 @@ export const router = createHashRouter([
                 path: "plugins",
                 element: <PluginsPage />,
                 handle: entry("扩展"),
-              },
-              {
-                path: "agents",
-                element: <AgentsPage />,
-                handle: entry("Agent"),
               },
               {
                 path: "accounts",
