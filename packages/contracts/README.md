@@ -5,7 +5,6 @@
 ```text
 account.ts         账号 / 扫码 / 登录态
 agent-event.ts     产品 Agent 的事件流
-agent-runtime.ts   外部 CLI Runtime（探测结果、安装进度）
 ai-work.ts         AI 工作台
 composer.ts        输入区
 crawler.ts         采集
