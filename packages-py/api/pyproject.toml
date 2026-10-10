@@ -8,7 +8,6 @@ dependencies = [
   "agent",
   "browser",
   "channels",
-  "cli",
   "contracts",
   "core",
   "crawler",
@@ -24,7 +23,6 @@ dependencies = [
 agent = { workspace = true }
 browser = { workspace = true }
 channels = { workspace = true }
-cli = { workspace = true }
 contracts = { workspace = true }
 core = { workspace = true }
 crawler = { workspace = true }

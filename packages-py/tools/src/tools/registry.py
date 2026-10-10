@@ -1,13 +1,13 @@
 """Tool 注册表：自动发现 tools/ 下的工具目录并按名执行。
 
 职责：
-    聚合各 Tool（契约 + run_*）；供 MCP 与产品 Agent 统一 invoke。
+    聚合各 Tool（契约 + run_*）；供产品 Agent 统一 invoke。
 
 设计说明：
     - 每个工具一个 ``tools/<name>/`` 子包，``__init__.py`` 导出契约、run_* 与 ``spec``
     - 注册表用 ``pkgutil.iter_modules`` 自动发现子包，读取其 ``spec`` 属性；
       新增工具 = 新建目录 + 构造 spec（或 ``python -m tools.scaffold``），无需改本文件
-    - 支撑模块（account_cookie / recovery / live_push）保持平铺，不会被误认成工具
+    - 支撑模块（account_cookie / recovery）保持平铺，不会被误认成工具
     - 浏览器平台经 Crawler → BrowserPort；ali1688 经 ApiCrawler → Channel
     - 不在此 import Playwright
 
@@ -26,7 +26,6 @@ from typing import Any
 from pydantic import BaseModel
 
 from core.errors import AppError
-from tools.live_push import make_live_frame_handler
 from tools.spec import ToolSpec
 
 logger = logging.getLogger("dingda.tools.registry")
@@ -69,21 +68,10 @@ def get_tool(name: str) -> ToolSpec:
 
 
 async def call_tool(name: str, payload: dict[str, Any]) -> BaseModel:
-    """校验入参并执行 Tool；Agent run 下自动挂直播推帧。"""
+    """校验入参并执行 Tool。"""
     logger.info("registry call name=%s", name)
     spec = get_tool(name)
     inp = spec.input_model.model_validate(payload)
-    live = make_live_frame_handler()
-    if name in {"search", "product", "preview"} and live is None:
-        logger.warning(
-            "tool %s without DINGDA_AGENT_RUN_ID：浏览器直播不会推到 UI",
-            name,
-        )
-    if live is not None and name in {"search", "product"}:
-        out = await spec.handler(inp, on_live_frame=live, live_frame_enabled=True)
-    elif live is not None and name == "login":
-        out = await spec.handler(inp, on_live_frame=live)
-    else:
-        out = await spec.handler(inp)
+    out = await spec.handler(inp)
     logger.info("registry call done name=%s", name)
     return out

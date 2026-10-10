@@ -6,8 +6,7 @@
 
 设计说明：
     - 复用 registry：新增工具**自动**有 CLI，不用再写一个 ``*_cli.py``
-    - 直播帧不用管：``call_tool`` 内部已按 ``DINGDA_AGENT_RUN_ID`` 推回 UI
-    - stdout 只有 JSON（日志走 stderr），方便 agent 直接 ``json.loads``
+    - stdout 只有 JSON（日志走 stderr），方便脚本直接 ``json.loads``
 
 使用示例：
     python -m tools.cli search --platform xianyu --query 键盘 --limit 20

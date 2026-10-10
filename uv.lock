@@ -13,7 +13,6 @@ members = [
     "agent",
     "browser",
     "channels",
-    "cli",
     "contracts",
     "core",
     "crawler",
@@ -478,23 +477,6 @@ wheels = [
 ]
 
 [[package]]
-name = "cli"
-version = "0.1.0"
-source = { editable = "packages-py/cli" }
-dependencies = [
-    { name = "core" },
-    { name = "crawler" },
-    { name = "headroom-ai" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "core", editable = "packages-py/core" },
-    { name = "crawler", editable = "packages-py/crawler" },
-    { name = "headroom-ai", specifier = ">=0.37.0" },
-]
-
-[[package]]
 name = "click"
 version = "8.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -543,6 +525,8 @@ dependencies = [
     { name = "contracts" },
     { name = "core" },
     { name = "httpx" },
+    { name = "openai", version = "2.54.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
+    { name = "openai", version = "3.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "pillow" },
     { name = "rapidocr-onnxruntime" },
 ]
@@ -553,6 +537,7 @@ requires-dist = [
     { name = "contracts", editable = "packages-py/contracts" },
     { name = "core", editable = "packages-py/core" },
     { name = "httpx", specifier = ">=0.28" },
+    { name = "openai", specifier = ">=1.0" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "rapidocr-onnxruntime", specifier = ">=1.4.0" },
 ]
@@ -578,7 +563,6 @@ dependencies = [
     { name = "agent" },
     { name = "browser" },
     { name = "channels" },
-    { name = "cli" },
     { name = "contracts" },
     { name = "core" },
     { name = "crawler" },
@@ -601,7 +585,6 @@ requires-dist = [
     { name = "agent", editable = "packages-py/agent" },
     { name = "browser", editable = "packages-py/browser" },
     { name = "channels", editable = "packages-py/channels" },
-    { name = "cli", editable = "packages-py/cli" },
     { name = "contracts", editable = "packages-py/contracts" },
     { name = "core", editable = "packages-py/core" },
     { name = "crawler", editable = "packages-py/crawler" },
