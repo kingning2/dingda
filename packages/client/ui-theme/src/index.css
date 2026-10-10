@@ -2,7 +2,7 @@
 @import "./tokens.css";
 @import "./scrollbar.css";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn-tailwind.css"; /* vendor 自 shadcn@4.19.0（MIT），见文件头溯源 */
 @import "@fontsource-variable/geist";
 
 /*

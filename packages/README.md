@@ -186,7 +186,9 @@ pnpm check:unused # → node scripts/check-unused.mjs
    静默 404，构建产物里也一个图片都没有。本仓库的静态资源在 `apps/web/public/`。
 6. **构建工具声明在使用它的包。** `vite` / `@vitejs/plugin-react` / `@tailwindcss/vite`
    声明在 `apps/web` 而非仓库根 —— 谁跑构建谁声明。同理 `ui-theme` 的 `index.css` 里
-   `@import` 的外部包（`tw-animate-css` / `shadcn` / `@fontsource-variable/geist`）
-   必须声明在 `ui-theme` 自己身上，别靠根级 hoisting 兜着。
+   `@import` 的外部包（`tw-animate-css` / `@fontsource-variable/geist`）
+   必须声明在 `ui-theme` 自己身上，别靠根级 hoisting 兜着。shadcn 主题 CSS 已
+   vendor 为 `ui-theme/src/shadcn-tailwind.css`（带溯源头），不再依赖 shadcn CLI 包 ——
+   脚手架命令仍用 `npx shadcn@latest add`。
 7. **npm 脚本跟着 Vite 根走。** 应用是 Vite 根，`dev` / `build` / `preview` 就归它所有；
    仓库根只做转发。漏了会得到 `ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT`。
