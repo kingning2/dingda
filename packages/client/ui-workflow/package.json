@@ -1,0 +1,20 @@
+{
+  "name": "@v2/ui-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "工作流画布域：ReactFlow 装配、节点骨架、端口与连线协议",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.js"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.8.0",
+    "lucide-react": "^1.38.0",
+    "@v2/ui-primitives": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0"
+  },
+  "license": "Apache-2.0"
+}

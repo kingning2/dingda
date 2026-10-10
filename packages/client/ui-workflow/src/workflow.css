@@ -1,0 +1,231 @@
+/*
+ * 工作流画布样式。
+ *
+ * 职责：
+ *   节点壳 / 端口 / 连线 / 状态色的全部视觉。只用 ui-theme 的设计令牌（--bg/--border/--accent…），
+ *   不写死色值，深色模式随令牌自动切换。
+ *
+ * 设计说明：
+ *   - 全部类名 wf- 前缀 + .wf-canvas 作用域，不污染 xyflow 全局类
+ *   - 动效统一 120ms var(--ease-out)；prefers-reduced-motion 时全部静止
+ */
+
+/* ---------- 画布 ---------- */
+
+.wf-canvas {
+  --wf-edge-color: var(--accent);
+  background: var(--bg-panel);
+}
+
+.wf-canvas .react-flow__edge-path {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+  transition: stroke 120ms var(--ease-out), stroke-width 120ms var(--ease-out);
+}
+
+.wf-canvas .react-flow__edge.wf-edge--active .react-flow__edge-path {
+  stroke: var(--wf-edge-color);
+  stroke-width: 2;
+}
+
+/* ---------- 节点壳 ---------- */
+
+.wf-node {
+  width: 220px;
+  color: var(--text);
+  text-align: left;
+}
+
+.wf-node__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px 8px;
+  font-size: 13px;
+}
+
+.wf-node__title svg {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.wf-node__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
+
+.wf-node__label[tabindex] {
+  cursor: text;
+}
+
+.wf-node__label-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-strong);
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  outline: none;
+}
+
+.wf-node__actions {
+  display: flex;
+  gap: 2px;
+  visibility: hidden;
+}
+
+.wf-node:hover .wf-node__actions,
+.wf-node:focus-within .wf-node__actions {
+  visibility: visible;
+}
+
+.wf-node__card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  box-shadow: var(--shadow-md);
+  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+}
+
+.wf-node__card--selected {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  box-shadow: var(--shadow-lg);
+}
+
+.wf-node__card--error {
+  border-color: color-mix(in srgb, var(--destructive) 55%, var(--border));
+}
+
+.wf-node__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 84px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.wf-node__spinner {
+  animation: wf-spin 900ms linear infinite;
+}
+
+/* ---------- 状态点 ---------- */
+
+.wf-node__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.wf-node__dot--running {
+  background: var(--accent);
+  animation: wf-pulse 1s ease-in-out infinite;
+}
+
+.wf-node__dot--done {
+  background: var(--green);
+}
+
+.wf-node__dot--error {
+  background: var(--destructive);
+}
+
+/* ---------- 端口 ---------- */
+
+.wf-canvas .react-flow__handle.wf-port {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.wf-canvas .react-flow__handle.wf-port.react-flow__handle-left {
+  left: -12px;
+}
+
+.wf-canvas .react-flow__handle.wf-port.react-flow__handle-right {
+  right: -12px;
+}
+
+/* 扩大端口热区：细图标难点中，光标要先于图标变 grab。 */
+.wf-port::before {
+  content: "";
+  position: absolute;
+  inset: -13px;
+  border-radius: 50%;
+}
+
+.wf-port__icon {
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(var(--wf-port-x, 0px), var(--wf-port-y, 0px));
+  transition: transform 120ms var(--ease-out), opacity 120ms var(--ease-out);
+}
+
+.wf-node:hover .wf-port__icon {
+  opacity: 1;
+}
+
+.wf-port--connected .wf-port__icon {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* 拖线中点亮两端：xyflow 会挂 connectablestart / connectableend / connectingfrom / connectingto。 */
+.wf-port[class*="connect"] .wf-port__icon {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* 校验结果着色：合法绿、非法红（且不允许落线）。 */
+.wf-port.valid .wf-port__icon {
+  color: var(--green);
+}
+
+.wf-port.connectionindicator .wf-port__icon {
+  color: var(--destructive);
+}
+
+/* ---------- 动画与降级 ---------- */
+
+@keyframes wf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wf-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-node__spinner,
+  .wf-node__dot--running {
+    animation: none;
+  }
+
+  .wf-port__icon,
+  .wf-node__card,
+  .wf-canvas .react-flow__edge-path {
+    transition: none;
+  }
+}

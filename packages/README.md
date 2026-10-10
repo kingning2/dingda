@@ -9,7 +9,7 @@
 ```text
 apps/web ─────────────────────────────────────┐
                                               ↓
-ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-monitor
+ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-monitor · ui-workflow
                                               ↓
         ui-layout · ui-feedback ──→ ui-primitives ──→ ui-theme
 
@@ -41,6 +41,7 @@ ui-home · ui-ai · ui-composer · ui-account · ui-agent · ui-crawler · ui-mo
 | [client/ui-agent/](client/ui-agent/README.md) | 外部 CLI Runtime 探测与运行态 | Agent 探测 |
 | [client/ui-crawler/](client/ui-crawler/README.md) | 商品详情拉取与商品预览浮层 | 商品预览 |
 | [client/ui-monitor/](client/ui-monitor/README.md) | 商品监控：监控列表、价格历史、变更事件 | 商品卖不卖得掉 / 有没有降价 |
+| [client/ui-workflow/](client/ui-workflow/README.md) | 工作流画布：ReactFlow 装配、节点骨架、端口与连线协议 | 节点画布编排 |
 | [client/ui-home/](client/ui-home/README.md) | 首屏、项目条、类型入口 | 首页 |
 
 应用装配层在 [`apps/web/`](../apps/web/README.md)（Vite 根）。**启动编排**
