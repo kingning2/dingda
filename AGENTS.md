@@ -102,3 +102,20 @@
 6.1 工作流包按需路由（description 触发），不替代第 2/3 节的架构与编码规范；
     生命周期命令入口见 `.pi/prompts/`（`/spec` `/plan` `/build` `/test` `/constraints`
     `/review` `/webperf` `/code-simplify` `/ship`）。
+
+## 7. 常用命令
+
+```bash
+pnpm check:fast                # < 5s：floor-guard + layers-guard（写完随手跑）
+pnpm build                     # 前端：check:deps + check:unused --strict + tsc + vite build
+pnpm test                      # vitest
+uv run ruff check packages-py --select E4,E7,E9,F
+uv run pytest packages-py/api/tests -m "not integration"   # 集成测试只在本地跑
+cargo check --workspace --all-targets
+```
+
+- 阈值、棘轮基线与例外规则：[`CONSTRAINTS.md`](CONSTRAINTS.md)；架构决策史：
+  [`docs/adr/`](docs/adr/)。
+- 提交规范见 `.cursor/rules/git-commit-cn.mdc`：`<type>(<scope>): 中文简述`，
+  按模块边界拆 commit。
+- 桌面壳必须经 `pnpm tauri`（注入 `TAURI_APP_PATH`），不要直接 `pnpm exec tauri`。
