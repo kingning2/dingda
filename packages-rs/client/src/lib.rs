@@ -34,15 +34,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .append_invoke_initialization_script(platform_initialization_script());
 
-    // 仅 `--features e2e`：内嵌 W3C WebDriver 服务，供 e2e 的 embedded provider 驱动。
-    // release 与日常 dev 构建都不含 —— 理由见 Cargo.toml。
-    #[cfg(feature = "e2e")]
-    {
-        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
-    }
-
     builder
         .setup(|app| {
+            // 壳日志落盘（含 Python 子进程生命周期与崩溃重启）：stderr 进控制台，
+            // 文件进 ~/.dingda/v2/logs/shell.log，事后可查
+            logging::init_file_logging();
             let server_dir = paths::ensure_server_workdir(app.handle());
             let uv_bin = paths::resolve_uv_bin(app.handle());
             let runtime_env = python::desktop_runtime_env(app.handle(), &server_dir);

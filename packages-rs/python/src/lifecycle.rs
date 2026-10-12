@@ -13,7 +13,7 @@ use reqwest::Client;
 use tauri::{AppHandle, Emitter};
 use thiserror::Error;
 use tokio::process::{Child, Command};
-use tokio::sync::{Mutex, watch};
+use tokio::sync::{watch, Mutex};
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8787;
@@ -140,7 +140,10 @@ impl PythonLifecycle {
     ///
     /// 每个终局都发且只发一个终态事件（`server-ready` 或 `server-error`），
     /// 前端据此离开启动屏；spawn 失败也要发，否则前端会永远停在 warming。
-    pub async fn start_background(&self, events: &dyn EventSink) -> Result<(), PythonLifecycleError> {
+    pub async fn start_background(
+        &self,
+        events: &dyn EventSink,
+    ) -> Result<(), PythonLifecycleError> {
         self.ready.store(false, Ordering::Relaxed);
         logging::log(
             Scope::Shell,
@@ -326,7 +329,14 @@ impl PythonLifecycle {
         let mut command = if self.config.use_uv {
             let mut cmd = Command::new(&uv);
             cmd.args([
-                "run", "python", "-m", SERVER_MODULE, "--host", &host, "--port", &port,
+                "run",
+                "python",
+                "-m",
+                SERVER_MODULE,
+                "--host",
+                &host,
+                "--port",
+                &port,
             ]);
             cmd
         } else if let Some(python) = self
@@ -668,10 +678,7 @@ mod tests {
 
         let error = lifecycle.start_background(&sink).await.unwrap_err();
 
-        assert!(matches!(
-            error,
-            PythonLifecycleError::ServerDirNotFound(_)
-        ));
+        assert!(matches!(error, PythonLifecycleError::ServerDirNotFound(_)));
         // spawn 就失败时不发 server-starting，但必须发 server-error，
         // 否则前端停在 warming 没有任何出口
         assert_eq!(sink.names(), vec!["server-error".to_string()]);
@@ -766,7 +773,7 @@ mod tests {
         });
 
         healthy.store(false, Ordering::Relaxed);
-        tokio::time::timeout(Duration::from_secs(3), task)
+        let _ = tokio::time::timeout(Duration::from_secs(3), task)
             .await
             .expect("重试耗尽后监督任务必须自己结束");
 
@@ -791,7 +798,7 @@ mod tests {
 
         lifecycle.stop().await.ok();
 
-        tokio::time::timeout(Duration::from_secs(2), task)
+        let _ = tokio::time::timeout(Duration::from_secs(2), task)
             .await
             .expect("stop() 后监督循环必须退出");
     }
@@ -810,10 +817,7 @@ mod tests {
         ]
         .join("\n");
 
-        assert_eq!(
-            parse_netstat_listeners(&output, 8787),
-            HashSet::from([333])
-        );
+        assert_eq!(parse_netstat_listeners(&output, 8787), HashSet::from([333]));
         // 80 不能靠子串命中 8080 —— 命中的 PID 会被直接 taskkill
         assert_eq!(parse_netstat_listeners(&output, 80), HashSet::from([111]));
     }
