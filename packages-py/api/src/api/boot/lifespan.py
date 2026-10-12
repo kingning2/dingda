@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -17,8 +18,10 @@ from infrastructure.db.session import init_db, shutdown_db
 def create_lifespan(settings: Settings):
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        started = time.perf_counter()
         info("启动应用（轻量模式）", {"host": settings.host, "port": settings.port})
         await init_db()
+        info("启动完成", {"elapsed": f"{time.perf_counter() - started:.1f}s"})
         # OCR 不在启动预热：首次小红书详情时再懒加载 RapidOCR
         yield
         await get_browser_manager().stop()

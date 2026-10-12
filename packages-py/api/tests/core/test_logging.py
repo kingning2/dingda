@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from logging.handlers import RotatingFileHandler
 
-from core.logging import configure_logging, info
+from core.logging import bind_trace, configure_logging, info, reset_trace
 
 
 def _reset() -> None:
@@ -50,5 +50,24 @@ def test_file_handler_rotation_params(tmp_path) -> None:
         )
         assert file_handler.maxBytes == 5 * 1024 * 1024
         assert file_handler.backupCount == 5
+    finally:
+        _reset()
+
+
+def test_trace_id_appended_then_reset(tmp_path) -> None:
+    """bind_trace 后行尾带 trace=<id>；reset 后不串号（SSE runId 同源）。"""
+    log_file = tmp_path / "server.log"
+
+    configure_logging(level="INFO", log_file=log_file)
+    try:
+        token = bind_trace("run-abc123")
+        info("工具调用", {"tool": "search"})
+        reset_trace(token)
+        info("已还原")
+
+        lines = log_file.read_text(encoding="utf-8").strip().splitlines()
+        assert "工具调用" in lines[0]
+        assert "trace=run-abc123" in lines[0]
+        assert "trace=" not in lines[1]
     finally:
         _reset()

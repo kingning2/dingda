@@ -17,6 +17,7 @@ from agent.core.agent import AgentService
 from api.routes.agent._dto import AgentWorkRunRequest
 from api.routes.sse import sse_frame
 from core.errors import AppError
+from core.logging import bind_trace, reset_trace
 
 logger = logging.getLogger("dingda.api.agent")
 
@@ -31,11 +32,17 @@ async def run_agent_work(work_id: str, body: AgentWorkRunRequest) -> StreamingRe
         raise AppError("agent.work_invalid_id", "work_id 不能为空", status_code=400)
     run_id = (body.run_id or f"run-{uuid.uuid4().hex[:12]}").strip()
     prompt = body.prompt.strip()
-    logger.info("agent work run start work=%s run=%s", key, run_id)
 
     async def gen() -> AsyncIterator[str]:
-        service = AgentService()
-        async for event in service.run(prompt, run_id=run_id, runtime_id="dingda"):
-            yield sse_frame(str(event.get("type") or "message"), {"runId": run_id, **event})
+        # trace 绑定在流生成器里（真正执行 run 的上下文）：SSE 帧里的 runId
+        # 与服务端日志 trace=<id> 同源，前端报 bug 时报 runId 即可对上日志
+        token = bind_trace(run_id)
+        try:
+            logger.info("agent work run start work=%s", key)
+            service = AgentService()
+            async for event in service.run(prompt, run_id=run_id, runtime_id="dingda"):
+                yield sse_frame(str(event.get("type") or "message"), {"runId": run_id, **event})
+        finally:
+            reset_trace(token)
 
     return StreamingResponse(gen(), media_type="text/event-stream")

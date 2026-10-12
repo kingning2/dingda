@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import sys
 from datetime import datetime, timedelta, timezone
@@ -37,6 +38,21 @@ _LEVEL_COLORS = {
 }
 _BEIJING_TZ = timezone(timedelta(hours=8))
 _TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+# trace id（与 SSE runId 同源）：route 绑定后，同一条 asyncio 链上的日志行尾自动带 trace=<id>
+_TRACE_ID: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "dingda_trace_id", default=None
+)
+
+
+def bind_trace(trace_id: str) -> contextvars.Token[str | None]:
+    """绑定本次运行 trace id；同链路上的所有日志行尾追加 ``trace=<id>``。"""
+    return _TRACE_ID.set(trace_id)
+
+
+def reset_trace(token: contextvars.Token[str | None]) -> None:
+    """还原到绑定前（route 的 ``finally`` 调用，防串号到下一个请求）。"""
+    _TRACE_ID.reset(token)
 
 
 def _ensure_utf8(stream: TextIO) -> TextIO:
@@ -81,6 +97,9 @@ class ServerFormatter(logging.Formatter):
             _TIME_FORMAT
         )
         message = f"{record.getMessage()}{_format_context(record)}"
+        trace = _TRACE_ID.get()
+        if trace:
+            message = f"{message} trace={trace}"
         return f"{prefix} {timestamp} {level} {message}"
 
 
