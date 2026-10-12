@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use common::logging::{self, Scope};
@@ -12,7 +13,7 @@ use reqwest::Client;
 use tauri::{AppHandle, Emitter};
 use thiserror::Error;
 use tokio::process::{Child, Command};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, watch};
 
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_PORT: u16 = 8787;
@@ -24,6 +25,14 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 const HEALTH_TIMEOUT: Duration = Duration::from_secs(3);
 /// Python 入口模块：仓库根跑 `python -m api`（`packages-py/api/src/api/__main__.py`）。
 const SERVER_MODULE: &str = "api";
+/// 运行期探活间隔（watchdog）。
+const HEALTH_INTERVAL: Duration = Duration::from_secs(15);
+/// 连续失败多少次判定崩溃：15s × 2 ≈ 30s 不可用才动手，避免误杀瞬时抖动。
+const HEALTH_FAILURES_BEFORE_RESTART: u32 = 2;
+/// 崩溃后最多自动重启次数，耗尽则发 `server-error` 终态并停手。
+const MAX_RESTART_ATTEMPTS: u32 = 3;
+/// 重启退避基数（第 n 次重试前等 backoff × 2^(n-1)：2s → 4s → 8s）。
+const RESTART_BACKOFF: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Error)]
 pub enum PythonLifecycleError {
@@ -46,6 +55,10 @@ pub struct PythonConfig {
     pub uv_bin: PathBuf,
     pub extra_env: Vec<(String, String)>,
     pub startup_timeout: Duration,
+    /// 运行期探活间隔；测试收缩到毫秒级。
+    pub health_interval: Duration,
+    /// 重启退避基数；测试收缩到毫秒级。
+    pub restart_backoff: Duration,
 }
 
 impl PythonConfig {
@@ -66,6 +79,8 @@ impl PythonConfig {
             uv_bin: PathBuf::from(if cfg!(windows) { "uv.exe" } else { "uv" }),
             extra_env: Vec::new(),
             startup_timeout: STARTUP_TIMEOUT,
+            health_interval: HEALTH_INTERVAL,
+            restart_backoff: RESTART_BACKOFF,
         }
     }
 
@@ -94,6 +109,8 @@ pub struct PythonLifecycle {
     client: Client,
     child: Mutex<Option<Child>>,
     ready: AtomicBool,
+    /// 退出旗标：`stop()`（用户退出）置 true，监督循环看到即收工。
+    stopping: watch::Sender<bool>,
 }
 
 impl PythonLifecycle {
@@ -107,6 +124,7 @@ impl PythonLifecycle {
             client,
             child: Mutex::new(None),
             ready: AtomicBool::new(false),
+            stopping: watch::channel(false).0,
         }
     }
 
@@ -136,7 +154,8 @@ impl PythonLifecycle {
                 "stopping existing server on",
                 Some(self.api_base_url().as_str()),
             );
-            self.stop().await?;
+            // 只杀进程，不置退出旗标——这属于启动准备，不是用户退出
+            self.kill_all().await?;
         }
 
         if let Err(error) = self.spawn().await {
@@ -166,23 +185,95 @@ impl PythonLifecycle {
     }
 
     pub async fn stop(&self) -> Result<(), PythonLifecycleError> {
+        // 先置旗标再杀进程：监督循环看到旗标就收工，不会抢在退出后再拉起
+        let _ = self.stopping.send(true);
         self.ready.store(false, Ordering::Relaxed);
-        let mut guard = self.child.lock().await;
-        if let Some(mut child) = guard.take() {
-            kill_child_tree(&mut child).await?;
-            logging::log(Scope::Shell, "python server stopped", None);
-            return Ok(());
-        }
-        drop(guard);
+        self.kill_all().await
+    }
 
-        if kill_listeners_on_port(self.config.port) {
-            logging::log(
-                Scope::Shell,
-                "python server stopped",
-                Some(format!("port {}", self.config.port).as_str()),
-            );
+    /// 常驻监督：周期探活，连续失败判定崩溃后自动重启。
+    ///
+    /// 只在 `start_background` 成功后启动，随 `stop()`（用户退出）结束。
+    /// 恢复成功重发 `server-ready`（前端状态机原样接住），重试耗尽发
+    /// `server-error` 终态并停手——之后不再自愈，避免退出边缘的僵尸拉起。
+    pub async fn supervise(self: Arc<Self>, events: &dyn EventSink) {
+        let mut stopping = self.stopping.subscribe();
+        let mut interval = tokio::time::interval(self.config.health_interval);
+        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        let mut failures: u32 = 0;
+        loop {
+            tokio::select! {
+                _ = stopping.changed() => {
+                    if *stopping.borrow() {
+                        break;
+                    }
+                }
+                _ = interval.tick() => {
+                    if *stopping.borrow() {
+                        break;
+                    }
+                    if self.health_check().await.unwrap_or(false) {
+                        failures = 0;
+                        continue;
+                    }
+                    failures += 1;
+                    if failures < HEALTH_FAILURES_BEFORE_RESTART {
+                        logging::log(
+                            Scope::Shell,
+                            "python server health check failed",
+                            Some(&format!("{failures}/{HEALTH_FAILURES_BEFORE_RESTART}")),
+                        );
+                        continue;
+                    }
+                    failures = 0;
+                    if self.restart_with_retry(events).await.is_err() {
+                        break;
+                    }
+                }
+            }
         }
-        Ok(())
+        logging::log(Scope::Shell, "python supervisor exited", None);
+    }
+
+    /// 崩溃恢复：带退避重试「杀旧 → spawn → 探活」。
+    ///
+    /// 成功重发 `server-ready`；重试耗尽发 `server-error` 并返回 `Err`。
+    async fn restart_with_retry(&self, events: &dyn EventSink) -> Result<(), ()> {
+        let url = self.api_base_url();
+        events.emit_event("server-starting", url.clone());
+        logging::log(
+            Scope::Shell,
+            "python server crashed, restarting",
+            Some(url.as_str()),
+        );
+        for attempt in 1..=MAX_RESTART_ATTEMPTS {
+            let stopping = self.stopping.subscribe();
+            if *stopping.borrow() {
+                return Ok(()); // 用户退出中，不算失败
+            }
+            if attempt > 1 {
+                tokio::time::sleep(self.config.restart_backoff * (1u32 << (attempt - 2))).await;
+            }
+            self.kill_child().await;
+            if let Err(error) = self.spawn().await {
+                logging::log(
+                    Scope::Shell,
+                    "python restart spawn failed",
+                    Some(&error.to_string()),
+                );
+                continue;
+            }
+            if self.wait_until_healthy().await.is_ok() {
+                self.ready.store(true, Ordering::Relaxed);
+                events.emit_event("server-ready", url);
+                logging::log(Scope::Shell, "python server recovered", None);
+                return Ok(());
+            }
+        }
+        self.ready.store(false, Ordering::Relaxed);
+        let message = format!("自动重启 {MAX_RESTART_ATTEMPTS} 次仍未恢复");
+        events.emit_event("server-error", message);
+        Err(())
     }
 
     async fn spawn(&self) -> Result<(), PythonLifecycleError> {
@@ -297,7 +388,8 @@ impl PythonLifecycle {
             }
             tokio::time::sleep(Duration::from_millis(200)).await;
         }
-        self.stop().await.ok();
+        // 启动超时清理：只回收子进程，不置退出旗标（退出旗标是 stop() 的专属语义）
+        self.kill_child().await;
         Err(PythonLifecycleError::StartupTimeout(
             self.config.startup_timeout,
         ))
@@ -307,6 +399,44 @@ impl PythonLifecycle {
         let url = format!("{}/health", self.api_base_url());
         let response = self.client.get(url).send().await?;
         Ok(response.status().is_success())
+    }
+
+    /// 只回收自己 spawn 的子进程，不做端口兑底。
+    ///
+    /// 崩溃进程的端口由 OS 随进程消亡自动回收；兑底杀「监听者」在恢复路径上
+    /// 反而可能误伤（例如探活指向的调试服务）。已退出的子进程只 wait 回收句
+    /// 柄，不 taskkill——PID 可能已被系统复用。
+    async fn kill_child(&self) {
+        let mut guard = self.child.lock().await;
+        if let Some(mut child) = guard.take() {
+            if matches!(child.try_wait(), Ok(Some(_))) {
+                let _ = child.wait().await;
+            } else {
+                kill_child_tree(&mut child).await.ok();
+            }
+        }
+    }
+
+    /// 杀子进程 + 端口兑底（子进程句柄丢失时用），仅限退出 / 启动准备路径。
+    async fn kill_all(&self) -> Result<(), PythonLifecycleError> {
+        let mut had_child = false;
+        {
+            let mut guard = self.child.lock().await;
+            if let Some(mut child) = guard.take() {
+                kill_child_tree(&mut child).await?;
+                had_child = true;
+            }
+        }
+        if had_child {
+            logging::log(Scope::Shell, "python server stopped", None);
+        } else if kill_listeners_on_port(self.config.port) {
+            logging::log(
+                Scope::Shell,
+                "python server stopped",
+                Some(format!("port {}", self.config.port).as_str()),
+            );
+        }
+        Ok(())
     }
 }
 
@@ -471,6 +601,8 @@ mod tests {
             uv_bin: PathBuf::from("uv"),
             extra_env: Vec::new(),
             startup_timeout: Duration::from_millis(600),
+            health_interval: Duration::from_millis(50),
+            restart_backoff: Duration::from_millis(10),
         }
     }
 
@@ -554,6 +686,114 @@ mod tests {
 
         assert!(matches!(error, PythonLifecycleError::StartupTimeout(_)));
         assert!(!lifecycle.is_ready());
+    }
+
+    /// 可开关的假 `/health`：`healthy=false` 时回 503，模拟 Server 崩溃。
+    async fn spawn_switchable_health() -> (u16, Arc<AtomicBool>) {
+        let healthy = Arc::new(AtomicBool::new(true));
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let flag = Arc::clone(&healthy);
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut buffer = [0u8; 1024];
+                let _ = socket.read(&mut buffer).await;
+                let response = if flag.load(Ordering::Relaxed) {
+                    "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok"
+                } else {
+                    "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n"
+                };
+                let _ = socket.write_all(response.as_bytes()).await;
+            }
+        });
+        (port, healthy)
+    }
+
+    /// 轮询等事件出现，等不到就带实际序列 panic。
+    async fn wait_for_event(sink: &RecordingSink, name: &str) {
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while Instant::now() < deadline {
+            if sink.names().iter().any(|event| event == name) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        panic!("等不到事件 {name}，实际序列 {:?}", sink.names());
+    }
+
+    #[tokio::test]
+    async fn supervisor_recovers_after_transient_outage() {
+        let (port, healthy) = spawn_switchable_health().await;
+        let mut config = test_config(port);
+        // spawn 阶段用「秒退命令」顶位：探活靠假服务，不真拉 Python
+        config.extra_env = vec![(
+            "DINGDA_PYTHON".into(),
+            if cfg!(windows) { "cmd" } else { "true" }.into(),
+        )];
+        let lifecycle = Arc::new(PythonLifecycle::new(config));
+        let sink = Arc::new(RecordingSink::new());
+        let task_sink = Arc::clone(&sink);
+        let task = tokio::spawn(async move {
+            lifecycle.supervise(task_sink.as_ref()).await;
+        });
+
+        healthy.store(false, Ordering::Relaxed);
+        wait_for_event(&sink, "server-starting").await;
+        healthy.store(true, Ordering::Relaxed);
+        wait_for_event(&sink, "server-ready").await;
+
+        let names = sink.names();
+        assert!(
+            names
+                .windows(2)
+                .any(|pair| pair[0] == "server-starting" && pair[1] == "server-ready"),
+            "必须是 starting → ready，实际序列 {names:?}"
+        );
+        // 收尾不调 stop()：测试进程自己就是端口监听者，端口兑底的 netstat 会误伤
+        let _ = tokio::time::timeout(Duration::from_secs(1), task).await;
+    }
+
+    #[tokio::test]
+    async fn supervisor_gives_up_after_retry_exhaustion() {
+        let (port, healthy) = spawn_switchable_health().await;
+        let mut config = test_config(port);
+        config.server_dir = PathBuf::from("D:/dingda-no-such-server-dir"); // spawn 必败
+        let lifecycle = Arc::new(PythonLifecycle::new(config));
+        let sink = Arc::new(RecordingSink::new());
+        let task_sink = Arc::clone(&sink);
+        let task = tokio::spawn(async move {
+            lifecycle.supervise(task_sink.as_ref()).await;
+        });
+
+        healthy.store(false, Ordering::Relaxed);
+        tokio::time::timeout(Duration::from_secs(3), task)
+            .await
+            .expect("重试耗尽后监督任务必须自己结束");
+
+        assert_eq!(
+            sink.names(),
+            vec!["server-starting".to_string(), "server-error".to_string()]
+        );
+    }
+
+    #[tokio::test]
+    async fn stop_cancels_supervision() {
+        // 端口上没有任何监听者：stop() 的端口兑底扫 netstat 不会误伤测试进程
+        let lifecycle = Arc::new(PythonLifecycle::new(test_config(free_port().await)));
+        let task_lifecycle = Arc::clone(&lifecycle);
+        let sink = Arc::new(RecordingSink::new());
+        let task_sink = Arc::clone(&sink);
+        let task = tokio::spawn(async move {
+            task_lifecycle.supervise(task_sink.as_ref()).await;
+        });
+        // 先探活失败一两次（低于崩溃阈值），确保监督循环真的在转
+        tokio::time::sleep(Duration::from_millis(120)).await;
+
+        lifecycle.stop().await.ok();
+
+        tokio::time::timeout(Duration::from_secs(2), task)
+            .await
+            .expect("stop() 后监督循环必须退出");
     }
 
     #[cfg(windows)]

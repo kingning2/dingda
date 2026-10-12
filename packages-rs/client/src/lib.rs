@@ -59,12 +59,14 @@ pub fn run() {
             let runtime_for_bg = Arc::clone(&runtime);
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(error) = runtime_for_bg.start_background(&app_handle).await {
-                    logging::log(
+                match runtime_for_bg.start_background(&app_handle).await {
+                    // 常驻监督：周期探活 + 崩溃自动重启，随 stop()（用户退出）结束
+                    Ok(()) => runtime_for_bg.supervise(&app_handle).await,
+                    Err(error) => logging::log(
                         logging::Scope::Shell,
                         "python server background start failed",
                         Some(&error.to_string()),
-                    );
+                    ),
                 }
             });
             app.manage(runtime);
