@@ -16,7 +16,7 @@ from contextlib import contextmanager
 from typing import Iterator
 
 from infrastructure.db.schema import APP_SETTINGS_TABLE_SQL
-from infrastructure.db.session import db_path
+from infrastructure.db.session import connection, connect, db_path
 
 logger = logging.getLogger("dingda.db.settings")
 
@@ -25,23 +25,15 @@ def ensure_schema() -> None:
     """确保 app_settings 表存在。"""
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as conn:
+    with connect(path) as conn:
         conn.executescript(APP_SETTINGS_TABLE_SQL)
 
 
 @contextmanager
 def _connection() -> Iterator[sqlite3.Connection]:
     ensure_schema()
-    conn = sqlite3.connect(db_path(), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    try:
+    with connection() as conn:
         yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def get_setting(key: str) -> str | None:

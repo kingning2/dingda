@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from typing import Iterator
 
 from infrastructure.db.schema import WATCH_POINTS_TABLE_SQL, WATCH_TARGETS_TABLE_SQL
-from infrastructure.db.session import db_path
+from infrastructure.db.session import connection, connect, db_path
 
 logger = logging.getLogger("dingda.db.watch")
 
@@ -97,7 +97,7 @@ def ensure_schema() -> None:
     """确保 watch_targets / watch_points 两张表存在。"""
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as conn:
+    with connect(path) as conn:
         conn.executescript(WATCH_TARGETS_TABLE_SQL)
         conn.executescript(WATCH_POINTS_TABLE_SQL)
 
@@ -105,16 +105,8 @@ def ensure_schema() -> None:
 @contextmanager
 def _connection() -> Iterator[sqlite3.Connection]:
     ensure_schema()
-    conn = sqlite3.connect(db_path(), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    try:
+    with connection() as conn:
         yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def _row_to_target(row: sqlite3.Row) -> WatchTargetRow:

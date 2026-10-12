@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 logger = logging.getLogger("dingda.db")
+
+# 并发安全三件套：WAL（读写不互斥）+ busy_timeout（锁冲突等 5s 而非立即
+# 抛 database is locked）+ synchronous=NORMAL（WAL 下安全且快）
+BUSY_TIMEOUT_SECONDS = 5.0
 
 _db_path: Path | None = None
 
@@ -42,3 +49,29 @@ async def init_db() -> None:
 
 async def shutdown_db() -> None:
     logger.debug("database shutdown")
+
+
+def connect(path: Path) -> sqlite3.Connection:
+    """建连接的唯一出口：全项目 SQLite 必须从这里走，保证 WAL 与锁等待全局一致。"""
+    conn = sqlite3.connect(
+        path, check_same_thread=False, timeout=BUSY_TIMEOUT_SECONDS
+    )
+    conn.row_factory = sqlite3.Row
+    # journal_mode 是库级持久属性，重复设置幂等；synchronous 是连接级的，逐连接设
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    return conn
+
+
+@contextmanager
+def connection() -> Iterator[sqlite3.Connection]:
+    """默认库连接的事务上下文：成功提交，异常回滚，退出必关。"""
+    conn = connect(db_path())
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()

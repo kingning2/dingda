@@ -10,6 +10,11 @@
 
 `data_dir` / `db_path` / `set_db_path`。`init_db` 调 accounts `ensure_schema`。lifespan 与 warmup 都会碰到。
 
+`connect` 是全项目 SQLite 连接的**唯一出口**：WAL（读写不互斥）+
+busy_timeout 5s（锁冲突等待而非立即抛 database is locked）+ synchronous=NORMAL（WAL 下安全且快）。
+`connection` 是默认库的事务上下文（成功提交 / 异常回滚 / 退出必关），各 repo 的 `_connection` 都委托它。
+裸 `sqlite3.connect` 只允许出现在 `connect` 内部。
+
 ### `schema.py`
 
 `CREATE TABLE accounts` / `app_settings` / `agent_works`，以及 accounts 的 ALTER 列 SQL。改表先改这里再改对应 repo。

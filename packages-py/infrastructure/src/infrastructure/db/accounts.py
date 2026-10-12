@@ -16,7 +16,7 @@ from infrastructure.db.schema import (
     ACCOUNTS_LOCAL_STORAGE_COLUMN_SQL,
     ACCOUNTS_TABLE_SQL,
 )
-from infrastructure.db.session import db_path
+from infrastructure.db.session import connection, connect, db_path
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +38,7 @@ class AccountRow:
 def ensure_schema() -> None:
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(path) as conn:
+    with connect(path) as conn:
         conn.executescript(ACCOUNTS_TABLE_SQL)
         try:
             conn.execute(ACCOUNTS_AVATAR_COLUMN_SQL)
@@ -61,16 +61,8 @@ def ensure_schema() -> None:
 @contextmanager
 def _connection() -> Iterator[sqlite3.Connection]:
     ensure_schema()
-    conn = sqlite3.connect(db_path(), check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    try:
+    with connection() as conn:
         yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def _row_to_account(row: sqlite3.Row) -> AccountRow:
