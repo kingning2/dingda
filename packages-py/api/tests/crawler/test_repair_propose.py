@@ -176,3 +176,17 @@ def test_propose_dom_patch_returns_none_on_prose_only(
     client, _ = _fake_client("这页结构看不出来，全是散文没有补丁。")
     monkeypatch.setattr(repair_propose, "_llm_client", lambda: client)
     assert asyncio.run(repair_propose.propose_dom_patch(_snap())) is None
+
+
+def test_llm_client_carries_explicit_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """修复链客户端必须带显式超时：SDK 默认 600s 修复链等不起。"""
+    monkeypatch.setenv("DINGDA_LLM_API_KEY", "test-key")
+    monkeypatch.delenv("DINGDA_LLM_TIMEOUT", raising=False)
+
+    client = repair_propose._llm_client()
+    assert client.timeout.connect == 10.0
+    assert client.timeout.read == 120.0
+    assert client.max_retries == 1
+
+    monkeypatch.setenv("DINGDA_LLM_TIMEOUT", "30")
+    assert repair_propose._llm_client().timeout.read == 30.0

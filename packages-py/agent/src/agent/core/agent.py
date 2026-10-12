@@ -23,6 +23,7 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
+import httpx
 from openai import AsyncOpenAI
 
 from core.compress import compress_messages
@@ -49,7 +50,22 @@ def _llm_client() -> AsyncOpenAI:
             status_code=503,
         )
     base = os.getenv("DINGDA_LLM_BASE_URL", "").strip() or None
-    return AsyncOpenAI(api_key=api_key, base_url=base)
+    return AsyncOpenAI(
+        api_key=api_key,
+        base_url=base,
+        timeout=_llm_timeout(),
+        max_retries=1,
+    )
+
+
+def _llm_timeout() -> httpx.Timeout:
+    """LLM 显式超时：SDK 默认 600s 交互产品等不起。
+
+    connect 快失败（10s）、read 覆盖慢生成（默认 120s，``DINGDA_LLM_TIMEOUT``
+    秒数可覆盖）；max_retries 收到 1，单次调用最坏 ≈ 2×130s 而非无限摸鱼。
+    """
+    seconds = float(os.getenv("DINGDA_LLM_TIMEOUT", "") or 120.0)
+    return httpx.Timeout(connect=10.0, read=seconds, write=30.0, pool=10.0)
 
 
 def _model_name() -> str:

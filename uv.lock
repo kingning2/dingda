@@ -29,6 +29,7 @@ source = { editable = "packages-py/agent" }
 dependencies = [
     { name = "contracts" },
     { name = "core" },
+    { name = "httpx" },
     { name = "openai", version = "2.54.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
     { name = "openai", version = "3.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "tools" },
@@ -38,6 +39,7 @@ dependencies = [
 requires-dist = [
     { name = "contracts", editable = "packages-py/contracts" },
     { name = "core", editable = "packages-py/core" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "openai", specifier = ">=2.54.0" },
     { name = "tools", editable = "packages-py/tools" },
 ]

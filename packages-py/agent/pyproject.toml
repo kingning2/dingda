@@ -8,6 +8,7 @@ dependencies = [
   "contracts",
   "core",
   "openai>=2.54.0",
+  "httpx>=0.28",
   "tools",
 ]
 

@@ -211,3 +211,18 @@ def test_missing_llm_key_yields_error_events(monkeypatch, fake_tools) -> None:
     assert _types(events) == ["runStarted", "error", "runCompleted"]
     assert events[1]["message"].startswith("未配置 DINGDA_LLM_API_KEY")
     assert events[-1]["exitCode"] == 1
+
+
+def test_llm_client_carries_explicit_timeout(
+    fake_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """客户端必须带显式超时与受限重试：SDK 默认 600s 交互产品等不起。"""
+    monkeypatch.delenv("DINGDA_LLM_TIMEOUT", raising=False)
+
+    client = agent_mod._llm_client()
+    assert client.timeout.connect == 10.0
+    assert client.timeout.read == 120.0
+    assert client.max_retries == 1
+
+    monkeypatch.setenv("DINGDA_LLM_TIMEOUT", "30")
+    assert agent_mod._llm_client().timeout.read == 30.0
