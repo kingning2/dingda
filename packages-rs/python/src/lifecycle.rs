@@ -161,6 +161,7 @@ impl PythonLifecycle {
             self.kill_all().await?;
         }
 
+        let boot_started = Instant::now();
         if let Err(error) = self.spawn().await {
             logging::log(
                 Scope::Shell,
@@ -174,7 +175,7 @@ impl PythonLifecycle {
         let api_base_url = self.api_base_url();
         events.emit_event("server-starting", api_base_url.clone());
 
-        match self.wait_until_healthy().await {
+        match self.wait_until_healthy(boot_started).await {
             Ok(()) => {
                 self.ready.store(true, Ordering::Relaxed);
                 events.emit_event("server-ready", api_base_url);
@@ -249,6 +250,7 @@ impl PythonLifecycle {
             "python server crashed, restarting",
             Some(url.as_str()),
         );
+        let restart_started = Instant::now();
         for attempt in 1..=MAX_RESTART_ATTEMPTS {
             let stopping = self.stopping.subscribe();
             if *stopping.borrow() {
@@ -266,10 +268,17 @@ impl PythonLifecycle {
                 );
                 continue;
             }
-            if self.wait_until_healthy().await.is_ok() {
+            if self.wait_until_healthy(restart_started).await.is_ok() {
                 self.ready.store(true, Ordering::Relaxed);
                 events.emit_event("server-ready", url);
-                logging::log(Scope::Shell, "python server recovered", None);
+                logging::log(
+                    Scope::Shell,
+                    "python server recovered",
+                    Some(&format!(
+                        "elapsed={:.1}s",
+                        restart_started.elapsed().as_secs_f32()
+                    )),
+                );
                 return Ok(());
             }
         }
@@ -305,9 +314,14 @@ impl PythonLifecycle {
                 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
                 sync.creation_flags(CREATE_NO_WINDOW);
             }
+            let sync_started = Instant::now();
             match sync.status().await {
                 Ok(status) if status.success() => {
-                    logging::log(Scope::Shell, "python deps synced (uv sync --frozen)", None);
+                    logging::log(
+                        Scope::Shell,
+                        "python deps synced (uv sync --frozen)",
+                        Some(&format!("elapsed={:.1}s", sync_started.elapsed().as_secs_f32())),
+                    );
                 }
                 Ok(status) => {
                     logging::log(
@@ -389,11 +403,15 @@ impl PythonLifecycle {
         Ok(())
     }
 
-    async fn wait_until_healthy(&self) -> Result<(), PythonLifecycleError> {
+    async fn wait_until_healthy(&self, boot_started: Instant) -> Result<(), PythonLifecycleError> {
         let deadline = Instant::now() + self.config.startup_timeout;
         while Instant::now() < deadline {
             if self.health_check().await.unwrap_or(false) {
-                logging::log(Scope::Shell, "python server ready", None);
+                logging::log(
+                    Scope::Shell,
+                    "python server ready",
+                    Some(&format!("elapsed={:.1}s", boot_started.elapsed().as_secs_f32())),
+                );
                 return Ok(());
             }
             tokio::time::sleep(Duration::from_millis(200)).await;
@@ -689,7 +707,10 @@ mod tests {
     async fn startup_timeout_leaves_lifecycle_not_ready() {
         let lifecycle = PythonLifecycle::new(test_config(free_port().await));
 
-        let error = lifecycle.wait_until_healthy().await.unwrap_err();
+        let error = lifecycle
+            .wait_until_healthy(Instant::now())
+            .await
+            .unwrap_err();
 
         assert!(matches!(error, PythonLifecycleError::StartupTimeout(_)));
         assert!(!lifecycle.is_ready());
