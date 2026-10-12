@@ -1,4 +1,4 @@
-"""统一 ANSI 控制台日志（与 Rust `[shell]` 风格一致）。
+"""统一 ANSI 控制台日志（与 Rust `[shell]` 风格一致），可选文件落盘轮转。
 
 业务代码只用::
 
@@ -6,6 +6,9 @@
 
     info("启动应用")
     info("启动应用", {"port": 8787})
+
+入口进程另传 ``log_file``（如 ``~/.dingda/v2/logs/server.log``）：同一份
+业务日志追加写入文件，超 5MB 轮转保留 5 份，文件内无 ANSI 色码。
 """
 
 from __future__ import annotations
@@ -13,13 +16,18 @@ from __future__ import annotations
 import logging
 import sys
 from datetime import datetime, timedelta, timezone
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Any, TextIO
 
 _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 _CONTEXT_KEY = "_ctx"
 
 _PREFIX = "\x1b[1;32m[server]\x1b[0m"
+_PLAIN_PREFIX = "[server]"
 _RESET = "\x1b[0m"
+_LOG_FILE_MAX_BYTES = 5 * 1024 * 1024
+_LOG_FILE_BACKUPS = 5
 _LEVEL_COLORS = {
     "DEBUG": "\x1b[36m",
     "INFO": "\x1b[32m",
@@ -57,17 +65,27 @@ class _BusinessLogFilter(logging.Filter):
 
 
 class ServerFormatter(logging.Formatter):
+    """控制台带 ANSI 色，文件版传 ``color=False`` 拿纯文本。"""
+
+    def __init__(self, *, color: bool = True) -> None:
+        super().__init__()
+        self._color = color
+
     def format(self, record: logging.LogRecord) -> str:
-        color = _LEVEL_COLORS.get(record.levelname, "")
-        level = f"{color}{record.levelname:<8}{_RESET}"
+        prefix = _PREFIX if self._color else _PLAIN_PREFIX
+        if self._color:
+            level = f"{_LEVEL_COLORS.get(record.levelname, '')}{record.levelname:<8}{_RESET}"
+        else:
+            level = f"{record.levelname:<8}"
         timestamp = datetime.fromtimestamp(record.created, _BEIJING_TZ).strftime(
             _TIME_FORMAT
         )
         message = f"{record.getMessage()}{_format_context(record)}"
-        return f"{_PREFIX} {timestamp} {level} {message}"
+        return f"{prefix} {timestamp} {level} {message}"
 
 
-def configure_logging(*, level: str = "INFO") -> None:
+def configure_logging(*, level: str = "INFO", log_file: Path | None = None) -> None:
+    """装根日志：stderr 彩色一条；传 ``log_file`` 再落盘一条（轮转 5MB×5）。"""
     normalized = level.upper()
     if normalized not in _LOG_LEVELS:
         normalized = "INFO"
@@ -79,6 +97,19 @@ def configure_logging(*, level: str = "INFO") -> None:
     root = logging.getLogger()
     root.handlers.clear()
     root.addHandler(handler)
+
+    if log_file is not None:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=_LOG_FILE_MAX_BYTES,
+            backupCount=_LOG_FILE_BACKUPS,
+            encoding="utf-8",
+        )
+        file_handler.setFormatter(ServerFormatter(color=False))
+        file_handler.addFilter(_BusinessLogFilter())
+        root.addHandler(file_handler)
+
     root.setLevel(normalized)
 
     logging.getLogger("dingda").propagate = True

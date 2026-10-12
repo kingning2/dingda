@@ -10,6 +10,7 @@ import uvicorn
 from api.app import create_app
 from core.config import Settings
 from core.logging import configure_logging, error, uvicorn_log_config
+from infrastructure.db.session import data_dir
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -31,7 +32,7 @@ def main(argv: list[str] | None = None) -> None:
         reload=args.reload,
     )
 
-    configure_logging(level=settings.log_level)
+    configure_logging(level=settings.log_level, log_file=data_dir() / "logs" / "server.log")
     app = create_app(settings)
     try:
         uvicorn.run(
