@@ -35,6 +35,15 @@
 ### 修复
 
 - Agent：未配置 LLM key 时 SSE 流不再裸抛异常，改为发 `error` + `runCompleted(1)` 兜底事件
+- **Python Server 崩溃自愈（watchdog）**：Rust 壳常驻监督循环——启动成功后每 15s 探活
+  `/health`，连续失败 2 次（≈30s 不可用）判定崩溃，带退避（2s→4s→8s）自动重启最多 3 次；
+  成功重发 `server-ready`（前端状态机原样接住），耗尽发 `server-error` 终态并停手，
+  随 `stop()`（用户退出）结束
+- **SQLite 并发加固**：`session.connect` 成为全项目连接唯一出口——WAL（读写不互斥）+
+  busy_timeout 5s（锁冲突等待而非立即抛 database is locked）+ synchronous=NORMAL；
+  四个 repo 的连接/事务代码收敛到共享 `connection()` 上下文
+- **LLM 显式超时**：Agent 循环与 DOM 修复链的 OpenAI 客户端不再吃 SDK 默认 600s——
+  connect 10s / read 默认 120s（`DINGDA_LLM_TIMEOUT` 可覆盖）/ 重试收敛到 1 次
 
 - **依赖安全清欠**：`pnpm audit --prod` 24 项（1 critical / 9 high / 11 moderate / 3 low）→ 0。
   根因是 shadcn CLI 被声明为主题包生产依赖，把 express/undici/MCP SDK 等服务端链拖进
