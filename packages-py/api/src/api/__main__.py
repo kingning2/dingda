@@ -8,7 +8,7 @@ import sys
 import uvicorn
 
 from api.app import create_app
-from core.config import Settings
+from core.config import Settings, load_dotenv_file
 from core.logging import configure_logging, error, uvicorn_log_config
 from infrastructure.db.session import data_dir
 
@@ -25,6 +25,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args(argv)
 
+    load_dotenv_file()
     settings = Settings.from_env(
         host=args.host,
         port=args.port,
