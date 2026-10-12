@@ -31,6 +31,8 @@
   `observe` 观察期 job（分层 / gitleaks / pnpm audit）；rust job 追加 `cargo test --workspace`
 - **架构决策记录**：`docs/adr/`（仓库形态、uv 工作区拆分、分层铁律、约束棘轮）
 - **Agent 单测**：`AgentService` 工具循环 10 项单测（api/tests/agent）
+- **日志落盘轮转**：Python Server 业务日志写 `~/.dingda/v2/logs/server.log`（5MB×5 轮转，文件无 ANSI 色码），壳日志写 `logs/shell.log`（超 1MB 改名 .old）——stderr 日志不再随窗口消失
+- **观测性埋点**：SSE `runId` 绑定为日志 trace id（同链路日志行尾自动带 `trace=<id>`，前端报 runId 即可对上服务端日志）；启动 / 崩溃恢复 / uv sync 耗时以 `elapsed=` 进日志；壳清理外部 CLI 删除后的死枚举
 
 ### 修复
 
