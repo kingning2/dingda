@@ -42,11 +42,11 @@ _MAX_ROUNDS = 8
 
 
 def _llm_client() -> AsyncOpenAI:
-    api_key = os.getenv("DINGDA_LLM_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip()
+    api_key = os.getenv("DINGDA_LLM_API_KEY", "").strip()
     if not api_key:
         raise AppError(
             "agent.llm_key_missing",
-            "未配置 DINGDA_LLM_API_KEY（或 OPENAI_API_KEY）",
+            "未配置 DINGDA_LLM_API_KEY",
             status_code=503,
         )
     base = os.getenv("DINGDA_LLM_BASE_URL", "").strip() or None

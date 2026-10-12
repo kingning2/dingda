@@ -206,7 +206,6 @@ def test_missing_llm_key_yields_error_events(monkeypatch, fake_tools) -> None:
     流会以异常收尾且没有 runCompleted，前端无法收尾。
     """
     monkeypatch.delenv("DINGDA_LLM_API_KEY", raising=False)
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     events = _collect(prompt="搜露营椅")
     assert _types(events) == ["runStarted", "error", "runCompleted"]
     assert events[1]["message"].startswith("未配置 DINGDA_LLM_API_KEY")

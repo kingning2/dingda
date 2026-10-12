@@ -28,13 +28,13 @@ logger = logging.getLogger("dingda.crawler.repair.propose")
 
 def _llm_client() -> AsyncOpenAI:
     """与 agent 同款客户端装配；缺 key 直接报配置错误。"""
-    api_key = os.getenv("DINGDA_LLM_API_KEY", "").strip() or os.getenv("OPENAI_API_KEY", "").strip()
+    api_key = os.getenv("DINGDA_LLM_API_KEY", "").strip()
     if not api_key:
         from core.errors import AppError
 
         raise AppError(
             "crawler.dom_repair_no_key",
-            "未配置 DINGDA_LLM_API_KEY（或 OPENAI_API_KEY），AI 修选择器不可用",
+            "未配置 DINGDA_LLM_API_KEY，AI 修选择器不可用",
             status_code=500,
         )
     base = os.getenv("DINGDA_LLM_BASE_URL", "").strip() or None

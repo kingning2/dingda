@@ -10,6 +10,8 @@
 
 ### 移除
 
+- **LLM 配置面收敛**：删除 `OPENAI_API_KEY` 兜底别名（只认 `DINGDA_LLM_API_KEY`）与外部 CLI 时代死变量（`DINGDA_SKILL_DIRS`、`DINGDA_E2E_AGENT_ID`、`DINGDA_E2E_MODEL_ID`）；`.env.example` 补火山方舟 Coding Plan 配置示例（`/api/coding/v3` + `ark-code-latest`），全表由 54 项收敛至 50 项。
+
 - **外部 CLI Agent 整链删除**（ADR-0005）：Python `packages-py/cli` 包与
   `/v1/agent/runtimes*` 端点（扫描 / 偏好 / 默认 / 外部 run / 直播帧 / 取消）、
   Rust `packages-rs/agent` + `packages-rs/runtime` crate 与 `client` 的
