@@ -34,6 +34,11 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .append_invoke_initialization_script(platform_initialization_script());
 
+    #[cfg(feature = "e2e")]
+    {
+        builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
+    }
+
     builder
         .setup(|app| {
             // 壳日志落盘（含 Python 子进程生命周期与崩溃重启）：stderr 进控制台，
