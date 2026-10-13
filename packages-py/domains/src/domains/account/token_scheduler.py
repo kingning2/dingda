@@ -30,33 +30,61 @@ _scheduler_task: asyncio.Task[None] | None = None
 
 
 def _apply_xianyu_token_result(row: Any, *, phase: str) -> None:
-    """对单个闲鱼账号：ping → 必要时静默续期 → 写回 cookie / auth_valid。"""
-    if not row.cookie.strip():
+    """对单个闲鱼账号：ping → 必要时静默续期 → 写回 cookie / auth_valid。
+
+    判定只对探测时的 cookie 版本有效：探测期间账号若被重新扫码登录
+    （cookie 已换），旧探测的失败结论作废，不降级新登录态。
+    """
+    probed_cookie = row.cookie.strip()
+    if not probed_cookie:
         account_repo.set_auth_valid(row.account_id, False)
         logger.info("闲鱼%s过期: %s（无 cookie）", phase, row.account_id)
         return
 
-    new_cookie, ok = token(row.cookie)
+    new_cookie, ok = token(probed_cookie)
+
     if not ok:
-        account_repo.set_auth_valid(row.account_id, False)
-        logger.info("闲鱼%s失败: %s valid=False（续期未恢复，需扫码）", phase, row.account_id)
+        applied = account_repo.set_auth_valid(
+            row.account_id, False, cookie_seen=probed_cookie
+        )
+        if applied:
+            logger.info(
+                "闲鱼%s失败: %s valid=False（续期未恢复，需扫码）",
+                phase,
+                row.account_id,
+            )
+        else:
+            logger.info(
+                "闲鱼%s判定作废: %s（探测期间账号已重新登录）",
+                phase,
+                row.account_id,
+            )
         return
 
-    account_repo.set_auth_valid(row.account_id, True)
-    if new_cookie.strip() == row.cookie.strip():
+    current = account_repo.get_account(row.account_id)
+    if current is None or current.cookie.strip() != probed_cookie:
+        logger.info(
+            "闲鱼%s跳过: %s（探测期间账号已重新登录，续期结果作废）",
+            phase,
+            row.account_id,
+        )
+        return
+
+    account_repo.set_auth_valid(row.account_id, True, cookie_seen=probed_cookie)
+    if new_cookie.strip() == probed_cookie:
         logger.info("闲鱼%s结果: %s valid=True cookie_unchanged=True", phase, row.account_id)
         return
 
     account_repo.upsert_account(
-        account_id=row.account_id,
-        platform=row.platform,
-        display_name=row.display_name,
-        avatar_url=row.avatar_url,
+        account_id=current.account_id,
+        platform=current.platform,
+        display_name=current.display_name,
+        avatar_url=current.avatar_url,
         cookie=new_cookie,
-        status=row.status,
-        auto_connect=row.auto_connect,
+        status=current.status,
+        auto_connect=current.auto_connect,
         auth_valid=True,
-        connected=row.connected,
+        connected=current.connected,
     )
     logger.info("闲鱼%s结果: %s valid=True cookie_updated=True", phase, row.account_id)
 
@@ -86,7 +114,7 @@ async def probe_all_xiaohongshu() -> None:
             logger.info("小红书探活过期: %s（无 cookie）", row.account_id)
             continue
         valid = await probe_xiaohongshu(row.cookie)
-        account_repo.set_auth_valid(row.account_id, valid)
+        account_repo.set_auth_valid(row.account_id, valid, cookie_seen=row.cookie)
         logger.info("小红书探活结果: %s valid=%s", row.account_id, valid)
 
 
@@ -99,7 +127,7 @@ def probe_all_ali1688() -> None:
     logger.info("1688 AK 探活（%s 个账号）", len(rows))
     for row in rows:
         valid = probe_ali1688_ak(row.cookie)
-        account_repo.set_auth_valid(row.account_id, valid)
+        account_repo.set_auth_valid(row.account_id, valid, cookie_seen=row.cookie)
         logger.info("1688 探活结果: %s valid=%s", row.account_id, valid)
 
 

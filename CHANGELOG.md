@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+### 修复
+
+- **登录态竞态**：`set_auth_valid` 支持按 cookie 版本条件写入（CAS），探活/续期
+  判定只对被探测的 cookie 生效，探测期间账号重新扫码登录则旧失败判定作废，
+  不降级新登录态；降级（True→False）必留日志。修复「扫码登录成功几秒后被
+  在途探活静默翻回未登录」。
+- **e2e 内嵌 WebDriver**：恢复被误删的 `tauri_plugin_wdio_webdriver` 注册
+  （`--features e2e`），embedded provider 恢复可用，桌面 e2e 可跑。
+
 ### 移除
 
 - **LLM 配置面收敛**：删除 `OPENAI_API_KEY` 兜底别名（只认 `DINGDA_LLM_API_KEY`）与外部 CLI 时代死变量（`DINGDA_SKILL_DIRS`、`DINGDA_E2E_AGENT_ID`、`DINGDA_E2E_MODEL_ID`）；`.env.example` 补火山方舟 Coding Plan 配置示例（`/api/coding/v3` + `ark-code-latest`），全表由 54 项收敛至 50 项。

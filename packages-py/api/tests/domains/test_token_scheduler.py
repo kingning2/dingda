@@ -59,6 +59,10 @@ def test_probe_all_xianyu_uses_token_renew_not_bare_probe() -> None:
             return_value=("unb=1; _m_h5_tk=new; cookie2=c", True),
         ) as token_mock,
         patch(
+            "domains.account.token_scheduler.account_repo.get_account",
+            return_value=row,
+        ),
+        patch(
             "domains.account.token_scheduler.account_repo.set_auth_valid",
         ) as set_valid,
         patch(
@@ -68,7 +72,7 @@ def test_probe_all_xianyu_uses_token_renew_not_bare_probe() -> None:
         probe_all_xianyu_tokens()
 
     token_mock.assert_called_once_with(row.cookie)
-    set_valid.assert_called_with("xy-1", True)
+    set_valid.assert_called_with("xy-1", True, cookie_seen=row.cookie)
     upsert.assert_called_once()
     assert upsert.call_args.kwargs["cookie"].startswith("unb=1")
     assert upsert.call_args.kwargs["auth_valid"] is True
@@ -103,5 +107,53 @@ def test_probe_all_xianyu_marks_expired_only_when_renew_fails() -> None:
     ):
         probe_all_xianyu_tokens()
 
-    set_valid.assert_called_with("xy-2", False)
+    set_valid.assert_called_with("xy-2", False, cookie_seen=row.cookie)
+    upsert.assert_not_called()
+
+
+def test_probe_skips_write_when_relogin_happens_mid_probe() -> None:
+    """探测期间账号被重新扫码登录（cookie 已换）：旧判定与续期结果都作废。"""
+    row = SimpleNamespace(
+        account_id="xy-3",
+        platform="xianyu",
+        display_name="测",
+        avatar_url=None,
+        cookie="unb=1; _m_h5_tk=old; cookie2=c",
+        status="active",
+        auto_connect=True,
+        connected=False,
+    )
+    relogged = SimpleNamespace(
+        account_id="xy-3",
+        platform="xianyu",
+        display_name="测",
+        avatar_url=None,
+        cookie="unb=1; _m_h5_tk=fresh; cookie2=c",
+        status="active",
+        auto_connect=True,
+        connected=True,
+    )
+    with (
+        patch(
+            "domains.account.token_scheduler.account_repo.list_accounts",
+            return_value=[row],
+        ),
+        patch(
+            "domains.account.token_scheduler.token",
+            return_value=("unb=1; _m_h5_tk=renewed; cookie2=c", True),
+        ),
+        patch(
+            "domains.account.token_scheduler.account_repo.get_account",
+            return_value=relogged,
+        ),
+        patch(
+            "domains.account.token_scheduler.account_repo.set_auth_valid",
+        ) as set_valid,
+        patch(
+            "domains.account.token_scheduler.account_repo.upsert_account",
+        ) as upsert,
+    ):
+        probe_all_xianyu_tokens()
+
+    set_valid.assert_not_called()
     upsert.assert_not_called()

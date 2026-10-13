@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 import json
+import logging
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from infrastructure.db.schema import (
     ACCOUNTS_TABLE_SQL,
 )
 from infrastructure.db.session import connection, connect, db_path
+
+logger = logging.getLogger("dingda.infra.accounts")
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,13 +206,47 @@ def set_connected(account_id: str, connected: bool) -> None:
         )
 
 
-def set_auth_valid(account_id: str, auth_valid: bool) -> None:
+def set_auth_valid(
+    account_id: str,
+    auth_valid: bool,
+    *,
+    cookie_seen: str | None = None,
+) -> bool:
+    """写入登录态判定，返回是否实际落库。
+
+    探活 / 续期结论只对它实际探测的 cookie 版本有效：``cookie_seen`` 提供
+    时按「cookie 未被换过」做条件更新，账号在探测期间被重新扫码登录则
+    旧判定作废，不降级新登录态。降级（True→False）必须留痕。
+    """
     now = time.time()
     with _connection() as conn:
-        conn.execute(
-            "UPDATE accounts SET auth_valid = ?, updated_at = ? WHERE account_id = ?",
-            (int(auth_valid), now, account_id),
+        previous = conn.execute(
+            "SELECT auth_valid FROM accounts WHERE account_id = ?",
+            (account_id,),
+        ).fetchone()
+        if previous is None:
+            return False
+        if cookie_seen is None:
+            cursor = conn.execute(
+                "UPDATE accounts SET auth_valid = ?, updated_at = ? WHERE account_id = ?",
+                (int(auth_valid), now, account_id),
+            )
+        else:
+            cursor = conn.execute(
+                "UPDATE accounts SET auth_valid = ?, updated_at = ? "
+                "WHERE account_id = ? AND cookie = ?",
+                (int(auth_valid), now, account_id, cookie_seen),
+            )
+    applied = cursor.rowcount > 0
+    if applied and int(previous[0]) != int(auth_valid):
+        logger.info(
+            "账号登录态变更: %s valid=%s->%s%s",
+            account_id,
+            bool(previous[0]),
+            auth_valid,
+            "" if auth_valid else "（降级）",
         )
+    return applied
 
 
 def delete_account(account_id: str) -> bool:

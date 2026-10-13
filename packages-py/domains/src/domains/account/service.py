@@ -134,7 +134,7 @@ class AccountService:
         for row in account_repo.list_accounts(platform="ali1688"):
             valid = probe_ali1688_ak(row.cookie)
             if valid != row.auth_valid:
-                account_repo.set_auth_valid(row.account_id, valid)
+                account_repo.set_auth_valid(row.account_id, valid, cookie_seen=row.cookie)
 
 
 _service = AccountService()
