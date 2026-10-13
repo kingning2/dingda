@@ -163,8 +163,11 @@ function probeWork(): Promise<WorkProbe> {
     const header = Array.from(document.querySelectorAll("h2")).find(
       (node) => text(node) === "爬取结果",
     );
-    // products.tsx 的结构：面板根 div > header，故 header 的父节点就是面板根。
-    const panel = header?.parentElement ?? null;
+    // products.tsx 的结构：面板根 div > header > div > h2（h2 外有内层 div），
+    // 故从 h2 向上找 <header> 标签，其父级才是面板根 —— 总数 span 与卡片
+    // 列表都在 header 的兄弟节点里，h2 直接父节点不含它们。
+    const panel =
+      header?.closest("header")?.parentElement ?? header?.parentElement ?? null;
     const totalNode = panel
       ? Array.from(panel.querySelectorAll("span")).find((node) => text(node).startsWith("共 "))
       : null;

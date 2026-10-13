@@ -53,12 +53,20 @@ describe("DingDa 桌面端冒烟", () => {
 
     const hash = await currentHash();
     if (hash && hash !== "#/") {
-      log(SCOPE, `进入时路由为 "${hash}"（上一个 spec 残留），点侧栏「首页」归位`);
       const home = await findButtonByText("首页", "exact");
-      if (!home) throw new Error("侧栏里找不到「首页」导航项");
-      await home.click();
+      if (home) {
+        log(SCOPE, `进入时路由为 "${hash}"（上一个 spec 残留），点侧栏「首页」归位`);
+        await home.click();
+      } else {
+        // 工作详情等 fullBleed 路由不渲染侧栏（router.tsx handle.fullBleed），
+        // 侧栏里没有「首页」可用：直接改 hash 归位。
+        log(SCOPE, `进入时路由为 "${hash}"，侧栏不可用（fullBleed），hash 归位`);
+        await browser.execute(() => {
+          window.location.hash = "#/";
+        });
+      }
       if (!(await waitUntil(async () => ["", "#/"].includes(await currentHash()), 10_000))) {
-        throw new Error(`点「首页」后路由仍为 "${await currentHash()}"`);
+        throw new Error(`归位后路由仍为 "${await currentHash()}"`);
       }
     } else {
       log(SCOPE, "进入时已在首页路由");
