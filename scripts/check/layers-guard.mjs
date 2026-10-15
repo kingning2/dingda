@@ -4,6 +4,7 @@
 //   A. agent/** 与 tools/** 不得直连 playwright / camoufox / sqlite（§5.3）
 //   B. crawler/** 不得直接 import playwright（须经 Browser Interface，§2.1）
 //   C. api/** 与 domains/** 不得 import playwright / camoufox（§2.3，只做 HTTP 校验与调用）
+//   D. 前端骨架层（ui-layout/ui-feedback）不得 import 业务域包（依赖单向：应用→业务域→骨架→底座）
 // 退出码：0=干净、1=违规、2=跑不了（找不到源目录）。
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -15,6 +16,7 @@ const RULES = [
   { id: 'A', dirs: ['packages-py/agent/src', 'packages-py/tools/src'], re: /^\s*(?:import|from)\s+(?:playwright|camoufox|sqlite3|aiosqlite)\b/m },
   { id: 'B', dirs: ['packages-py/crawler/src'], re: /^\s*(?:import|from)\s+playwright\b/m },
   { id: 'C', dirs: ['packages-py/api/src', 'packages-py/domains/src'], re: /^\s*(?:import|from)\s+(?:playwright|camoufox)\b/m },
+  { id: 'D', dirs: ['packages/client/ui-layout/src', 'packages/client/ui-feedback/src'], re: /from ['\"]@v2\/(?:ui-home|ui-watch|ui-account|ui-ai|ui-agent|ui-crawler|ui-composer|ui-workflow)\//m },
 ];
 
 const findings = [];

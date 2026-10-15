@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 
-import { NAV_ITEMS } from "@v2/ui-home/mock-data";
 import { entryPath, entryViewFromPathname } from "@v2/routes/paths";
 import { Button } from "@v2/ui-primitives/button";
+
 import { Kbd } from "@v2/ui-primitives/kbd";
 import { Avatar, AvatarFallback } from "@v2/ui-primitives/avatar";
 import {
@@ -26,6 +26,14 @@ import {
   DropdownMenuTrigger,
 } from "@v2/ui-primitives/dropdown-menu";
 import { cn } from "@v2/ui-primitives/utils";
+
+/** 外壳侧边导航项 —— 骨架层自持，不引业务域（layers-guard 规则 D）。 */
+const NAV_ITEMS = [
+  { id: "home" as const, label: "首页", icon: "home" as const },
+  { id: "projects" as const, label: "全部项目", icon: "folder" as const },
+  { id: "accounts" as const, label: "账号", icon: "user-round" as const },
+  { id: "watch" as const, label: "监控", icon: "radar" as const },
+] as const;
 
 const ICON_MAP: Record<string, LucideIcon> = {
   home: Home,
