@@ -15,10 +15,3 @@ export const HOME_TYPE_CHIPS = [
 ] as const;
 
 export type HomeTypeChipId = (typeof HOME_TYPE_CHIPS)[number]["id"];
-
-export const NAV_ITEMS = [
-  { id: "home" as const, label: "首页", icon: "home" as const },
-  { id: "projects" as const, label: "全部项目", icon: "folder" as const },
-  { id: "accounts" as const, label: "账号", icon: "user-round" as const },
-  { id: "watch" as const, label: "监控", icon: "radar" as const },
-] as const;

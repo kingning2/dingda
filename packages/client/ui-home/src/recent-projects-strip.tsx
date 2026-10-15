@@ -1,5 +1,5 @@
 import { Layout, MoreHorizontal } from "lucide-react";
-import type { Project } from "./mock-data";
+import type { Project } from "./catalog";
 import { Badge } from "@v2/ui-primitives/badge";
 import { Button } from "@v2/ui-primitives/button";
 import { Card, CardFooter, CardHeader } from "@v2/ui-primitives/card";

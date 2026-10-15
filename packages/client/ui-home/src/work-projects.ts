@@ -3,7 +3,7 @@
  */
 
 import type { AgentWorkSummary } from "@v2/contracts/ai-work";
-import type { Project } from "./mock-data";
+import type { Project } from "./catalog";
 
 function formatUpdatedAt(ts: number): string {
   if (!Number.isFinite(ts) || ts <= 0) return "";

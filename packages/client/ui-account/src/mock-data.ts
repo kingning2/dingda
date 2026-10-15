@@ -5,7 +5,7 @@ import type {
   AccountQrCheckResponse,
   AccountSessionView,
 } from "@v2/contracts/account";
-import type { AccountPanelConfig, AccountsTab } from "./types";
+import type { AccountPanelConfig } from "./types";
 
 /** 模拟 Python 返回的会话态（仅供 UI 开发占位）。 */
 export const MOCK_SESSIONS = {
@@ -92,33 +92,6 @@ export const MOCK_ACCOUNTS: AccountListItem[] = [
   }),
 ];
 
-const xianyuConfig: AccountPanelConfig = {
-  platform: "xianyu",
-  platformName: "闲鱼",
-  appName: "闲鱼",
-  supportsConnection: true,
-  supportsAutoConnect: true,
-};
-
-const ali1688Config: AccountPanelConfig = {
-  platform: "ali1688",
-  platformName: "1688",
-  appName: "手机淘宝 / 1688",
-  supportsConnection: false,
-};
-
-const xiaohongshuConfig: AccountPanelConfig = {
-  platform: "xiaohongshu",
-  platformName: "小红书",
-  appName: "小红书",
-  supportsConnection: false,
-};
-
-export const ACCOUNT_TABS: AccountsTab[] = [
-  { id: "xianyu", label: "闲鱼账号", config: xianyuConfig },
-  { id: "ali1688", label: "1688账号", config: ali1688Config },
-  { id: "xiaohongshu", label: "小红书账号", config: xiaohongshuConfig },
-];
 
 export function filterAccountsByPlatform(platform: AccountPanelConfig["platform"]) {
   return MOCK_ACCOUNTS.filter((account) => account.platform === platform);

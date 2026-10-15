@@ -10,7 +10,7 @@ import {
   Video,
   type LucideIcon,
 } from "lucide-react";
-import { HOME_TYPE_CHIPS, type HomeTypeChipId } from "./mock-data";
+import { HOME_TYPE_CHIPS, type HomeTypeChipId } from "./catalog";
 import { Button } from "@v2/ui-primitives/button";
 import { cn } from "@v2/ui-primitives/utils";
 

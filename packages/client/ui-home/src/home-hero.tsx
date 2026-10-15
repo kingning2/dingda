@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { TypePillRow } from "./type-pill-row";
-import type { HomeTypeChipId } from "./mock-data";
+import type { HomeTypeChipId } from "./catalog";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { PromptComposer, useComposerAgentOptions } from "@v2/ui-composer";
 import { Card, CardContent } from "@v2/ui-primitives/card";

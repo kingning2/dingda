@@ -1,5 +1,5 @@
 import { FolderOpen } from "lucide-react";
-import type { Project } from "@v2/ui-home/mock-data";
+import type { Project } from "@v2/ui-home/catalog";
 import { Card, CardContent } from "@v2/ui-primitives/card";
 
 interface ProjectsPageProps {

@@ -1,7 +1,7 @@
 import { HomeHero } from "./home-hero";
 import { RecentProjectsStrip } from "./recent-projects-strip";
-import type { Project } from "./mock-data";
-import type { HomeTypeChipId } from "./mock-data";
+import type { Project } from "./catalog";
+import type { HomeTypeChipId } from "./catalog";
 import type { ComposerSubmitPayload } from "@v2/contracts/composer";
 import { cn } from "@v2/ui-primitives/utils";
 
