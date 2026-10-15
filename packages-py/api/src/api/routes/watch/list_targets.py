@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
-from api.routes.watch._dto import WatchListResponse, to_item
+from api.routes.watch._dto import to_item
+from contracts.watch import WatchListResponse
 from contracts.watch import WatchState
 from domains.watch.service import list_views
 

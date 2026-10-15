@@ -16,7 +16,7 @@ import logging
 import time
 from dataclasses import dataclass
 
-from contracts.watch import SoldState, WatchState
+from contracts.watch import DEFAULT_POLL_INTERVAL_SECONDS, SoldState, WatchState
 from domains.watch.insight import WatchChange, derive_changes
 from infrastructure.db import watch as watch_repo
 from infrastructure.db.watch import WatchPointRow, WatchTargetRow
@@ -226,7 +226,7 @@ def clamp_interval(seconds: int) -> int:
     try:
         value = int(seconds)
     except (TypeError, ValueError):
-        return watch_repo.DEFAULT_POLL_INTERVAL_SECONDS
+        return DEFAULT_POLL_INTERVAL_SECONDS
     return max(MIN_INTERVAL_SECONDS, min(value, MAX_INTERVAL_SECONDS))
 
 

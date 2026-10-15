@@ -33,8 +33,8 @@ from infrastructure.db.session import connection, connect, db_path
 
 logger = logging.getLogger("dingda.db.watch")
 
-DEFAULT_POLL_INTERVAL_SECONDS = 6 * 3600
-
+# 默认轮询间隔的真相源在 contracts.watch.DEFAULT_POLL_INTERVAL_SECONDS；
+# 本包零依赖不 import，upsert_target 的调用方（domains.watch）总是显式传参。
 # 本层只把 state 当落库值筛选，不解释语义；词表真相源在 contracts.watch.WatchState
 # （本包零依赖，不能 import）。改这里的值等于改数据，必须配迁移。
 TARGET_ACTIVE = "active"
@@ -163,7 +163,7 @@ def upsert_target(
     *,
     platform: str,
     item_id: str,
-    poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
+    poll_interval_seconds: int,
     title: str = "",
     url: str = "",
     image_url: str | None = None,

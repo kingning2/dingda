@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from api.routes.watch._dto import WatchPatchRequest, WatchDetailResponse, detail_response, empty_item
+from api.routes.watch._dto import detail_response, empty_item
+from contracts.watch import WatchDetailResponse, WatchPatchRequest
 from domains.watch.service import get_detail, patch_target
 
 router = APIRouter()

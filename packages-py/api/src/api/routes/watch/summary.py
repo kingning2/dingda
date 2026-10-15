@@ -10,7 +10,7 @@ from dataclasses import asdict
 
 from fastapi import APIRouter
 
-from api.routes.watch._dto import WatchSummaryResponse
+from contracts.watch import WatchSummaryResponse
 from domains.watch.service import summarize
 
 router = APIRouter()

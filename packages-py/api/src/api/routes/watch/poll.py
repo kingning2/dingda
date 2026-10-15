@@ -17,7 +17,7 @@ import logging
 from fastapi import APIRouter
 
 from api.lib.watch_feed import fetch_product
-from api.routes.watch._dto import (
+from contracts.watch import (
     MANUAL_POLL_MAX,
     WatchPollRequest,
     WatchPollResponse,

@@ -11,7 +11,8 @@ import logging
 
 from fastapi import APIRouter
 
-from api.routes.watch._dto import WatchAddRequest, WatchAddResponse, to_item, view_of
+from api.routes.watch._dto import to_item, view_of
+from contracts.watch import WatchAddRequest, WatchAddResponse
 from domains.watch.service import WatchItemInput, add_targets
 
 logger = logging.getLogger("dingda.api.watch")

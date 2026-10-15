@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter
 
-from api.routes.watch._dto import WatchDeleteResponse
+from contracts.watch import WatchDeleteResponse
 from domains.watch.service import remove_target
 
 logger = logging.getLogger("dingda.api.watch")
