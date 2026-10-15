@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from api.routes import account, agent, bootstrap, channel, crawler, health, research, runtime, watch
+from api.routes import account, agent, bootstrap, channel, crawler, health, runtime, watch
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -22,5 +22,4 @@ api_router.include_router(channel.router)
 api_router.include_router(account.router)
 api_router.include_router(agent.router)
 api_router.include_router(crawler.router)
-api_router.include_router(research.router)
 api_router.include_router(watch.router)

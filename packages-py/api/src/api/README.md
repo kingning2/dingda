@@ -22,7 +22,6 @@
 | [routes/account/](routes/account/README.md) | `/v1/accounts` | 账号库读写 |
 | [routes/agent/](routes/agent/README.md) | `/v1/agent` | 偏好、CLI 目录、AI 工作对话、Agent 运行 |
 | [routes/crawler/](routes/crawler/README.md) | `/v1/crawler` | 搜品 / 单品详情（含 SSE 直播） |
-| [routes/research.py](routes/research.py) | `/v1/research` | 空骨架 |
 | [routes/watch/](routes/watch/README.md) | `/v1/watch` | 商品监控 |
 
 ## 新增端点
