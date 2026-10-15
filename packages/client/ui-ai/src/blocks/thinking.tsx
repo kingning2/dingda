@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useInterval } from "ahooks";
 import { Collapse } from "./collapse";
 import { MarkdownRenderer } from "../markdown";
 import { useRevealText } from "./use-reveal-text";
@@ -45,14 +46,10 @@ export function ThinkingBlock({ block }: ChatBlockProps<"thinking">) {
   const display = useRevealText(text, streaming);
 
   useEffect(() => {
-    if (!streaming || !startedAt) {
-      setLiveSec(elapsedSeconds(startedAt));
-      return;
-    }
     setLiveSec(elapsedSeconds(startedAt));
-    const timer = window.setInterval(() => setLiveSec(elapsedSeconds(startedAt)), 1000);
-    return () => window.clearInterval(timer);
-  }, [streaming, startedAt]);
+  }, [startedAt, streaming]);
+  // ahooks useInterval：delay 传 undefined 即暂停，替代手写 setInterval+cleanup
+  useInterval(() => setLiveSec(elapsedSeconds(startedAt)), streaming && startedAt ? 1_000 : undefined);
 
   if (!text.trim() && !streaming && durationSec == null) return null;
   // 活动阶段由 Codex 风格状态行承担，推理正文只在结束后保留为可展开摘要。

@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDebounceFn } from "ahooks";
 import type { AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { putAgentWorkDetail } from "@v2/ui-agent/api";
 import type { AgentWorkDetailView } from "@v2/contracts/ai-work";
@@ -52,36 +53,35 @@ export function useWorkDetail(workId: string, serverReady: boolean): WorkDetailS
   const [error, setError] = useState<string | null>(null);
   const [runPhase, setRunPhase] = useState<AgentRunPhase | null>(null);
   const detailRef = useRef<AgentWorkDetailView | null>(null);
-  const persistTimerRef = useRef<number | null>(null);
   const loadGenerationRef = useRef(0);
   const activeSendRef = useRef<SendHandle | null>(null);
   const applyRef = useRef<
     (next: AgentWorkDetailView, options?: { hydrate?: boolean; runPhase?: AgentRunPhase | null }) => void
   >(() => undefined);
 
-  const schedulePersist = useCallback((_next: AgentWorkDetailView) => {
-    if (persistTimerRef.current !== null) {
-      window.clearTimeout(persistTimerRef.current);
-    }
-    persistTimerRef.current = window.setTimeout(() => {
-      persistTimerRef.current = null;
-      const snapshot = detailRef.current;
-      if (!snapshot) return;
-      stashWorkSnapshot(snapshot);
-      void putAgentWorkDetail(snapshot).catch(() => {});
-    }, PERSIST_DEBOUNCE_MS);
-  }, []);
-
-  const flushPersist = useCallback((next?: AgentWorkDetailView | null, keepalive = false) => {
-    const snapshot = next ?? detailRef.current;
-    if (!snapshot) return;
-    if (persistTimerRef.current !== null) {
-      window.clearTimeout(persistTimerRef.current);
-      persistTimerRef.current = null;
-    }
+  const persistSnapshot = useCallback((snapshot: AgentWorkDetailView, keepalive = false) => {
     stashWorkSnapshot(snapshot);
     void putAgentWorkDetail(snapshot, { keepalive }).catch(() => {});
   }, []);
+
+  // ahooks useDebounceFn：定时合并写回 SQLite；flushPersist 里 cancel 后立即落盘
+  const { run: schedulePersist, cancel: cancelScheduledPersist } = useDebounceFn(
+    () => {
+      const snapshot = detailRef.current;
+      if (snapshot) persistSnapshot(snapshot);
+    },
+    { wait: PERSIST_DEBOUNCE_MS },
+  );
+
+  const flushPersist = useCallback(
+    (next?: AgentWorkDetailView | null, keepalive = false) => {
+      const snapshot = next ?? detailRef.current;
+      if (!snapshot) return;
+      cancelScheduledPersist();
+      persistSnapshot(snapshot, keepalive);
+    },
+    [cancelScheduledPersist, persistSnapshot],
+  );
 
   const applyDetailUpdate = useCallback(
     (

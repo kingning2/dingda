@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, Loader2, QrCode, Trash2 } from "lucide-react";
 import type { AccountListItem, AccountPanelConfig } from "./types";
 import {
@@ -20,6 +20,7 @@ import { useDiscoveryStore } from "@v2/app-state";
 import { useServer } from "@v2/runtime/server-provider";
 import { refreshAccountsForPlatform } from "./account-discovery";
 import { AccountQrDialog } from "./account-qr-dialog";
+import { useInterval } from "ahooks";
 import { Button } from "@v2/ui-primitives/button";
 import { STATUS_TONE } from "@v2/ui-primitives/status-tone";
 
@@ -84,17 +85,15 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
   const autoConnectIds = useLiveApi ? storeAutoConnectIds : mockAutoConnectIds;
   const loadError = useLiveApi ? accountsError : null;
 
-  useEffect(() => {
-    if (!useLiveApi) return;
-
-    const timer = window.setInterval(() => {
+  // 账号列表轮询刷新；useLiveApi 为 false 时 delay undefined 即暂停
+  useInterval(
+    () => {
       void refreshAccountsForPlatform(config.platform).catch(() => {
         /* 轮询失败不打断当前列表 */
       });
-    }, 30_000);
-
-    return () => window.clearInterval(timer);
-  }, [useLiveApi, config.platform]);
+    },
+    useLiveApi ? 30_000 : undefined,
+  );
 
   const filtered = useMemo(() => {
     return accounts.filter((account) => {

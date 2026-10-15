@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useInterval } from "ahooks";
 import { AGENT_RUN_PHASE_MAP, type AgentRunPhase } from "@v2/ui-agent/run/phase";
 import { CodexActivityIndicator } from "../blocks/thinking-orb";
 import type { ChatBlock } from "./types";
@@ -41,13 +42,14 @@ export function WorkingIndicator({
   );
 
   useEffect(() => {
-    if (Number.isNaN(startMs)) return;
-    setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
-    const timer = window.setInterval(() => {
+    if (!Number.isNaN(startMs)) {
       setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000)));
-    }, 1000);
-    return () => window.clearInterval(timer);
+    }
   }, [startMs]);
+  useInterval(
+    () => setElapsed(Math.max(0, Math.floor((Date.now() - startMs) / 1000))),
+    Number.isNaN(startMs) ? undefined : 1_000,
+  );
 
   return (
     <div

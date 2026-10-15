@@ -144,6 +144,13 @@ export function AccountQrDialog({
   }, [response?.qr_base64]);
 
   useEffect(() => {
+    const stopPolling = () => {
+      if (pollTimerRef.current !== null) {
+        window.clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+
     if (!open) {
       setLoading(false);
       setResponse(null);
@@ -156,10 +163,7 @@ export function AccountQrDialog({
         return null;
       });
       sessionIdRef.current = null;
-      if (pollTimerRef.current !== null) {
-        window.clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
+      stopPolling();
       return;
     }
 
@@ -211,10 +215,7 @@ export function AccountQrDialog({
             }));
 
             if (checked.status === "success") {
-              if (pollTimerRef.current !== null) {
-                window.clearInterval(pollTimerRef.current);
-                pollTimerRef.current = null;
-              }
+              stopPolling();
               window.setTimeout(() => {
                 onSuccessRef.current(checked);
                 onCloseRef.current();
@@ -223,18 +224,12 @@ export function AccountQrDialog({
               checked.status === "failed" ||
               checked.status === "expired"
             ) {
-              if (pollTimerRef.current !== null) {
-                window.clearInterval(pollTimerRef.current);
-                pollTimerRef.current = null;
-              }
+              stopPolling();
             }
           } catch (pollError) {
             if (cancelled) return;
             setError(pollError instanceof Error ? pollError.message : "轮询失败");
-            if (pollTimerRef.current !== null) {
-              window.clearInterval(pollTimerRef.current);
-              pollTimerRef.current = null;
-            }
+            stopPolling();
           }
         };
 
@@ -251,10 +246,7 @@ export function AccountQrDialog({
 
     return () => {
       cancelled = true;
-      if (pollTimerRef.current !== null) {
-        window.clearInterval(pollTimerRef.current);
-        pollTimerRef.current = null;
-      }
+      stopPolling();
       const sessionId = sessionIdRef.current;
       sessionIdRef.current = null;
       if (sessionId) {
