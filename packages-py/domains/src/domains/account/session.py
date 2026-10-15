@@ -12,25 +12,21 @@ _SESSION_CONNECTED = AccountSessionView(
     state="connected",
     label="已连接",
     hint=None,
-    badge_class="bg-emerald-500/15 text-emerald-600",
 )
 _SESSION_DISCONNECTED = AccountSessionView(
     state="disconnected",
     label="未连接",
     hint=None,
-    badge_class="bg-muted text-muted-foreground",
 )
 _SESSION_LOGGED_IN = AccountSessionView(
     state="connected",
     label="已登录",
     hint=None,
-    badge_class="bg-emerald-500/15 text-emerald-600",
 )
 _SESSION_AUTH_EXPIRED = AccountSessionView(
     state="auth_expired",
     label="登录过期",
     hint="登录态已过期，请重新扫码",
-    badge_class="bg-orange-500/15 text-orange-700",
 )
 
 _ACTIONS_XIANYU_DISCONNECTED = AccountActionsView(

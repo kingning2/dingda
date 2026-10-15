@@ -5,7 +5,7 @@
  * 不再通过“最后一个块是什么”猜测当前应该展示什么。
  */
 
-import { STATUS_TONE } from "../status-tone";
+import { STATUS_TONE } from "@v2/ui-primitives/status-tone";
 
 /** 一次运行所处的前端阶段，由后端 SSE 事件推进，不由前端猜。 */
 export type AgentRunPhase =
@@ -26,7 +26,7 @@ export interface AgentRunPhaseView {
   label: string;
   /** 全局状态提示。 */
   hint: string | null;
-  /** 状态徽标样式，保持和后端 DTO 的 badge_class 形状一致。 */
+  /** 状态徽标样式，取自 STATUS_TONE。 */
   badgeClass: string;
   /** 没有活跃正文/思考片段时，时间线底部展示的工作文案。 */
   workingLabel: string | null;

@@ -25,6 +25,7 @@ import type {
 } from "@v2/contracts/ai-work";
 import type { CrawlProductItem } from "@v2/contracts/crawler";
 import { isArray, isObject, isString } from "@v2/runtime/guards";
+import { STATUS_TONE } from "@v2/ui-primitives/status-tone";
 
 /** 把 output 归一成对象；字符串先尝试 JSON.parse。 */
 function outputRecord(output: unknown): Record<string, unknown> | null {
@@ -193,7 +194,7 @@ export function extractComparison(output: unknown): AgentWorkComparisonView | nu
       state: "ready",
       label: "已完成",
       hint: `${items.length} 款对比`,
-      badge_class: "bg-emerald-500/15 text-emerald-600",
+      badge_class: STATUS_TONE.ready,
     },
   };
 }
@@ -266,7 +267,7 @@ export function mergeProducts(
       state: "ready",
       label: "已采集",
       hint: `共 ${merged.length} 条`,
-      badge_class: "bg-emerald-500/15 text-emerald-600",
+      badge_class: STATUS_TONE.ready,
     },
   };
 }

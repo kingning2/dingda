@@ -131,7 +131,7 @@ function PagePreview({
             variant="outline"
             className="absolute right-2 bottom-2 gap-1.5 bg-background/95 py-1 pr-2.5 pl-2 shadow-sm"
           >
-            <Loader2 className="size-3 animate-spin text-sky-600" />
+            <Loader2 className="size-3 animate-spin text-tone-active" />
             {page.focus_label || (live ? "直播中…" : "打开中…")}
           </Badge>
         ) : null}
@@ -153,7 +153,7 @@ export function StepBlock({ block }: ChatBlockProps<"step">) {
   const title = (
     <span className="flex min-w-0 flex-1 items-center gap-2">
       {running ? (
-        <CodexActivityIndicator className="w-3.5 shrink-0 text-[13px] text-sky-600" />
+        <CodexActivityIndicator className="w-3.5 shrink-0 text-[13px] text-tone-active" />
       ) : (
         <span className="w-3.5 shrink-0 text-center text-muted-foreground/70">•</span>
       )}

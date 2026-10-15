@@ -331,11 +331,11 @@ export function AccountQrDialog({
           <p
             className={`text-center text-sm ${
               status === "scanned"
-                ? "text-amber-600"
+                ? "text-tone-pending"
                 : status === "failed" || status === "expired" || error || serverError
                   ? "text-destructive"
                   : status === "success"
-                    ? "text-emerald-600"
+                    ? "text-tone-ready"
                     : "text-muted-foreground"
             }`}
           >
@@ -343,7 +343,7 @@ export function AccountQrDialog({
           </p>
 
           {!useLiveApi && !waitingServer && !serverError ? (
-            <p className="text-center text-xs text-amber-700">
+            <p className="text-center text-xs text-tone-pending">
               当前为演示模式（浏览器 或 后端未就绪），扫码为 UI 占位
             </p>
           ) : null}

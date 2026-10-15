@@ -13,7 +13,6 @@ class AccountSessionView(BaseModel):
     state: str
     label: str
     hint: str | None = None
-    badge_class: str
 
 
 class AccountActionsView(BaseModel):

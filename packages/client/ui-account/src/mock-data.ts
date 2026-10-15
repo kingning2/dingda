@@ -13,37 +13,31 @@ export const MOCK_SESSIONS = {
     state: "connected",
     label: "已连接",
     hint: null,
-    badge_class: "bg-emerald-500/15 text-emerald-600",
   },
   disconnected: {
     state: "disconnected",
     label: "未连接",
     hint: null,
-    badge_class: "bg-muted text-muted-foreground",
   },
   connecting: {
     state: "connecting",
     label: "连接中",
     hint: "正在连接闲鱼…",
-    badge_class: "bg-amber-500/15 text-amber-600",
   },
   loggedIn: {
     state: "connected",
     label: "已登录",
     hint: null,
-    badge_class: "bg-emerald-500/15 text-emerald-600",
   },
   notLoggedIn: {
     state: "disconnected",
     label: "未登录",
     hint: null,
-    badge_class: "bg-muted text-muted-foreground",
   },
   authExpired: {
     state: "auth_expired",
     label: "登录过期",
     hint: "登录态已过期，请重新扫码",
-    badge_class: "bg-orange-500/15 text-orange-700",
   },
 } satisfies Record<string, AccountSessionView>;
 

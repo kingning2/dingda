@@ -33,6 +33,13 @@
   --radius-md: var(--radius);
   --radius-lg: var(--radius-lg);
   --radius-pill: var(--radius-pill);
+  /* 状态语义色（消费方：ui-primitives/status-tone.ts）。
+     字面量而非 var 链：@theme 里嵌 var 依赖默认调色板发射，链路脆。 */
+  --color-tone-ready: #059669;
+  --color-tone-active: #0284c7;
+  --color-tone-pending: #d97706;
+  --color-tone-live: #e11d48;
+  --color-tone-failed: #dc2626;
 }
 
 * {

@@ -21,6 +21,14 @@ import { useServer } from "@v2/runtime/server-provider";
 import { refreshAccountsForPlatform } from "./account-discovery";
 import { AccountQrDialog } from "./account-qr-dialog";
 import { Button } from "@v2/ui-primitives/button";
+import { STATUS_TONE } from "@v2/ui-primitives/status-tone";
+
+/** 会话展示态 → 徽标配色；后端只发 state，不发样式。 */
+const SESSION_TONE: Record<string, string> = {
+  connected: STATUS_TONE.ready,
+  disconnected: STATUS_TONE.neutral,
+  auth_expired: STATUS_TONE.pending,
+};
 import { Avatar, AvatarFallback, AvatarImage } from "@v2/ui-primitives/avatar";
 import { Input } from "@v2/ui-primitives/input";
 import { Card, CardContent } from "@v2/ui-primitives/card";
@@ -341,7 +349,7 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
                       <span
                         className={cn(
                           "rounded-full px-2 py-0.5 text-xs",
-                          session.badge_class,
+                          SESSION_TONE[session.state] ?? STATUS_TONE.neutral,
                         )}
                       >
                         {session.label}
@@ -350,7 +358,7 @@ export function AccountsPanel({ config }: AccountsPanelProps) {
                     <p
                       className={cn(
                         "min-h-5 text-xs text-muted-foreground",
-                        session.hint ? "text-orange-700" : "invisible",
+                        session.hint ? "text-tone-pending" : "invisible",
                       )}
                       aria-hidden={!session.hint}
                     >

@@ -10,7 +10,6 @@ export interface AccountSessionView {
   state: string;
   label: string;
   hint?: string | null;
-  badge_class: string;
 }
 
 /** 账号卡片可用操作（由服务端根据 session 计算）。 */

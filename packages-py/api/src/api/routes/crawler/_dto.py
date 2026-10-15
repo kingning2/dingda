@@ -76,7 +76,6 @@ class CrawlerTaskStatus(BaseModel):
     state: str
     label: str
     hint: str | None = None
-    badge_class: str
 
 
 class CrawlerSearchResponse(BaseModel):
@@ -122,7 +121,6 @@ def to_response(platform: str, query: str, out: Any) -> CrawlerSearchResponse:
                 state="error",
                 label="失败",
                 hint=out.message or out.error_code,
-                badge_class="bg-destructive/15 text-destructive",
             ),
             items=[],
             total=0,
@@ -166,7 +164,6 @@ def to_response(platform: str, query: str, out: Any) -> CrawlerSearchResponse:
             state="ready",
             label="完成",
             hint=f"共 {len(items)} 条",
-            badge_class="bg-emerald-500/15 text-emerald-600",
         ),
         items=items,
         total=len(items),

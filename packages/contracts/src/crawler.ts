@@ -5,12 +5,11 @@
 
 export type CrawlPlatform = "xianyu" | "ali1688" | "xiaohongshu";
 
-/** 爬取任务状态（由服务端返回）。 */
+/** 爬取任务状态（由服务端返回）。后端只发 state 语义，配色由前端 STATUS_TONE 映射。 */
 export interface CrawlTaskStatusView {
   state: string;
   label: string;
   hint?: string | null;
-  badge_class: string;
 }
 
 /** 闲鱼商品留言。 */
