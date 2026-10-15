@@ -1,16 +1,11 @@
 /**
  * Python Server HTTP 客户端。
  *
- * 职责：统一拼 baseUrl、JSON、请求/响应拦截与错误处理。
+ * 职责：统一拼 baseUrl、JSON、超时与错误处理（默认弹 Alert，特殊场景 skipErrorToast）。
  * 业务模块只调 api.get/put/...，不要各自 fetch。
  */
 
-import {
-  handleApiResponseError,
-  readApiError,
-  showApiErrorMessage,
-  isSessionExpiredPayload,
-} from "./api-error";
+import { handleApiResponseError } from "./api-error";
 import { getHostCapabilities } from "./capabilities";
 
 /** Web 默认 API；桌面由 ServerProvider 注入。 */
@@ -22,30 +17,6 @@ let apiBaseUrl: string | null = getHostCapabilities().desktop
   ? null
   : DEFAULT_WEB_API_BASE;
 
-export type ApiRequestContext = {
-  url: string;
-  init: RequestInit;
-  fallbackError: string;
-  allowStatuses: number[];
-  skipErrorToast: boolean;
-};
-
-export type ApiResponseContext = {
-  response: Response;
-  request: ApiRequestContext;
-};
-
-type RequestInterceptor = (
-  ctx: ApiRequestContext,
-) => ApiRequestContext | Promise<ApiRequestContext>;
-
-type ResponseInterceptor = (
-  ctx: ApiResponseContext,
-) => ApiResponseContext | Promise<ApiResponseContext>;
-
-const requestInterceptors: RequestInterceptor[] = [];
-const responseInterceptors: ResponseInterceptor[] = [];
-
 /** Server 就绪后注入 baseUrl（桌面由 ServerProvider 调用）。 */
 export function setApiBaseUrl(url: string | null): void {
   apiBaseUrl = url?.trim() || null;
@@ -55,28 +26,12 @@ export function getApiBaseUrl(): string | null {
   return apiBaseUrl;
 }
 
-export function onApiRequest(interceptor: RequestInterceptor): () => void {
-  requestInterceptors.push(interceptor);
-  return () => {
-    const index = requestInterceptors.indexOf(interceptor);
-    if (index >= 0) requestInterceptors.splice(index, 1);
-  };
-}
-
-export function onApiResponse(interceptor: ResponseInterceptor): () => void {
-  responseInterceptors.push(interceptor);
-  return () => {
-    const index = responseInterceptors.indexOf(interceptor);
-    if (index >= 0) responseInterceptors.splice(index, 1);
-  };
-}
-
 /**
  * 解析出可用的 base URL：优先用调用方给的覆盖值，否则用 `setApiBaseUrl` 注入的。
  * 都没有就抛错 —— 调用方不该在 Server 未就绪时发请求。
  *
  * 导出给需要自己发 `fetch` 的场景（如 SSE 流式：统一客户端会一次性读完响应，
- * 做不了流式）。**错误文案只在这里定义一处**，不要在各处再写一份。
+ * 做不了流式）。
  */
 export function resolveBaseUrl(override?: string | null): string {
   const base = (override ?? apiBaseUrl)?.trim();
@@ -98,12 +53,13 @@ export type ApiRequestOptions = {
   query?: Record<string, string | number | boolean | null | undefined>;
   headers?: HeadersInit;
   signal?: AbortSignal;
-  /** 超时毫秒；超时抛 Error（不走响应拦截） */
+  /** 超时毫秒；超时抛 Error */
   timeoutMs?: number;
+  /** 后端没给 message 时的兜底文案 */
   fallbackError?: string;
   /** 这些状态码不当错误抛出（如 404） */
   allowStatuses?: number[];
-  /** 不弹窗，仍抛 Error */
+  /** 错误不弹窗（仍抛 Error）；会话过期除外 —— 那是全局信号 */
   skipErrorToast?: boolean;
   /** 页面卸载时仍尽量发完（Ctrl+R 落库） */
   keepalive?: boolean;
@@ -119,43 +75,6 @@ function withQuery(url: string, query?: ApiRequestOptions["query"]): string {
   }
   return parsed.toString();
 }
-
-async function runRequestInterceptors(ctx: ApiRequestContext): Promise<ApiRequestContext> {
-  let current = ctx;
-  for (const interceptor of requestInterceptors) {
-    current = await interceptor(current);
-  }
-  return current;
-}
-
-async function runResponseInterceptors(ctx: ApiResponseContext): Promise<ApiResponseContext> {
-  let current = ctx;
-  for (const interceptor of responseInterceptors) {
-    current = await interceptor(current);
-  }
-  return current;
-}
-
-async function defaultResponseGuard(ctx: ApiResponseContext): Promise<ApiResponseContext> {
-  const { response, request } = ctx;
-  if (response.ok || request.allowStatuses.includes(response.status)) {
-    return ctx;
-  }
-
-  if (request.skipErrorToast) {
-    const payload = await readApiError(response);
-    if (isSessionExpiredPayload(payload)) {
-      showApiErrorMessage(payload, "登录已过期，请重新扫码登录");
-    }
-    throw new Error(payload.message?.trim() || request.fallbackError);
-  }
-
-  await handleApiResponseError(response, request.fallbackError);
-  return ctx;
-}
-
-// 内置响应拦截：统一错误处理
-onApiResponse(defaultResponseGuard);
 
 async function request<T>(
   method: string,
@@ -193,25 +112,16 @@ async function request<T>(
     signal = controller.signal;
   }
 
-  let ctx: ApiRequestContext = {
-    url: withQuery(joinUrl(base, path), options.query),
-    init: {
-      method,
-      headers,
-      body: rawBody,
-      signal,
-      keepalive: options.keepalive ?? false,
-    },
-    fallbackError: options.fallbackError ?? "请求失败",
-    allowStatuses: options.allowStatuses ?? [],
-    skipErrorToast: options.skipErrorToast ?? false,
-  };
-
   try {
-    ctx = await runRequestInterceptors(ctx);
     let response: Response;
     try {
-      response = await fetch(ctx.url, ctx.init);
+      response = await fetch(withQuery(joinUrl(base, path), options.query), {
+        method,
+        headers,
+        body: rawBody,
+        signal,
+        keepalive: options.keepalive ?? false,
+      });
     } catch (error) {
       if (timedOut) {
         throw new Error(
@@ -221,21 +131,26 @@ async function request<T>(
       throw error;
     }
 
-    const guarded = await runResponseInterceptors({ response, request: ctx });
-
-    if (guarded.response.status === 204) {
-      return { data: undefined as T, response: guarded.response };
+    if (!response.ok && !options.allowStatuses?.includes(response.status)) {
+      await handleApiResponseError(response, options.fallbackError ?? "请求失败", {
+        silent: options.skipErrorToast ?? false,
+      });
     }
 
-    const text = await guarded.response.text();
+    if (response.status === 204) {
+      return { data: undefined as T, response };
+    }
+
+    const text = await response.text();
     if (!text) {
-      return { data: undefined as T, response: guarded.response };
+      return { data: undefined as T, response };
     }
 
     try {
-      return { data: JSON.parse(text) as T, response: guarded.response };
+      return { data: JSON.parse(text) as T, response };
     } catch {
-      return { data: text as T, response: guarded.response };
+      // 非法 JSON 不能谎称是 T：直接把原文抛给调用方排查
+      throw new Error(`响应不是 JSON：${text.slice(0, 120)}`);
     }
   } finally {
     if (timeoutId !== undefined) {
