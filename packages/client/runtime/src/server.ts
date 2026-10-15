@@ -10,6 +10,7 @@ import { listen } from "@tauri-apps/api/event";
 
 import { getHostCapabilities } from "./capabilities";
 import { api, DEFAULT_WEB_API_BASE } from "./http-client";
+import { apiPaths } from "@v2/routes/api-paths";
 
 export type ServerPhase = "offline" | "starting" | "ready" | "error";
 
@@ -65,7 +66,7 @@ export async function fetchServerStatus(): Promise<ServerStatus> {
 /** Server 就绪后触发渐进预热，失败静默。 */
 export async function kickServerWarmup(): Promise<void> {
   try {
-    await api.get("/v1/bootstrap", { skipErrorToast: true, fallbackError: "bootstrap 失败" });
+    await api.get(apiPaths.bootstrap, { skipErrorToast: true, fallbackError: "bootstrap 失败" });
   } catch {
     // 预热失败不阻塞 UI
   }

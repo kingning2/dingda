@@ -7,6 +7,7 @@
 
 import type { AgentEvent } from "@v2/contracts/agent-event";
 import { resolveBaseUrl } from "@v2/runtime/http-client";
+import { apiPaths } from "@v2/routes/api-paths";
 
 /** 一次运行的入参；字段与后端 `/v1/agent/works/{work_id}/run` 的 body 一一对应。 */
 export interface LaunchAgentRunRequest {
@@ -73,7 +74,7 @@ export function startAgentRunWithEvents(
 
   const done = (async () => {
     const base = resolveBaseUrl();
-    const url = `${base}/v1/agent/works/${encodeURIComponent(request.workId)}/run`;
+    const url = `${base}${apiPaths.agentWorkRun(request.workId)}`;
     const body = { prompt: request.prompt, run_id: runId };
 
     const response = await fetch(url, {

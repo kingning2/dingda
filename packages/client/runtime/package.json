@@ -8,7 +8,8 @@
     "./*": "./src/*.js"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2"
+    "@tauri-apps/api": "^2",
+    "@v2/routes": "workspace:*"
   },
   "peerDependencies": {
     "react": "^19.1.0"

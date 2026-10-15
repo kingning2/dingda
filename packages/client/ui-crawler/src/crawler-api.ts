@@ -12,6 +12,7 @@
  */
 
 import type { CrawlProductRequest, CrawlProductResponse } from "@v2/contracts/crawler";
+import { apiPaths } from "@v2/routes/api-paths";
 import { api } from "@v2/runtime/http-client";
 
 /** 单品详情（闲鱼价格 / 想要人数等）。 */
@@ -20,7 +21,7 @@ export async function fetchCrawlerProduct(
   options?: { signal?: AbortSignal },
 ): Promise<CrawlProductResponse> {
   const { data } = await api.post<CrawlProductResponse>(
-    "/v1/crawler/product",
+    apiPaths.crawlerProduct,
     {
       platform: request.platform,
       item_id: request.item_id,

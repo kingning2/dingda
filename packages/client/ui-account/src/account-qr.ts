@@ -3,6 +3,7 @@ import type {
   AccountQrCheckResponse,
   AccountQrStartResponse,
 } from "@v2/contracts/account";
+import { apiPaths } from "@v2/routes/api-paths";
 import { api } from "@v2/runtime/http-client";
 
 const QR_START_TIMEOUT_MS = 90_000;
@@ -12,7 +13,7 @@ export async function startAccountQrLogin(
 ): Promise<AccountQrStartResponse> {
   try {
     const { data } = await api.post<AccountQrStartResponse>(
-      "/v1/channel/qr/start",
+      apiPaths.channelQrStart,
       { platform },
       {
         timeoutMs: QR_START_TIMEOUT_MS,
@@ -34,7 +35,7 @@ export async function startAccountQrLogin(
 export async function checkAccountQrLogin(
   sessionId: string,
 ): Promise<AccountQrCheckResponse> {
-  const { data } = await api.get<AccountQrCheckResponse>("/v1/channel/qr/check", {
+  const { data } = await api.get<AccountQrCheckResponse>(apiPaths.channelQrCheck, {
     query: { session_id: sessionId },
     skipErrorToast: true,
     fallbackError: "轮询扫码状态失败",
@@ -46,7 +47,7 @@ export async function checkAccountQrLogin(
 export async function cancelAccountQrLogin(sessionId: string): Promise<void> {
   try {
     await api.post(
-      "/v1/channel/qr/cancel",
+      apiPaths.channelQrCancel,
       { session_id: sessionId },
       {
         skipErrorToast: true,

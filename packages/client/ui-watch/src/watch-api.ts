@@ -20,6 +20,7 @@ import type {
   WatchListResponse,
   WatchPatchRequest,
 } from "@v2/contracts/watch";
+import { apiPaths } from "@v2/routes/api-paths";
 import { api } from "@v2/runtime/http-client";
 
 /** 列出监控目标。`state` 不传则返回全部。 */
@@ -27,7 +28,7 @@ export async function listWatchTargets(options?: {
   state?: string;
   signal?: AbortSignal;
 }): Promise<WatchListResponse> {
-  const { data } = await api.get<WatchListResponse>("/v1/watch/targets", {
+  const { data } = await api.get<WatchListResponse>(apiPaths.watchTargets, {
     query: { state: options?.state },
     signal: options?.signal,
     fallbackError: "读取监控列表失败",
@@ -41,7 +42,7 @@ export async function addWatchTargets(
   request: WatchAddRequest,
   options?: { signal?: AbortSignal },
 ): Promise<WatchAddResponse> {
-  const { data } = await api.post<WatchAddResponse>("/v1/watch/targets", request, {
+  const { data } = await api.post<WatchAddResponse>(apiPaths.watchTargets, request, {
     signal: options?.signal,
     timeoutMs: 30_000,
     fallbackError: "加入监控失败",
@@ -56,7 +57,7 @@ export async function getWatchTarget(
   options?: { signal?: AbortSignal },
 ): Promise<WatchDetailResponse> {
   const { data } = await api.get<WatchDetailResponse>(
-    `/v1/watch/targets/${encodeURIComponent(targetId)}`,
+    apiPaths.watchTarget(targetId),
     {
       signal: options?.signal,
       fallbackError: "读取监控详情失败",
@@ -73,7 +74,7 @@ export async function patchWatchTarget(
   options?: { signal?: AbortSignal },
 ): Promise<WatchDetailResponse> {
   const { data } = await api.patch<WatchDetailResponse>(
-    `/v1/watch/targets/${encodeURIComponent(targetId)}`,
+    apiPaths.watchTarget(targetId),
     request,
     {
       signal: options?.signal,
@@ -90,7 +91,7 @@ export async function removeWatchTarget(
   options?: { signal?: AbortSignal },
 ): Promise<WatchDeleteResponse> {
   const { data } = await api.delete<WatchDeleteResponse>(
-    `/v1/watch/targets/${encodeURIComponent(targetId)}`,
+    apiPaths.watchTarget(targetId),
     {
       signal: options?.signal,
       fallbackError: "移除监控失败",

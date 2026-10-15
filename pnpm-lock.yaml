@@ -267,6 +267,9 @@ importers:
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1
+      '@v2/routes':
+        specifier: workspace:*
+        version: link:../routes
       react:
         specifier: ^19.1.0
         version: 19.2.8
@@ -309,6 +312,9 @@ importers:
       '@v2/contracts':
         specifier: workspace:*
         version: link:../../contracts
+      '@v2/routes':
+        specifier: workspace:*
+        version: link:../routes
       '@v2/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -396,6 +402,9 @@ importers:
       '@v2/contracts':
         specifier: workspace:*
         version: link:../../contracts
+      '@v2/routes':
+        specifier: workspace:*
+        version: link:../routes
       '@v2/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -507,6 +516,9 @@ importers:
       '@v2/contracts':
         specifier: workspace:*
         version: link:../../contracts
+      '@v2/routes':
+        specifier: workspace:*
+        version: link:../routes
       '@v2/runtime':
         specifier: workspace:*
         version: link:../runtime

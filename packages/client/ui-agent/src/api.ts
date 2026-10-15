@@ -3,6 +3,7 @@
  */
 
 import type { AgentWorkDetailView, AgentWorkSummary } from "@v2/contracts/ai-work";
+import { apiPaths } from "@v2/routes/api-paths";
 import { api } from "@v2/runtime/http-client";
 
 interface AgentWorkDetailResponse {
@@ -16,7 +17,7 @@ export async function fetchAgentWorkDetail(
   options?: { baseUrl?: string | null },
 ): Promise<AgentWorkDetailView | null> {
   const { data, response } = await api.get<AgentWorkDetailResponse>(
-    `/v1/agent/works/${encodeURIComponent(workId)}`,
+    apiPaths.agentWork(workId),
     {
       baseUrl: options?.baseUrl,
       fallbackError: "读取工作对话失败",
@@ -38,8 +39,9 @@ export async function fetchAgentWorkList(
   options?: { baseUrl?: string | null; limit?: number },
 ): Promise<AgentWorkSummary[]> {
   const limit = options?.limit ?? 40;
-  const { data } = await api.get<AgentWorkListResponse>(`/v1/agent/works?limit=${limit}`, {
+  const { data } = await api.get<AgentWorkListResponse>(apiPaths.agentWorks, {
     baseUrl: options?.baseUrl,
+    query: { limit },
     fallbackError: "读取最近工作失败",
   });
   return Array.isArray(data?.items) ? data.items : [];
@@ -51,7 +53,7 @@ export async function putAgentWorkDetail(
   options?: { baseUrl?: string | null; keepalive?: boolean },
 ): Promise<AgentWorkDetailView> {
   const { data } = await api.put<AgentWorkDetailResponse>(
-    `/v1/agent/works/${encodeURIComponent(detail.work_id)}`,
+    apiPaths.agentWork(detail.work_id),
     { detail },
     {
       baseUrl: options?.baseUrl,
