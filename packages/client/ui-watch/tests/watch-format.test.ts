@@ -13,11 +13,11 @@ import {
   formatInterval,
   formatPrice,
   formatRelativeTime,
-  monitorStateLabel,
+  watchStateLabel,
   soldStateView,
-} from "@v2/ui-monitor/monitor-format";
-import { normalizeItemId } from "@v2/ui-monitor/monitor-item-id";
-import { platformLabel } from "@v2/ui-monitor/monitor-platforms";
+} from "@v2/ui-watch/watch-format";
+import { normalizeItemId } from "@v2/ui-watch/watch-item-id";
+import { platformLabel } from "@v2/ui-watch/watch-platforms";
 
 describe("soldStateView", () => {
   it("已知售出态给中文文案", () => {
@@ -46,14 +46,14 @@ describe("changeKindView", () => {
   });
 });
 
-describe("monitorStateLabel", () => {
+describe("watchStateLabel", () => {
   it("已知状态给中文", () => {
-    expect(monitorStateLabel("active")).toBe("监控中");
-    expect(monitorStateLabel("paused")).toBe("已暂停");
+    expect(watchStateLabel("active")).toBe("监控中");
+    expect(watchStateLabel("paused")).toBe("已暂停");
   });
 
   it("未收录的状态原样回显", () => {
-    expect(monitorStateLabel("frozen")).toBe("frozen");
+    expect(watchStateLabel("frozen")).toBe("frozen");
   });
 });
 

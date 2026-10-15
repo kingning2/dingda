@@ -18,7 +18,7 @@ import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
 import { openProductPreview } from "@v2/ui-crawler/product-preview";
-import { addMonitorTargets } from "@v2/ui-monitor/monitor-api";
+import { addWatchTargets } from "@v2/ui-watch/watch-api";
 import { ComparisonResults } from "./comparison-results";
 
 /** 单行预估高度（含间距）。 */
@@ -57,7 +57,7 @@ function ProductRow({
     if (watching) return;
     setWatching(true);
     try {
-      const response = await addMonitorTargets({
+      const response = await addWatchTargets({
         items: [
           {
             platform: item.platform,

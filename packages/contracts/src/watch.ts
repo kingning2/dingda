@@ -10,15 +10,15 @@
  *     - 涨跌口径由后端算（`price_drop` = 首价 − 现价，正数表示已降价），前端不重算。
  *       两边各算一份的话，对不上时无从判断谁对。
  *     - 状态字段一律 `string`：后端 DTO 就是 `str`，值域由 Python 侧
- *       `contracts.watch.SoldState` / `WatchState` 保证。前端在 `monitor-format.ts`
+ *       `contracts.watch.SoldState` / `WatchState` 保证。前端在 `watch-format.ts`
  *       用映射函数容错 —— 联合类型收窄遇到脏数据时会给出虚假的类型安全感。
  */
 
 /** 监控开关状态：前端 PATCH 时构造，值域与 Python `WatchState` 一致。 */
-export type MonitorState = "active" | "paused" | "archived";
+export type WatchState = "active" | "paused" | "archived";
 
 /** 监控目标当前快照（列表与详情共用）。 */
-export interface MonitorTargetItem {
+export interface WatchTargetItem {
   target_id: string;
   platform: string;
   item_id: string;
@@ -52,7 +52,7 @@ export interface MonitorTargetItem {
 }
 
 /** 价格历史上的一个观测点（只增不改）。 */
-export interface MonitorPointItem {
+export interface WatchPointItem {
   observed_at: number;
   price: number | null;
   /** 原始价格文案，解析不出数字时仍有值。 */
@@ -64,7 +64,7 @@ export interface MonitorPointItem {
 }
 
 /** 由价格点序列推导出的一次变更。 */
-export interface MonitorChangeItem {
+export interface WatchChangeItem {
   /** price_drop / price_rise / sold / delisted / gone / relisted。 */
   kind: string;
   observed_at: number;
@@ -77,7 +77,7 @@ export interface MonitorChangeItem {
 }
 
 /** 加入监控的一条商品。标题/链接/封面可省，首次轮询后自动补齐。 */
-export interface MonitorAddItemInput {
+export interface WatchAddItemInput {
   platform: string;
   item_id: string;
   title?: string;
@@ -87,43 +87,43 @@ export interface MonitorAddItemInput {
 }
 
 /** 批量加入监控的请求体。 */
-export interface MonitorAddRequest {
-  items: MonitorAddItemInput[];
+export interface WatchAddRequest {
+  items: WatchAddItemInput[];
   /** 轮询间隔秒；不传用后端默认（6 小时），夹在 60 ~ 604800。 */
   poll_interval_seconds?: number;
 }
 
 /** 加入监控结果。 */
-export interface MonitorAddResponse {
+export interface WatchAddResponse {
   ok: boolean;
   /** 本次实际写入（含同 platform+item_id 已存在而复用）的条数。 */
   added: number;
-  targets: MonitorTargetItem[];
+  targets: WatchTargetItem[];
 }
 
 /** 监控列表。 */
-export interface MonitorListResponse {
+export interface WatchListResponse {
   ok: boolean;
   total: number;
-  targets: MonitorTargetItem[];
+  targets: WatchTargetItem[];
 }
 
 /** 单条监控详情。 */
-export interface MonitorDetailResponse {
+export interface WatchDetailResponse {
   ok: boolean;
-  target: MonitorTargetItem;
-  points: MonitorPointItem[];
-  changes: MonitorChangeItem[];
+  target: WatchTargetItem;
+  points: WatchPointItem[];
+  changes: WatchChangeItem[];
 }
 
 /** 调整监控状态或轮询间隔。 */
-export interface MonitorPatchRequest {
-  state?: MonitorState;
+export interface WatchPatchRequest {
+  state?: WatchState;
   poll_interval_seconds?: number;
 }
 
 /** 移除监控结果。 */
-export interface MonitorDeleteResponse {
+export interface WatchDeleteResponse {
   ok: boolean;
   removed: boolean;
 }

@@ -9,24 +9,24 @@
  *     这时候列表不能是空白条 —— 用户会以为没加上。
  */
 
-import type { MonitorTargetItem } from "@v2/contracts/monitor";
+import type { WatchTargetItem } from "@v2/contracts/watch";
 import { Badge } from "@v2/ui-primitives/badge";
 import { Card, CardContent } from "@v2/ui-primitives/card";
 import { cn } from "@v2/ui-primitives/utils";
 import { Loader2 } from "lucide-react";
 
-import { formatDrop, formatPrice, soldStateView } from "./monitor-format";
-import { platformLabel } from "./monitor-platforms";
+import { formatDrop, formatPrice, soldStateView } from "./watch-format";
+import { platformLabel } from "./watch-platforms";
 
-interface MonitorListProps {
-  targets: MonitorTargetItem[];
+interface WatchListProps {
+  targets: WatchTargetItem[];
   selectedId: string | null;
   loading: boolean;
   onSelect: (targetId: string) => void;
 }
 
 /** 监控目标列表。 */
-export function MonitorList({ targets, selectedId, loading, onSelect }: MonitorListProps) {
+export function WatchList({ targets, selectedId, loading, onSelect }: WatchListProps) {
   if (loading && targets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">

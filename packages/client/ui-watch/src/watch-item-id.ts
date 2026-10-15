@@ -5,7 +5,7 @@
  *     把「粘贴进来的东西」归一成纯商品 ID；纯函数，可单测。
  *
  * 设计说明：
- *     单独成文件而不是塞进 `monitor-add-form.tsx`：放进 `.tsx` 就得连同 React 与
+ *     单独成文件而不是塞进 `watch-add-form.tsx`：放进 `.tsx` 就得连同 React 与
  *     base-ui 一起 import，而测试跑在 node 环境（`vitest.config.ts` 的
  *     `environment: "node"`），加载组件依赖会失败 —— 纯逻辑分出来才测得了。
  *

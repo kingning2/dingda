@@ -11,7 +11,7 @@
  *     - 时间函数要求显式传 `now`：内部读 `Date.now()` 会让这些函数无法断言。
  */
 
-import type { MonitorTargetItem } from "@v2/contracts/monitor";
+import type { WatchTargetItem } from "@v2/contracts/watch";
 
 /** 徽标文案 + 配色，与 ui-primitives 的 Badge 配合使用。 */
 interface ViewStyle {
@@ -41,7 +41,7 @@ const MONITOR_STATE_LABELS: Record<string, string> = {
 };
 
 /** 监控开关状态 → 文案；未收录的值原样回显。 */
-export function monitorStateLabel(state: string): string {
+export function watchStateLabel(state: string): string {
   return MONITOR_STATE_LABELS[state] ?? state;
 }
 
@@ -72,7 +72,7 @@ export function formatPrice(value: number | null): string {
  * 两边各算一份，一旦对不上就无从判断谁对。
  */
 export function formatDrop(
-  target: Pick<MonitorTargetItem, "price_drop" | "price_drop_ratio">,
+  target: Pick<WatchTargetItem, "price_drop" | "price_drop_ratio">,
 ): string {
   const drop = target.price_drop;
   if (drop === null || !Number.isFinite(drop) || drop === 0) return "—";

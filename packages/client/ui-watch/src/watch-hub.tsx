@@ -6,7 +6,7 @@
  *
  * 设计说明：
  *     - 不引入全局 store：监控页的数据是单页的。跨页共享的只有「加入监控」这一个动作，
- *       它由 `monitor-api` 直接暴露给 Agent 选品结果调用，不需要状态中转。
+ *       它由 `watch-api` 直接暴露给 Agent 选品结果调用，不需要状态中转。
  *     - 页面**不做轮询**：后台调度器每 6 小时才写一次库，前端跟着轮询只是白打后端。
  *       数据只在挂载与操作后刷新。
  *     - 切换选中项时先清空 detail：留着上一条的数据会让右侧短暂显示「另一个商品的价格」，
@@ -14,36 +14,36 @@
  */
 
 import type {
-  MonitorDetailResponse,
-  MonitorPatchRequest,
-  MonitorTargetItem,
-} from "@v2/contracts/monitor";
+  WatchDetailResponse,
+  WatchPatchRequest,
+  WatchTargetItem,
+} from "@v2/contracts/watch";
 import { pushAppAlert } from "@v2/runtime/app-alert";
 import { useCallback, useEffect, useState } from "react";
 
-import { MonitorAddForm } from "./monitor-add-form";
+import { WatchAddForm } from "./watch-add-form";
 import {
-  getMonitorTarget,
-  listMonitorTargets,
-  patchMonitorTarget,
-  removeMonitorTarget,
-} from "./monitor-api";
-import { MonitorDetail } from "./monitor-detail";
-import { MonitorList } from "./monitor-list";
+  getWatchTarget,
+  listWatchTargets,
+  patchWatchTarget,
+  removeWatchTarget,
+} from "./watch-api";
+import { WatchDetail } from "./watch-detail";
+import { WatchList } from "./watch-list";
 
 /** 商品监控页。 */
-export function MonitorHub() {
-  const [targets, setTargets] = useState<MonitorTargetItem[]>([]);
+export function WatchHub() {
+  const [targets, setTargets] = useState<WatchTargetItem[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detail, setDetail] = useState<MonitorDetailResponse | null>(null);
+  const [detail, setDetail] = useState<WatchDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setListLoading(true);
     try {
-      const response = await listMonitorTargets();
+      const response = await listWatchTargets();
       setTargets(response.targets);
       setError(null);
       // 选中的目标可能已被移除：回落到第一条，避免右侧停在一条不存在的目标上。
@@ -72,7 +72,7 @@ export function MonitorHub() {
     setDetailLoading(true);
     void (async () => {
       try {
-        const response = await getMonitorTarget(selectedId, { signal: controller.signal });
+        const response = await getWatchTarget(selectedId, { signal: controller.signal });
         if (!controller.signal.aborted) setDetail(response);
       } catch (err) {
         if (!controller.signal.aborted) {
@@ -86,9 +86,9 @@ export function MonitorHub() {
   }, [selectedId]);
 
   const handlePatch = useCallback(
-    async (targetId: string, request: MonitorPatchRequest) => {
+    async (targetId: string, request: WatchPatchRequest) => {
       try {
-        const response = await patchMonitorTarget(targetId, request);
+        const response = await patchWatchTarget(targetId, request);
         setDetail(response);
         await refresh();
       } catch (err) {
@@ -105,7 +105,7 @@ export function MonitorHub() {
   const handleRemove = useCallback(
     async (targetId: string) => {
       try {
-        await removeMonitorTarget(targetId);
+        await removeWatchTarget(targetId);
         pushAppAlert({ title: "已移除监控", description: "该商品的价格历史一并清掉了。" });
         setSelectedId(null);
         setDetail(null);
@@ -132,19 +132,19 @@ export function MonitorHub() {
           监控哪些商品由你自己挑：从 Agent 选品结果一键加入，或在这里填平台与商品 ID。
           后台每 6 小时轮询一次，降价、售出、下架会记进变更记录。
         </p>
-        <MonitorAddForm onAdded={() => void refresh()} />
+        <WatchAddForm onAdded={() => void refresh()} />
       </header>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-        <MonitorList
+        <WatchList
           targets={targets}
           selectedId={selectedId}
           loading={listLoading}
           onSelect={setSelectedId}
         />
-        <MonitorDetail
+        <WatchDetail
           detail={detail}
           loading={detailLoading}
           now={now}

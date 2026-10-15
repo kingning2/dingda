@@ -13,7 +13,7 @@
  *       等点够密（比如一周后）再考虑加。
  */
 
-import type { MonitorDetailResponse, MonitorPatchRequest } from "@v2/contracts/monitor";
+import type { WatchDetailResponse, WatchPatchRequest } from "@v2/contracts/watch";
 import { Badge } from "@v2/ui-primitives/badge";
 import { Button } from "@v2/ui-primitives/button";
 import { Card, CardContent } from "@v2/ui-primitives/card";
@@ -26,22 +26,22 @@ import {
   formatInterval,
   formatPrice,
   formatRelativeTime,
-  monitorStateLabel,
+  watchStateLabel,
   soldStateView,
-} from "./monitor-format";
-import { platformLabel } from "./monitor-platforms";
+} from "./watch-format";
+import { platformLabel } from "./watch-platforms";
 
-interface MonitorDetailProps {
-  detail: MonitorDetailResponse | null;
+interface WatchDetailProps {
+  detail: WatchDetailResponse | null;
   loading: boolean;
   /** 渲染基准时间；由上层传入，保证同一屏内的相对时间一致。 */
   now: number;
-  onPatch: (targetId: string, request: MonitorPatchRequest) => void;
+  onPatch: (targetId: string, request: WatchPatchRequest) => void;
   onRemove: (targetId: string) => void;
 }
 
 /** 单条监控的详情面板。 */
-export function MonitorDetail({ detail, loading, now, onPatch, onRemove }: MonitorDetailProps) {
+export function WatchDetail({ detail, loading, now, onPatch, onRemove }: WatchDetailProps) {
   if (!detail && loading) {
     return (
       <Card className="ring-border/70">
@@ -77,7 +77,7 @@ export function MonitorDetail({ detail, loading, now, onPatch, onRemove }: Monit
               {target.title || target.item_id}
             </h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {platformLabel(target.platform)} · {monitorStateLabel(target.state)} · 每{" "}
+              {platformLabel(target.platform)} · {watchStateLabel(target.state)} · 每{" "}
               {formatInterval(target.poll_interval_seconds)} 轮询 · 上次 {lastPoll}
             </p>
           </div>

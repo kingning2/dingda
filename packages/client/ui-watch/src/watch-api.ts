@@ -13,21 +13,21 @@
  */
 
 import type {
-  MonitorAddRequest,
-  MonitorAddResponse,
-  MonitorDeleteResponse,
-  MonitorDetailResponse,
-  MonitorListResponse,
-  MonitorPatchRequest,
-} from "@v2/contracts/monitor";
+  WatchAddRequest,
+  WatchAddResponse,
+  WatchDeleteResponse,
+  WatchDetailResponse,
+  WatchListResponse,
+  WatchPatchRequest,
+} from "@v2/contracts/watch";
 import { api } from "@v2/runtime/http-client";
 
 /** 列出监控目标。`state` 不传则返回全部。 */
-export async function listMonitorTargets(options?: {
+export async function listWatchTargets(options?: {
   state?: string;
   signal?: AbortSignal;
-}): Promise<MonitorListResponse> {
-  const { data } = await api.get<MonitorListResponse>("/v1/watch/targets", {
+}): Promise<WatchListResponse> {
+  const { data } = await api.get<WatchListResponse>("/v1/watch/targets", {
     query: { state: options?.state },
     signal: options?.signal,
     fallbackError: "读取监控列表失败",
@@ -37,11 +37,11 @@ export async function listMonitorTargets(options?: {
 }
 
 /** 加入监控；同 (platform, item_id) 已存在则复用原行，不重置已有价格历史。 */
-export async function addMonitorTargets(
-  request: MonitorAddRequest,
+export async function addWatchTargets(
+  request: WatchAddRequest,
   options?: { signal?: AbortSignal },
-): Promise<MonitorAddResponse> {
-  const { data } = await api.post<MonitorAddResponse>("/v1/watch/targets", request, {
+): Promise<WatchAddResponse> {
+  const { data } = await api.post<WatchAddResponse>("/v1/watch/targets", request, {
     signal: options?.signal,
     timeoutMs: 30_000,
     fallbackError: "加入监控失败",
@@ -51,11 +51,11 @@ export async function addMonitorTargets(
 }
 
 /** 单条监控详情：当前快照 + 价格历史点 + 变更事件。 */
-export async function getMonitorTarget(
+export async function getWatchTarget(
   targetId: string,
   options?: { signal?: AbortSignal },
-): Promise<MonitorDetailResponse> {
-  const { data } = await api.get<MonitorDetailResponse>(
+): Promise<WatchDetailResponse> {
+  const { data } = await api.get<WatchDetailResponse>(
     `/v1/watch/targets/${encodeURIComponent(targetId)}`,
     {
       signal: options?.signal,
@@ -67,12 +67,12 @@ export async function getMonitorTarget(
 }
 
 /** 调整监控状态（暂停/恢复/归档）或轮询间隔。 */
-export async function patchMonitorTarget(
+export async function patchWatchTarget(
   targetId: string,
-  request: MonitorPatchRequest,
+  request: WatchPatchRequest,
   options?: { signal?: AbortSignal },
-): Promise<MonitorDetailResponse> {
-  const { data } = await api.patch<MonitorDetailResponse>(
+): Promise<WatchDetailResponse> {
+  const { data } = await api.patch<WatchDetailResponse>(
     `/v1/watch/targets/${encodeURIComponent(targetId)}`,
     request,
     {
@@ -85,11 +85,11 @@ export async function patchMonitorTarget(
 }
 
 /** 彻底移除监控（连带清掉价格历史）。想保留历史请改用 PATCH 归档。 */
-export async function removeMonitorTarget(
+export async function removeWatchTarget(
   targetId: string,
   options?: { signal?: AbortSignal },
-): Promise<MonitorDeleteResponse> {
-  const { data } = await api.delete<MonitorDeleteResponse>(
+): Promise<WatchDeleteResponse> {
+  const { data } = await api.delete<WatchDeleteResponse>(
     `/v1/watch/targets/${encodeURIComponent(targetId)}`,
     {
       signal: options?.signal,

@@ -12,7 +12,7 @@
  *     - 提示用 `pushAppAlert` 而不是行内文案：弹窗关闭后行内提示就看不见了。
  */
 
-import type { MonitorAddResponse } from "@v2/contracts/monitor";
+import type { WatchAddResponse } from "@v2/contracts/watch";
 import { pushAppAlert } from "@v2/runtime/app-alert";
 import { Button } from "@v2/ui-primitives/button";
 import {
@@ -34,17 +34,17 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 
-import { addMonitorTargets } from "./monitor-api";
-import { normalizeItemId } from "./monitor-item-id";
-import { MONITOR_PLATFORMS } from "./monitor-platforms";
+import { addWatchTargets } from "./watch-api";
+import { normalizeItemId } from "./watch-item-id";
+import { MONITOR_PLATFORMS } from "./watch-platforms";
 
-interface MonitorAddFormProps {
+interface WatchAddFormProps {
   /** 加入成功后回调，由上层刷新列表。 */
   onAdded: () => void;
 }
 
 /** 「加入监控」按钮 + 弹窗表单。 */
-export function MonitorAddForm({ onAdded }: MonitorAddFormProps) {
+export function WatchAddForm({ onAdded }: WatchAddFormProps) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<string>(MONITOR_PLATFORMS[0].id);
   const [rawItemId, setRawItemId] = useState("");
@@ -56,7 +56,7 @@ export function MonitorAddForm({ onAdded }: MonitorAddFormProps) {
     if (!itemId || submitting) return;
     setSubmitting(true);
     try {
-      const response = await addMonitorTargets({ items: [{ platform, item_id: itemId }] });
+      const response = await addWatchTargets({ items: [{ platform, item_id: itemId }] });
       pushAppAlert({
         title: "已加入监控",
         description: describeAdded(response),
@@ -140,7 +140,7 @@ export function MonitorAddForm({ onAdded }: MonitorAddFormProps) {
 }
 
 /** 加入结果 → 一句人话。复用已存在的目标时「added」仍是 1，要说清是复用。 */
-function describeAdded(response: MonitorAddResponse): string {
+function describeAdded(response: WatchAddResponse): string {
   if (response.added === 0) return "没有新增（该商品可能已在监控中）。";
   return `已在监控列表里，共 ${response.added} 条。首次轮询完成后会显示价格。`;
 }

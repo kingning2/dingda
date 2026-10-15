@@ -102,11 +102,11 @@
       "@v2/ui-home/*": [
         "./packages/client/ui-home/src/*"
       ],
-      "@v2/ui-monitor": [
-        "./packages/client/ui-monitor/src/index.ts"
+      "@v2/ui-watch": [
+        "./packages/client/ui-watch/src/index.ts"
       ],
-      "@v2/ui-monitor/*": [
-        "./packages/client/ui-monitor/src/*"
+      "@v2/ui-watch/*": [
+        "./packages/client/ui-watch/src/*"
       ],
       "@v2/ui-workflow": [
         "./packages/client/ui-workflow/src/index.ts"

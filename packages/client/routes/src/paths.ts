@@ -3,14 +3,14 @@ export type EntryView =
   | "projects"
   | "plugins"
   | "accounts"
-  | "monitor";
+  | "watch";
 
 const ENTRY_PATHS: Record<EntryView, string> = {
   home: "/",
   projects: "/projects",
   plugins: "/plugins",
   accounts: "/accounts",
-  monitor: "/monitor",
+  watch: "/watch",
 };
 
 const PATH_TO_ENTRY = new Map<string, EntryView>(
@@ -24,7 +24,7 @@ export const paths = {
   accounts: "/accounts",
   /** @deprecated 旧「资产」入口，现已归入 /accounts */
   assets: "/assets",
-  monitor: "/monitor",
+  watch: "/watch",
   work: (workId: string) => `/work/${encodeURIComponent(workId)}`,
   errorTest: "/error-test",
   notImplemented: "/501",
