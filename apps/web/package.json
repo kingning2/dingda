@@ -13,10 +13,10 @@
     "./*": "./src/*"
   },
   "dependencies": {
-    "lucide-react": "^1.38.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.18.3",
+    "lucide-react": "^1.67.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router-dom": "^7.18.5",
     "@v2/app-state": "workspace:*",
     "@v2/contracts": "workspace:*",
     "@v2/routes": "workspace:*",
@@ -32,7 +32,7 @@
     "@v2/ui-theme": "workspace:*"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.4",
     "@vitejs/plugin-react": "^4.6.0",
     "vite": "^7.0.4"
   },
