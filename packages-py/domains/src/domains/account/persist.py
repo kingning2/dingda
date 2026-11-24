@@ -6,6 +6,7 @@ import logging
 
 from channels.cookie_header import parse_cookie_header
 from infrastructure.db import accounts as account_repo
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.account.persist")
 
@@ -67,7 +68,7 @@ def _is_xhs_session_fallback_id(account_id: str) -> bool:
 def _cleanup_xhs_session_orphans(keep_id: str, cookie: str) -> None:
     """同一 a1 下清理历史「web_session 假 id」卡片，避免重复扫码堆卡片。"""
     parsed = parse_cookie_header(cookie)
-    a1 = (parsed.get("a1") or "").strip()
+    a1 = clean_text(parsed.get("a1"))
     if not a1:
         return
     for row in account_repo.list_accounts(platform="xiaohongshu"):

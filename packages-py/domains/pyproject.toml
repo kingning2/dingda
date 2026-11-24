@@ -8,7 +8,10 @@ dependencies = [
   "channels",
   "contracts",
   "core",
+  "httpx>=0.28",
   "infrastructure",
+  "openai>=1.100",
+  "tools",
 ]
 
 [tool.uv.sources]
@@ -16,6 +19,7 @@ channels = { workspace = true }
 contracts = { workspace = true }
 core = { workspace = true }
 infrastructure = { workspace = true }
+tools = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=61"]

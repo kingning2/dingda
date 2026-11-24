@@ -128,8 +128,8 @@ class AgentService:
                 logger.info("agent llm round=%s messages=%s", round_i + 1, len(to_send))
                 response = await client.chat.completions.create(
                     model=model,
-                    messages=to_send,  # type: ignore[arg-type]
-                    tools=tools,  # type: ignore[arg-type]
+                    messages=to_send,
+                    tools=tools,
                 )
                 choice = response.choices[0].message
                 tool_calls = list(choice.tool_calls or [])

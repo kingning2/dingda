@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from agent.core.agent import AgentService
+from domains.agent.service import AgentService
 from api.routes.agent._dto import AgentWorkRunRequest
 from api.routes.sse import sse_frame
 from core.errors import AppError

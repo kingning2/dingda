@@ -21,8 +21,8 @@ from unittest.mock import AsyncMock
 import pytest
 from pydantic import BaseModel
 
-import agent.core.agent as agent_mod
-from agent.core.agent import AgentService
+import domains.agent.service as agent_mod
+from domains.agent.service import AgentService
 from core.errors import AppError
 
 

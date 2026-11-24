@@ -10,7 +10,6 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "agent",
     "browser",
     "channels",
     "contracts",
@@ -20,28 +19,6 @@ members = [
     "domains",
     "infrastructure",
     "tools",
-]
-
-[[package]]
-name = "agent"
-version = "0.1.0"
-source = { editable = "packages-py/agent" }
-dependencies = [
-    { name = "contracts" },
-    { name = "core" },
-    { name = "httpx" },
-    { name = "openai", version = "2.54.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
-    { name = "openai", version = "3.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
-    { name = "tools" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "contracts", editable = "packages-py/contracts" },
-    { name = "core", editable = "packages-py/core" },
-    { name = "httpx", specifier = ">=0.28" },
-    { name = "openai", specifier = ">=2.54.0" },
-    { name = "tools", editable = "packages-py/tools" },
 ]
 
 [[package]]
@@ -562,7 +539,6 @@ name = "dingda-v2"
 version = "0.1.0"
 source = { editable = "packages-py/api" }
 dependencies = [
-    { name = "agent" },
     { name = "browser" },
     { name = "channels" },
     { name = "contracts" },
@@ -584,7 +560,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent", editable = "packages-py/agent" },
     { name = "browser", editable = "packages-py/browser" },
     { name = "channels", editable = "packages-py/channels" },
     { name = "contracts", editable = "packages-py/contracts" },
@@ -621,7 +596,11 @@ dependencies = [
     { name = "channels" },
     { name = "contracts" },
     { name = "core" },
+    { name = "httpx" },
     { name = "infrastructure" },
+    { name = "openai", version = "2.54.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
+    { name = "openai", version = "3.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
+    { name = "tools" },
 ]
 
 [package.metadata]
@@ -629,7 +608,10 @@ requires-dist = [
     { name = "channels", editable = "packages-py/channels" },
     { name = "contracts", editable = "packages-py/contracts" },
     { name = "core", editable = "packages-py/core" },
+    { name = "httpx", specifier = ">=0.28" },
     { name = "infrastructure", editable = "packages-py/infrastructure" },
+    { name = "openai", specifier = ">=1.100" },
+    { name = "tools", editable = "packages-py/tools" },
 ]
 
 [[package]]
