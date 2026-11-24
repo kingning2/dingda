@@ -1,8 +1,8 @@
 # pi 扩展（移植自 addyosmani/agent-skills hooks，MIT）
 
 上游的 Claude Code shell hooks 已移植为 pi 原生 TypeScript 扩展。放在 `.pi/extensions/`
-即被 pi 自动发现加载（项目受信任后生效），`/reload` 可热载。上游 LICENSE 见
-[`.agents/references/LICENSE-agent-skills`](../.agents/references/LICENSE-agent-skills)。
+即被 pi 自动发现加载（项目受信任后生效），`/reload` 可热载。上游为
+addyosmani/agent-skills（MIT）。
 
 | 上游 hook（Claude Code） | pi 扩展 | 事件映射 |
 |---|---|---|

@@ -54,7 +54,7 @@ CI（`.github/workflows/ci.yml`）在 Linux 上跑同一组命令；`-m integrat
 
 - [`AGENTS.md`](AGENTS.md) —— 编号式开发规范（目录边界、分层规则）
 - [`packages/README.md`](packages/README.md) / [`packages-rs/README.md`](packages-rs/README.md) —— 包边界与依赖方向
-- Python / Rust 落笔形状见 `.agents/skills/python-coding` 与 `.agents/skills/rust-coding`（示例驱动）
+- Python / Rust 落笔形状见 `.pi/skills/py-dev` 与 `.pi/skills/rs-dev`（示例驱动）
 
 核心红线：
 

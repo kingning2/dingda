@@ -24,5 +24,5 @@ AI 消息渲染：消息块、Markdown、思考过程。
 
 ## 边界
 
-改本包前先看仓库根的 [AGENTS.md](../../../AGENTS.md) 与 [.agents/skills/layers.md](../../../.agents/skills/layers.md)。
+改本包前先看仓库根的 [AGENTS.md](../../../AGENTS.md)（第 2 节分层规则）。
 上层 README 只链接下层；本包不反向依赖上层。

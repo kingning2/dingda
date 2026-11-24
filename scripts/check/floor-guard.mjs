@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 // floor-guard.mjs —— CONSTRAINTS.md 地板规则的 diff 域守卫。
-// 改自 .agents/skills/constraint-driven-development/references/floor-guard.md
-// （MIT，授权见 .agents/references/LICENSE-agent-skills）；契约不变：退出码
+// 改自 addyosmani/agent-skills（MIT）的 floor-guard 参考实现；契约不变：退出码
 // 0=干净、1=地板违规（阻断）、2=守卫跑不了（不算干净）。用法：
 //   node scripts/check/floor-guard.mjs [--base origin/main]
 import { execFileSync } from 'node:child_process';
@@ -70,7 +69,9 @@ const isTest = (f) => /\.(test|spec)\.|_test\.|test_/.test(f);
 const isConstraints = (f) => /CONSTRAINTS\.md$/.test(f);
 // 这些文件"定义"模式（写 suppressed 关键字是为了检查它），内容正则跳过它们，
 // 否则守卫首跑会自举报；规则/阈值变化检查不受影响（仍对 CONSTRAINTS.md 生效）。
-const isPatternDoc = (f) => isConstraints(f) || /^scripts\/check\//.test(f);
+// AGENTS.md 属同类：行为铁律 §3.3 引用静音关键词本身。
+const isPatternDoc = (f) =>
+  isConstraints(f) || /^AGENTS\.md$/.test(f) || /^scripts\/check\//.test(f);
 // .constraintsignore：每行一个前缀，命中的文件不再做内容检查（例外请走 CONSTRAINTS.md 例外表）
 const ignores = (() => {
   try { return readFileSync('.constraintsignore', 'utf8').split('\n').map((s) => s.trim()).filter(Boolean); }

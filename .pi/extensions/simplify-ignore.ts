@@ -2,7 +2,7 @@
 // 职责：标注 /* simplify-ignore-start[: reason] */ ... /* simplify-ignore-end */ 的代码块
 // 在 read 前替换成 BLOCK_<hash> 占位符（模型看不到保护块），edit/write 后展开占位符保留
 // 模型改动并重新过滤，回合结束/会话退出时兜底展开残留。任何注释风格（// /* # <!--）都支持。
-// 移植自 addyosmani/agent-skills hooks/simplify-ignore.sh（MIT，见 .agents/references/LICENSE-agent-skills）。
+// 移植自 addyosmani/agent-skills hooks/simplify-ignore.sh（MIT）。
 // 备份目录：.pi/.simplify-ignore-cache/（见 .gitignore）。崩溃后可手动 /simplify-restore 恢复。
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { createHash } from "node:crypto";

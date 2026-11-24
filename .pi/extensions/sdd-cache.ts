@@ -1,7 +1,7 @@
 // sdd-cache —— source-driven-development 技能的跨会话文档缓存。
 // 职责：带 url 的工具调用前，用 HTTP 304 语义（ETag / If-Modified-Since）复验本地缓存，
 // 命中则拦截调用并返回缓存正文；工具返回后抓取校验头落盘。无校验头的站点永不缓存。
-// 移植自 addyosmani/agent-skills hooks/sdd-cache-{pre,post}.sh（MIT，见 .agents/references/LICENSE-agent-skills）。
+// 移植自 addyosmani/agent-skills hooks/sdd-cache-{pre,post}.sh（MIT）。
 // 缓存目录：.pi/sdd-cache/（见 .gitignore）。
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { createHash } from "node:crypto";

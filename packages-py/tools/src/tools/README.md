@@ -45,4 +45,4 @@ uv run python -m tools.scaffold <name>   # 生成 tools/<name>/__init__.py 骨�
 ```
 
 把骨架里的 `run_<name>` 换成真实逻辑即可；registry 下次导入自动发现，`tools.cli`
-子命令也随之出现。详见 [tool-architecture SKILL](../../../.agents/skills/tool-architecture/SKILL.md)。
+子命令也随之出现。详见 [.pi/skills/py-dev 第 4 节 tools/](../../../../.pi/skills/py-dev/SKILL.md)。
