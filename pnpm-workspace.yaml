@@ -13,3 +13,12 @@ packages:
   # 桌面端 E2E（WebdriverIO + 应用内嵌 WebDriver，不经 tauri-driver）；
   # 不参与 scripts/check-workspace-deps.mjs 的依赖检查——那个脚本只扫 packages/ 与 apps/
   - "e2e"
+allowBuilds:
+  # vite/tailwind 构建链依赖 esbuild，需要 postinstall 装平台二进制
+  esbuild: true
+  # e2e（WebdriverIO）的传递依赖，postinstall 下载 WebDriver 驱动二进制
+  edgedriver: true
+  geckodriver: true
+# 从根 package.json 的 pnpm.overrides 迁入：pnpm 12 不再读 package.json 的 pnpm 字段
+overrides:
+  "source-map-js@<1.2.2": ">=1.2.2"

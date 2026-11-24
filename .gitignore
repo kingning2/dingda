@@ -59,6 +59,9 @@ _tmp_*
 .workbuddy-ai/*
 .codegraph/*
 
+# Serena 本地工具状态（project.yml / memories 为工具自生成，见 .serena/.gitignore）
+.serena/
+
 # 本地环境变量（可能含 LLM / 服务端密钥）；需要模板时用 .env.example
 .env
 .env.*
@@ -67,3 +70,6 @@ _tmp_*
 # 覆盖率产物（CONSTRAINTS.md 棘轮基线的测量中间物）
 .coverage
 coverage/
+
+# OpenIdea IDE 本地状态（changelists 为工具自生成）
+.openidea/
