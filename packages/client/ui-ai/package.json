@@ -9,7 +9,7 @@
     "./*": "./src/*.js"
   },
   "dependencies": {
-    "@tanstack/react-virtual": "^3.14.11",
+    "@tanstack/react-virtual": "^3.14.26",
     "@v2/app-state": "workspace:*",
     "@v2/contracts": "workspace:*",
     "@v2/runtime": "workspace:*",
@@ -18,8 +18,8 @@
     "@v2/ui-crawler": "workspace:*",
     "@v2/ui-primitives": "workspace:*",
     "@v2/ui-watch": "workspace:*",
-    "ahooks": "^3.10.0",
-    "lucide-react": "^1.38.0",
+    "ahooks": "^3.11.0",
+    "lucide-react": "^1.77.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
   },

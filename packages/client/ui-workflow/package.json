@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@xyflow/react": "^12.8.0",
-    "lucide-react": "^1.38.0",
+    "lucide-react": "^1.77.0",
     "@v2/ui-primitives": "workspace:*"
   },
   "peerDependencies": {
