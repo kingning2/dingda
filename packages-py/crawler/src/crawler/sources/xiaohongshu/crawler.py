@@ -28,6 +28,7 @@ from crawler.core.recovery_hooks import run_step
 from crawler.core.types import CrawlContext, CrawlResult
 from crawler.extraction.repair import repair_detail_dom, raise_repair_error
 from crawler.sources.xiaohongshu.repair_adapter import XiaohongshuDetailRepairAdapter
+from core.values import as_dict, clean_text, optional_text
 from crawler.sources.xiaohongshu.extractor import (
     DETAIL_HINT_JS,
     DETAIL_JS,
@@ -99,12 +100,12 @@ def _is_risk(exc: BaseException) -> bool:
 
 def _needs_repair(item: Any) -> bool:
     """标题或作者缺失都算解析无果——作者空过会静默出坏数据。"""
-    if item is None or not str(getattr(item, "title", "") or "").strip():
+    if item is None or not clean_text(getattr(item, "title", "")):
         return True
-    raw = getattr(item, "raw", None)
-    if not isinstance(raw, dict):
+    raw = as_dict(getattr(item, "raw", None))
+    if not raw:
         return False
-    return not str(raw.get("seller_nick") or "").strip()
+    return not clean_text(raw.get("seller_nick"))
 
 
 class XiaohongshuCrawler(BrowserCrawler):
@@ -260,9 +261,9 @@ class XiaohongshuCrawler(BrowserCrawler):
                     seen_apis[:12],
                     len(captured),
                 )
-                if isinstance(hint, dict) and hint.get("login"):
+                if as_dict(hint).get("login"):
                     raise session_expired_error("xiaohongshu")
-                if not captured and not (isinstance(hint, dict) and hint.get("hasInitial")):
+                if not captured and not as_dict(hint).get("hasInitial"):
                     # 不再空等 INITIAL_STATE，避免误导性的 page data not ready
                     raise AppError(
                         "crawler.extract_failed",
@@ -308,7 +309,7 @@ class XiaohongshuCrawler(BrowserCrawler):
         from crawler.core.live import emit_live_frame, live_frame_pump
 
         note_id = str(item_id).strip()
-        token = str(ctx.meta.get("xsec_token") or "").strip()
+        token = clean_text(ctx.meta.get("xsec_token"))
         logger.info(
             "detail start item_id=%s task=%s has_token=%s",
             note_id,
@@ -394,7 +395,7 @@ class XiaohongshuCrawler(BrowserCrawler):
                     ready = await raw_page.evaluate(DETAIL_READY_JS)
                     if ready:
                         payload = await raw_page.evaluate(DETAIL_JS, note_id)
-                        if isinstance(payload, dict) and payload.get("note"):
+                        if as_dict(payload).get("note"):
                             found = item_from_detail(payload, note_id)
                             if found.title:
                                 how = "state"
@@ -452,7 +453,7 @@ class XiaohongshuCrawler(BrowserCrawler):
                 # 标题拿不到才算硬失败；修好了就继续往下走
                 if not item or not item.title:
                     raise_repair_error(result)
-                if not str((item.raw or {}).get("seller_nick") or "").strip():
+                if not clean_text(as_dict(item.raw).get("seller_nick")):
                     logger.warning(
                         "detail 作者字段仍为空 item_id=%s（选择器可能已失效）", note_id
                     )
@@ -480,7 +481,7 @@ class XiaohongshuCrawler(BrowserCrawler):
                 comment_bodies=comment_bodies,
             )
             item = _enrich_with_ocr(item)
-            if not str((item.raw or {}).get("ocr_text") or "").strip():
+            if not clean_text(as_dict(item.raw).get("ocr_text")):
                 item = await _enrich_with_page_ocr(item, page)
             await emit_live_frame(ctx, page, title=title, hint=f"完成 · {item.title[:20]}")
             from crawler.core.live import DETAIL_DWELL_S, dwell_for_viewer
@@ -530,7 +531,7 @@ def _enrich_with_ocr(item: Any) -> Any:
     raw = dict(item.raw or {})
     urls = raw.get("image_urls")
     if not isinstance(urls, list) or not urls:
-        cover = str(raw.get("image_url") or "").strip()
+        cover = clean_text(raw.get("image_url"))
         urls = [cover] if cover else []
     str_urls = [str(u).strip() for u in urls if str(u).strip().startswith("http")]
     if not str_urls:
@@ -568,7 +569,7 @@ def _merge_ocr_raw(raw: dict[str, Any], ocr_text: str) -> dict[str, Any]:
     """把 OCR 文本写入 raw（ocr_text / content_text）。"""
     out = dict(raw)
     out["ocr_text"] = ocr_text
-    desc = str(out.get("desc") or "").strip()
+    desc = clean_text(out.get("desc"))
     if desc and ocr_text:
         out["content_text"] = f"{desc}\n\n【图片文字】\n{ocr_text}"
     elif ocr_text:
@@ -737,12 +738,12 @@ async def _with_comments(
                 for row in dom_rows:
                     if not isinstance(row, dict):
                         continue
-                    content = str(row.get("content") or "").strip()
+                    content = clean_text(row.get("content"))
                     if not content:
                         continue
                     comments.append(
                         {
-                            "author": str(row.get("author") or "").strip() or _ANON,
+                            "author": clean_text(row.get("author")) or _ANON,
                             "content": content,
                             "time": None,
                             "reply": None,
@@ -856,10 +857,10 @@ def _detail_params(ctx: CrawlContext) -> dict[str, str] | None:
     cfg = section(EXTRACT, "detail_params")
     meta_token = str(cfg.get("meta_token_key") or "")
     meta_source = str(cfg.get("meta_source_key") or "")
-    token = str(ctx.meta.get(meta_token) or "").strip()
+    token = clean_text(ctx.meta.get(meta_token))
     if not token:
         return None
-    source = str(ctx.meta.get(meta_source) or "").strip() or None
+    source = optional_text(ctx.meta.get(meta_source))
     return detail_goto_params(token=token, source=source)
 
 

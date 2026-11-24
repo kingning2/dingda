@@ -28,6 +28,7 @@ from crawler.sources.ali1688.extractor import items_from_api
 from crawler.sources.ali1688.image import preprocess_image
 from crawler.sources.ali1688.link import resolve_image_from_link
 from core.errors import AppError
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.ali1688")
 
@@ -71,7 +72,7 @@ class Ali1688Crawler(ApiCrawler):
         meta: dict[str, Any],
     ) -> dict[str, Any]:
         """文本搜请求体。"""
-        q = (query or "").strip()
+        q = clean_text(query)
         if not q:
             raise AppError("crawler.ali1688_query", "文本搜索需要 query", status_code=400)
         body = _base_request(limit, meta)
@@ -86,7 +87,7 @@ class Ali1688Crawler(ApiCrawler):
         extra_query: str | None = None,
     ) -> dict[str, Any]:
         """以图搜请求体。"""
-        image = str(ctx.meta.get("image") or "").strip()
+        image = clean_text(ctx.meta.get("image"))
         if not image:
             raise AppError("crawler.ali1688_image", "图片搜索需要 image", status_code=400)
 
@@ -120,7 +121,7 @@ class Ali1688Crawler(ApiCrawler):
 
     def _body_from_link(self, ctx: CrawlContext, limit: int) -> dict[str, Any]:
         """链接找同款：抽主图后以图搜。"""
-        url = str(ctx.meta.get("url") or "").strip()
+        url = clean_text(ctx.meta.get("url"))
         if not url:
             raise AppError("crawler.ali1688_link", "链接搜索需要 url", status_code=400)
         image_url, _canonical = resolve_image_from_link(url)

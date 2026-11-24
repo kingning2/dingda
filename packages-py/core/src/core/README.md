@@ -20,6 +20,11 @@
 
 Headroom 上下文压缩的统一入口：`compress_messages` / `compress_text` / `compress_tool_payload`。惰性导入 `headroom`，是否启用由 `DINGDA_HEADROOM` 决定（默认开）；不可用时透传原文。
 
+### `values.py`
+
+`clean_text` / `optional_text` / `as_dict`：不可信外部输入（DOM、平台 API、OCR）的
+空值归一帮手，收敛各处 ``(x or "").strip()`` 重复。pydantic 校验过的输入不用再设防。
+
 ### `__init__.py`
 
 包标记。

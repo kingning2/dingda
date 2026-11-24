@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 from typing import Any
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.ocr")
 
@@ -65,7 +66,7 @@ def ocr_image_bytes(data: bytes) -> str:
     for row in result:
         if not row or len(row) < 2:
             continue
-        text = str(row[1] or "").strip()
+        text = clean_text(row[1])
         if text:
             lines.append(text)
     joined = "\n".join(lines).strip()
@@ -76,7 +77,7 @@ def ocr_image_bytes(data: bytes) -> str:
 
 def ocr_image_url(url: str, *, referer: str | None = None) -> str:
     """下载图片再 OCR；失败返回空串。"""
-    text_url = (url or "").strip()
+    text_url = clean_text(url)
     if not text_url.startswith("http"):
         return ""
     try:

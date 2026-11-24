@@ -22,6 +22,7 @@ from typing import Any
 from browser.manager import BrowserManager
 from contracts.browser_port import Cookie, LaunchOptions, Page
 from core.errors import AppError, risk_control_error
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.channel.xiaohongshu.risk_recovery")
 
@@ -50,7 +51,7 @@ class XiaohongshuRiskRecovery:
         url: str | None = None,
     ) -> None:
         """有头窗口等人过验证，并把新 Cookie 写回原 page。"""
-        target = (url or getattr(page, "url", "") or "").strip() or "https://www.xiaohongshu.com/"
+        target = clean_text(url or getattr(page, "url", "")) or "https://www.xiaohongshu.com/"
         cookies = await _cookies_from_page(page)
         fresh = await _wait_manual_headed(
             target,

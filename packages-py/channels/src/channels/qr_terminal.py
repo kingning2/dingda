@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import base64
 import sys
+from core.values import clean_text
 
 
 def show_qr_in_terminal(qr_base64: str, *, qr_url: str | None = None) -> bool:
     """将二维码渲染到终端。优先用 URL 文本生成矩阵（与 xhs-cli 相同），否则从 PNG 解码。"""
     _ensure_utf8_console()
 
-    text = (qr_url or "").strip()
+    text = clean_text(qr_url)
     if not text and qr_base64:
-        text = (_decode_qr_text_from_png_base64(qr_base64) or "").strip()
+        text = clean_text(_decode_qr_text_from_png_base64(qr_base64))
 
     if text and _display_qr_text_in_terminal(text):
         return True

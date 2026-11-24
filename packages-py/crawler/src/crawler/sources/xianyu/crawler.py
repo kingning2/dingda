@@ -57,6 +57,7 @@ from crawler.sources.xianyu.extractor import (
     view_arg,
 )
 from core.errors import AppError, risk_control_error, session_expired_error
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.xianyu")
 
@@ -153,7 +154,7 @@ class XianyuCrawler(BrowserCrawler):
         from crawler.core.live import LIST_DWELL_S, dwell_for_viewer, emit_live_frame, live_frame_pump
 
         limit = _normalize_limit(ctx.meta.get("limit", _DEFAULT_LIMIT))
-        cookie = str(ctx.meta.get("cookie") or "").strip()
+        cookie = clean_text(ctx.meta.get("cookie"))
         has_cookie = bool(cookie) or bool(self._options.cookies)
         logger.info(
             "search start query=%s limit=%s task=%s has_cookie=%s",
@@ -264,7 +265,7 @@ class XianyuCrawler(BrowserCrawler):
 
     async def detail(self, ctx: CrawlContext, item_id: str) -> CrawlResult:
         """优先 mtop HTTP；失败再走商品页内 lib.mtop。"""
-        cookie = str(ctx.meta.get("cookie") or "").strip()
+        cookie = clean_text(ctx.meta.get("cookie"))
         if not cookie:
             raise AppError("account.cookie_required", "商品详情需要账号 cookie", status_code=401)
         logger.info("detail start item_id=%s task=%s", item_id, ctx.task_id)
@@ -366,7 +367,7 @@ class XianyuCrawler(BrowserCrawler):
                 raise session_expired_error("xianyu")
 
             # mtop 未就绪 / 请求失败 → DOM 兜底（选择器见 extract.json detail_dom）
-            if err or not str(payload.get("title") or "").strip():
+            if err or not clean_text(payload.get("title")):
                 await emit_live_frame(ctx, page, title=title, hint="页内 mtop 失败，改 DOM 抽取…")
                 logger.info(
                     "detail fallback dom item_id=%s view_error=%s",
@@ -406,7 +407,7 @@ class XianyuCrawler(BrowserCrawler):
             item = item_from_view(payload, item_id)
             if not item.title:
                 raise AppError("crawler.not_found", f"未拿到商品 {item_id} 的标题", status_code=404)
-            cookie = str(ctx.meta.get("cookie") or "").strip()
+            cookie = clean_text(ctx.meta.get("cookie"))
             if cookie:
                 try:
                     item = _with_comments(item, Session.from_cookie_header(cookie))

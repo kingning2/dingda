@@ -25,6 +25,7 @@ from crawler.extraction.config import (
     path_list,
     section,
 )
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.xiaohongshu.extractor")
 
@@ -577,10 +578,10 @@ def is_video_note(raw: Mapping[str, Any] | None) -> bool:
     list_api = _sec("list_api")
     video_vals = _note_type_values("video")
     out_video = str(list_api.get("normalized_video") or "video")
-    note_type = str(raw.get("note_type") or "").strip().lower()
+    note_type = clean_text(raw.get("note_type")).lower()
     if note_type in video_vals:
         return True
-    if str(raw.get("skipped_reason") or "").strip().lower() in video_vals:
+    if clean_text(raw.get("skipped_reason")).lower() in video_vals:
         return True
     feed = raw.get("feed")
     if isinstance(feed, dict) and _note_type(feed, list_api) == out_video:
@@ -600,7 +601,7 @@ def _note_image_urls(note: dict[str, Any]) -> list[str]:
     seen: set[str] = set()
 
     def _add(url: Any) -> None:
-        text = str(url or "").strip()
+        text = clean_text(url)
         if not text.startswith("http") or text in seen:
             return
         seen.add(text)

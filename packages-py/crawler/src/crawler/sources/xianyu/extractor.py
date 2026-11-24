@@ -25,13 +25,14 @@ from crawler.extraction.config import (
     section,
 )
 from contracts.watch import SoldState
+from core.values import clean_text, optional_text
 
 logger = logging.getLogger("dingda.crawler.xianyu.extractor")
 
 EXTRACT = load_extract_json(__file__)
 _URLS = section(EXTRACT, "urls")
-ITEM_URL = str(_URLS.get("item") or "")
-SEARCH_URL = str(_URLS.get("search") or "")
+ITEM_URL = clean_text(_URLS.get("item"))
+SEARCH_URL = clean_text(_URLS.get("search"))
 _ITEM_ID = re.compile(str(_URLS.get("item_id_pattern") or r"[?&]id=(\d+)"))
 
 
@@ -74,15 +75,15 @@ def list_api_name() -> str:
 
 def cookie_domain() -> str:
     """浏览器 cookie 域名。"""
-    return str(_URLS.get("cookie_domain") or "")
+    return clean_text(_URLS.get("cookie_domain"))
 
 
 def list_api_meta() -> dict[str, Any]:
     """列表 mtop：version / spm / 分页 / 请求体键。"""
     cfg = _sec("list_api")
     return {
-        "version": str(cfg.get("version") or ""),
-        "spm_cnt": str(cfg.get("spm_cnt") or ""),
+        "version": clean_text(cfg.get("version")),
+        "spm_cnt": clean_text(cfg.get("spm_cnt")),
         "page_size": int(cfg["page_size"]) if isinstance(cfg.get("page_size"), int) else 0,
         "max_pages": int(cfg["max_pages"]) if isinstance(cfg.get("max_pages"), int) else 0,
         "request_keys": cfg.get("request_keys") if isinstance(cfg.get("request_keys"), dict) else {},
@@ -96,10 +97,10 @@ def detail_api_meta() -> dict[str, Any]:
     """详情 mtop：api / version / spm / data key。"""
     cfg = _sec("detail_api")
     return {
-        "api": str(cfg.get("api") or ""),
-        "version": str(cfg.get("version") or ""),
-        "spm_cnt": str(cfg.get("spm_cnt") or ""),
-        "data_item_id_key": str(cfg.get("data_item_id_key") or ""),
+        "api": clean_text(cfg.get("api")),
+        "version": clean_text(cfg.get("version")),
+        "spm_cnt": clean_text(cfg.get("spm_cnt")),
+        "data_item_id_key": clean_text(cfg.get("data_item_id_key")),
     }
 
 
@@ -108,12 +109,12 @@ def comment_api_meta() -> dict[str, Any]:
     cfg = _sec("comment_api")
     keys = cfg.get("request_keys") if isinstance(cfg.get("request_keys"), dict) else {}
     return {
-        "api": str(cfg.get("api") or ""),
-        "version": str(cfg.get("version") or ""),
+        "api": clean_text(cfg.get("api")),
+        "version": clean_text(cfg.get("version")),
         "page_size": int(cfg["page_size"]) if isinstance(cfg.get("page_size"), int) else 0,
         "request_keys": keys,
         "first_page": int(cfg["first_page"]) if isinstance(cfg.get("first_page"), int) else 1,
-        "anonymous_author": str(cfg.get("anonymous_author") or ""),
+        "anonymous_author": clean_text(cfg.get("anonymous_author")),
     }
 
 
@@ -137,7 +138,7 @@ def sold_state_from_status(status: str) -> str:
     关键词表在 extract.json ``sold_state``；未命中一律 ``unknown``，
     并保留原文在 ``CrawlItem.raw['status']``，便于看真实文案后补关键词。
     """
-    text = (status or "").strip()
+    text = clean_text(status)
     if not text:
         return SoldState.UNKNOWN
     cfg = _sec("sold_state")
@@ -514,13 +515,13 @@ DETAIL_DOM_JS = r"""
 
 def item_id_from_url(url: str) -> str:
     """从商品 URL 抽出 item_id。"""
-    match = _ITEM_ID.search(url or "")
+    match = _ITEM_ID.search(clean_text(url))
     return match.group(1) if match else ""
 
 
 def _abs_image_url(url: Any) -> str:
     """协议相对地址补 https；空/data URI 丢弃。"""
-    text = str(url or "").strip()
+    text = clean_text(url)
     if not text or text.startswith("data:"):
         return ""
     if text.startswith("//"):
@@ -562,8 +563,8 @@ def items_from_payload(payload: dict[str, Any]) -> list[CrawlItem]:
     for index, row in enumerate(raw_items):
         if not isinstance(row, dict):
             continue
-        url = str(row.get("url") or "")
-        title = str(row.get("title") or "")
+        url = clean_text(row.get("url"))
+        title = clean_text(row.get("title"))
         item_id = item_id_from_url(url)
         if not item_id or not title:
             continue
@@ -572,7 +573,7 @@ def items_from_payload(payload: dict[str, Any]) -> list[CrawlItem]:
                 item_id=item_id,
                 title=title,
                 url=url,
-                price=str(row.get("price") or "") or None,
+                price=optional_text(row.get("price")),
                 raw={
                     "rank": index + 1,
                     "original_price": row.get("original_price"),
@@ -595,7 +596,7 @@ def items_from_mtop_search(raw: dict[str, Any], *, limit: int) -> list[CrawlItem
     rows = dig_first(raw, path_list(list_api, "rows"))
     if not isinstance(rows, list):
         return []
-    param = str(_URLS.get("item_id_param") or "")
+    param = clean_text(_URLS.get("item_id_param"))
 
     items: list[CrawlItem] = []
     for index, row in enumerate(rows):
@@ -687,12 +688,12 @@ def _format_mtop_price(direct: Any, part_keys: list[str] | None = None) -> str |
             if isinstance(row, dict):
                 part = ""
                 for key in keys:
-                    part = str(row.get(key) or "").strip()
+                    part = clean_text(row.get(key))
                     if part:
                         break
                 parts.append(part)
             else:
-                parts.append(str(row or "").strip())
+                parts.append(clean_text(row))
         joined = "".join(p for p in parts if p)
         if joined:
             return joined if joined.startswith("¥") else f"¥{joined}"
@@ -708,7 +709,7 @@ def comments_from_mtop(raw: dict[str, Any]) -> list[dict[str, str | None]]:
         return []
 
     card_keys = path_list(cfg, "card_keys")
-    anonymous = str(cfg.get("anonymous_author") or "")
+    anonymous = clean_text(cfg.get("anonymous_author"))
     out: list[dict[str, str | None]] = []
     for row in rows:
         if not isinstance(row, dict):
@@ -751,13 +752,13 @@ def _first_reply_text(card: dict[str, Any], fields: dict[str, Any]) -> str | Non
 def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
     """页内 mtop 抽取结果 → CrawlItem。"""
     resolved_id = str(payload.get("item_id") or item_id)
-    title = str(payload.get("title") or "")
+    title = clean_text(payload.get("title"))
     price = payload.get("price") or ""
-    want = str(payload.get("want_count") or "").strip()
-    desc = str(payload.get("description") or payload.get("desc") or "").strip() or None
-    location = str(payload.get("location") or "").strip() or None
-    param = str(_URLS.get("item_id_param") or "")
-    status = str(payload.get("status") or "").strip()
+    want = clean_text(payload.get("want_count"))
+    desc = clean_text(payload.get("description") or payload.get("desc")) or None
+    location = clean_text(payload.get("location")) or None
+    param = clean_text(_URLS.get("item_id_param"))
+    status = clean_text(payload.get("status"))
     return CrawlItem(
         item_id=resolved_id,
         title=title,
@@ -768,8 +769,8 @@ def item_from_view(payload: dict[str, Any], item_id: str) -> CrawlItem:
             "status": status,
             "sold_state": sold_state_from_status(status),
             "want_count": want or None,
-            "browse_count": str(payload.get("browse_count") or "").strip() or None,
-            "collect_count": str(payload.get("collect_count") or "").strip() or None,
+            "browse_count": clean_text(payload.get("browse_count")) or None,
+            "collect_count": clean_text(payload.get("collect_count")) or None,
             "image_url": _first_image_url(payload.get("image_urls"), payload.get("image_url")),
             "desc": desc,
             "location": location,
@@ -811,7 +812,7 @@ def item_from_mtop_detail(raw: dict[str, Any], item_id: str) -> CrawlItem:
     location = dig_str(seller_do, path_list(fields, "location")) or None
     browse = dig_first(item_do, path_list(fields, "browse_count"))
     collect = dig_first(item_do, path_list(fields, "collect_count"))
-    param = str(_URLS.get("item_id_param") or "")
+    param = clean_text(_URLS.get("item_id_param"))
     return CrawlItem(
         item_id=resolved_id,
         title=title,

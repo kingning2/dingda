@@ -18,11 +18,13 @@ import time
 from typing import Any
 
 from channels.ali1688.ak import extract_ak_keys
+from core.values import as_dict, clean_text
 
 logger = logging.getLogger("dingda.channel.ali1688.login")
 
 CLAWHUB_URL = "https://clawhub.1688.com/"
 _LOGIN_IFRAME_ID = "alibaba-login-box"
+_LOGIN_URL_MARKERS = ("login.taobao.com", "login.1688.com", "passport")
 _AK_PATTERN = re.compile(r"[A-Za-z0-9_\-=]{40,}")
 
 
@@ -66,7 +68,7 @@ def _wait_login_iframe(page: Any, *, timeout_ms: int) -> None:
               return {ok:true, w:r.width, h:r.height};
             }"""
         )
-        if isinstance(info, dict) and info.get("ok"):
+        if as_dict(info).get("ok"):
             logger.info(
                 "登录 iframe 已可见 size=%sx%s",
                 info.get("w"),
@@ -90,7 +92,7 @@ def find_login_frame(page: Any) -> Any | None:
     for frame in page.frames:
         url = (frame.url or "").lower()
         name = (getattr(frame, "name", None) or "").lower()
-        if "login.taobao.com" in url or "login.1688.com" in url or "passport" in url:
+        if any(marker in url for marker in _LOGIN_URL_MARKERS):
             return frame
         if name == _LOGIN_IFRAME_ID:
             return frame
@@ -197,7 +199,7 @@ def _qr_from_frame_dom(frame: Any) -> str | None:
         return None
 
     if info.get("kind") == "src":
-        src = str(info.get("src") or "").strip()
+        src = clean_text(info.get("src"))
         if src.startswith("data:image"):
             _, _, payload = src.partition(",")
             payload = payload.strip()

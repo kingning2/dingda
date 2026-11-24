@@ -12,6 +12,7 @@ from fastapi import APIRouter
 
 from contracts.agent import AgentWorkListResponse, AgentWorkSummaryView
 from infrastructure.db import agent_works as works_repo
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.api.agent")
 
@@ -30,8 +31,8 @@ def list_agent_works(limit: int = 40) -> AgentWorkListResponse:
                 work_id=row.work_id,
                 title=row.title or row.work_id,
                 updated_at=row.updated_at,
-                status_label=str(status.get("label") or "").strip() or None,
-                status_state=str(status.get("state") or "").strip() or None,
+                status_label=clean_text(status.get("label")) or None,
+                status_state=clean_text(status.get("state")) or None,
             )
         )
     logger.info("agent works listed count=%s", len(items))

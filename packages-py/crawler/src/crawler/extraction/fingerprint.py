@@ -16,6 +16,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Any
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.fingerprint")
 
@@ -89,8 +90,8 @@ def _score(fp: dict[str, Any], node: dict[str, Any]) -> int:
     for frag in frags:
         if frag and frag in classes:
             score += 3
-    fp_text = str(fp.get("text") or "").strip()
-    node_text = str(node.get("text") or "").strip()
+    fp_text = clean_text(fp.get("text"))
+    node_text = clean_text(node.get("text"))
     if fp_text and node_text and (fp_text in node_text or node_text in fp_text):
         score += 2
     return score

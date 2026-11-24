@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 import os
 from typing import Any
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.agent.compress")
 
@@ -70,7 +71,7 @@ def compress_messages(
 
 def compress_text(text: str, *, model: str | None = None) -> str:
     """压缩大段纯文本（Skill 注入块等）；失败或关闭时原样返回。"""
-    body = (text or "").strip()
+    body = clean_text(text)
     if not body or not headroom_enabled():
         return text
     compressed = compress_messages([{"role": "system", "content": body}], model=model)

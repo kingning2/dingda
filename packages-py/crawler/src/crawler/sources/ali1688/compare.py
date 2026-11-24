@@ -24,6 +24,7 @@ from crawler.core.types import CrawlContext, CrawlItem
 from crawler.sources.ali1688.crawler import Ali1688Crawler
 from crawler.sources.ali1688.link import resolve_image_from_link
 from core.errors import AppError
+from core.values import clean_text, optional_text
 
 logger = logging.getLogger("dingda.crawler.ali1688.compare")
 
@@ -75,12 +76,12 @@ async def compare_products(
     """图或链接找同款，多轮扩展后选出比价代表款。"""
     source_item = source_item or {}
     source_image = (
-        (image or "").strip()
-        or _clean_text(source_item.get("image_url") or source_item.get("image"))
+        clean_text(image)
+        or clean_text(source_item.get("image_url") or source_item.get("image"))
     )
     source_url = (
-        (url or "").strip()
-        or _clean_text(source_item.get("url") or source_item.get("product_url"))
+        clean_text(url)
+        or clean_text(source_item.get("url") or source_item.get("product_url"))
         or None
     )
     if not source_image and source_url:
@@ -93,13 +94,13 @@ async def compare_products(
         )
 
     source = CompareSource(
-        item_id=_clean_text(source_item.get("item_id") or source_item.get("id")),
-        title=_clean_text(source_item.get("title")),
-        platform=_clean_text(source_item.get("platform")) or _platform_from_url(source_url),
+        item_id=clean_text(source_item.get("item_id") or source_item.get("id")),
+        title=clean_text(source_item.get("title")),
+        platform=clean_text(source_item.get("platform")) or _platform_from_url(source_url),
         url=source_url or "",
         image_url=source_image,
-        price=_optional_text(source_item.get("price")),
-        seller=_optional_text(
+        price=optional_text(source_item.get("price")),
+        seller=optional_text(
             source_item.get("seller") or source_item.get("seller_nick")
         ),
     )
@@ -131,7 +132,7 @@ async def compare_products(
                 tags=tags,
                 ic_tags=ic_tags,
             )
-            round_query = (query or "").strip()
+            round_query = clean_text(query)
         else:
             seed = _best_similarity(candidates.values())
             if not seed or not seed.title.strip():
@@ -297,8 +298,8 @@ def _best_similarity(products: Any) -> CrawlItem | None:
 
 def _query_from_title(title: str, extra_query: str | None = None) -> str:
     """用高相似标题扩词；用户补充词优先追加。"""
-    base = _clean_text(title)[:40]
-    extra = _clean_text(extra_query)
+    base = clean_text(title)[:40]
+    extra = clean_text(extra_query)
     if extra and extra not in base:
         return f"{base} {extra}".strip()
     return base
@@ -353,15 +354,6 @@ def _as_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
-
-
-def _clean_text(value: Any) -> str:
-    return str(value or "").strip()
-
-
-def _optional_text(value: Any) -> str | None:
-    text = _clean_text(value)
-    return text or None
 
 
 def _platform_from_url(url: str | None) -> str:

@@ -7,6 +7,7 @@ from typing import Any
 
 from contracts.browser_port import Page
 from crawler.sources.xianyu import extractor as ex
+from core.values import clean_text
 
 
 class XianyuDetailRepairAdapter:
@@ -62,10 +63,10 @@ class XianyuDetailRepairAdapter:
     def payload_ok(self, payload: dict[str, Any]) -> bool:
         if payload.get("error"):
             return False
-        title = str(payload.get("title") or "").strip()
+        title = clean_text(payload.get("title"))
         return bool(title) and (
-            bool(str(payload.get("price") or "").strip())
-            or bool(str(payload.get("description") or "").strip())
+            bool(clean_text(payload.get("price")))
+            or bool(clean_text(payload.get("description")))
         )
 
     def is_risk_payload(self, payload: dict[str, Any]) -> bool:

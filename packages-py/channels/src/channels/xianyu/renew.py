@@ -31,6 +31,7 @@ from channels.xianyu.slider import (
 from channels.xianyu.login import HOME_URL
 from channels.xianyu.cookies import to_browser_cookies
 from channels.xianyu.risk import page_is_punish
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.channel.xianyu.renew")
 
@@ -73,7 +74,7 @@ def _is_renew_domain(domain: str) -> bool:
 def _dedupe_cookies(cookies: list[dict[str, Any]]) -> list[dict[str, Any]]:
     best: dict[str, dict[str, Any]] = {}
     for cookie in cookies:
-        name = str(cookie.get("name") or "").strip()
+        name = clean_text(cookie.get("name"))
         if not name or not cookie.get("value"):
             continue
         domain = str(cookie.get("domain") or "")
@@ -113,11 +114,11 @@ def _merge_prepared_with_browser(
 ) -> dict[str, str]:
     merged: dict[str, dict[str, Any]] = {}
     for cookie in prepared:
-        name = str(cookie.get("name") or "").strip()
+        name = clean_text(cookie.get("name"))
         if name and cookie.get("value"):
             merged[name] = cookie
     for cookie in _filter_export_cookies(browser_cookies):
-        name = str(cookie.get("name") or "").strip()
+        name = clean_text(cookie.get("name"))
         if name and cookie.get("value"):
             merged[name] = cookie
     return {name: str(item["value"]) for name, item in merged.items() if item.get("value")}
@@ -276,7 +277,7 @@ async def _recover_async(
     on_status: Callable[[str], None] | None = None,
 ) -> tuple[bool, str, dict[str, str] | None]:
     prepared = _cookies_as_export_dicts(cookies)
-    punish = (punish_url or "").strip()
+    punish = clean_text(punish_url)
     target = punish or HOME_URL
 
     if auto_slider_enabled():

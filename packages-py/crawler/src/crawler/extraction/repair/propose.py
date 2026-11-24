@@ -22,6 +22,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from crawler.extraction.repair.types import DomPatch, DomSnapshot
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.repair.propose")
 
@@ -57,10 +58,10 @@ def _llm_timeout() -> httpx.Timeout:
 
 def _repair_model() -> str:
     """修复模型：``DINGDA_DOM_REPAIR_MODEL`` 优先，退回 ``DINGDA_LLM_MODEL``。"""
-    model = (os.getenv("DINGDA_DOM_REPAIR_MODEL", "") or "").strip()
+    model = clean_text(os.getenv("DINGDA_DOM_REPAIR_MODEL", ""))
     if model:
         return model
-    return (os.getenv("DINGDA_LLM_MODEL", "") or "").strip() or "gpt-4o"
+    return clean_text(os.getenv("DINGDA_LLM_MODEL", "")) or "gpt-4o"
 
 
 def _system_prompt() -> str:
@@ -186,7 +187,7 @@ def _match_object(text: str, start: int) -> str | None:
 
 def _extract_json(text: str) -> dict[str, Any] | None:
     """从 LLM 输出里取 JSON 对象；答案通常在推理之后，故倒序尝试。"""
-    blob = (text or "").strip()
+    blob = clean_text(text)
     if not blob:
         return None
     try:

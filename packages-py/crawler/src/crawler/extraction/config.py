@@ -18,6 +18,7 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Any
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.extraction")
 
@@ -111,7 +112,7 @@ def dig(obj: Any, path: str) -> Any:
 
     数字段按 list 下标取（如 ``info_list.0.url``）。
     """
-    text = (path or "").strip()
+    text = clean_text(path)
     if text in ("", "."):
         return obj
     cur: Any = obj

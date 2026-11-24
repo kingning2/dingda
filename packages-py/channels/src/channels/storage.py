@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.channels.storage")
 
@@ -39,7 +40,7 @@ def read_local_storage(page: Any) -> dict[str, str]:
         return {}
     out: dict[str, str] = {}
     for key, value in raw.items():
-        name = str(key or "").strip()
+        name = clean_text(key)
         if not name:
             continue
         out[name] = "" if value is None else str(value)

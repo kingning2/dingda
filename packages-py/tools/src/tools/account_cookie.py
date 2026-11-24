@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from contracts.browser_port import Cookie
 from channels.cookie_header import parse_cookie_header
 from infrastructure.db import accounts as account_repo
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.crawler.account_cookie")
 
@@ -41,7 +42,7 @@ class BrowserSession:
 
 def resolve_crawl_cookie(platform: str, cookie: str | None = None) -> str | None:
     """优先用入参 cookie；否则取平台已连接账号，再退到仅登录有效的账号。"""
-    explicit = (cookie or "").strip()
+    explicit = clean_text(cookie)
     if explicit:
         return explicit
 
@@ -61,7 +62,7 @@ def resolve_browser_session(platform: str) -> BrowserSession | None:
         logger.info("browser session missing platform=%s (no usable account)", plat)
         return None
 
-    cookie = (row.cookie or "").strip()
+    cookie = clean_text(row.cookie)
     if not cookie:
         logger.info("browser session missing cookie platform=%s account=%s", plat, row.account_id)
         return None
@@ -90,7 +91,7 @@ def _pick_account_row(platform: str):
     for row in rows:
         if not row.connected or not row.auth_valid:
             continue
-        if (row.cookie or "").strip():
+        if clean_text(row.cookie):
             logger.info(
                 "crawl cookie from connected account platform=%s account=%s",
                 platform,
@@ -101,7 +102,7 @@ def _pick_account_row(platform: str):
     for row in rows:
         if not row.auth_valid:
             continue
-        if (row.cookie or "").strip():
+        if clean_text(row.cookie):
             logger.info(
                 "crawl cookie from auth_valid account platform=%s account=%s connected=%s",
                 platform,
@@ -130,7 +131,7 @@ def _cookies_for_platform(platform: str, cookie_header: str) -> list[Cookie]:
 
 def _parse_local_storage(raw: str | None) -> dict[str, str]:
     """账号库 local_storage JSON → dict。"""
-    text = (raw or "").strip() or "{}"
+    text = clean_text(raw) or "{}"
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
@@ -140,7 +141,7 @@ def _parse_local_storage(raw: str | None) -> dict[str, str]:
         return {}
     out: dict[str, str] = {}
     for key, value in data.items():
-        name = str(key or "").strip()
+        name = clean_text(key)
         if not name:
             continue
         out[name] = "" if value is None else str(value)

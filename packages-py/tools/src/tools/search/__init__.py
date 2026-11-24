@@ -34,6 +34,7 @@ from tools.product import ProductComment
 from tools.recovery import with_crawl_recovery
 
 from tools.spec import ToolSpec
+from core.values import clean_text
 logger = logging.getLogger("dingda.tools.search")
 
 _AUTH_CODES = frozenset({"account.session_expired", "account.cookie_required"})
@@ -120,10 +121,10 @@ class SearchInput(BaseModel):
         """浏览器平台必须有 query；ali1688 至少有 query/image/url 之一。"""
         platform = self.platform.strip().lower()
         if platform == "ali1688":
-            if not (self.query or "").strip() and not self.image and not self.url:
+            if not clean_text(self.query) and not self.image and not self.url:
                 raise ValueError("ali1688 搜索需要 query、image 或 url 之一")
             return self
-        if not (self.query or "").strip():
+        if not clean_text(self.query):
             raise ValueError("搜索需要 query")
         return self
 
@@ -187,7 +188,7 @@ async def run_search(
         - True / False：强制开/关（True 时仍需回调）
     """
     task_id = f"mcp-{uuid.uuid4().hex[:12]}"
-    query = (inp.query or "").strip()
+    query = clean_text(inp.query)
     platform = inp.platform.strip().lower()
     cookie = resolve_crawl_cookie(platform, inp.cookie)
     push_live = (
@@ -427,7 +428,7 @@ async def _enrich_xiaohongshu_details(
             )
             continue
 
-        token = str(raw.get("xsec_token") or "").strip()
+        token = clean_text(raw.get("xsec_token"))
         detail_meta = {
             **live_meta,
             META_LIVE_ENABLED: False,
@@ -520,15 +521,15 @@ def _comments_from_raw(value: Any) -> list[ProductComment]:
     for row in value:
         if not isinstance(row, dict):
             continue
-        content = str(row.get("content") or "").strip()
+        content = clean_text(row.get("content"))
         if not content:
             continue
         out.append(
             ProductComment(
-                author=str(row.get("author") or "").strip() or "匿名",
+                author=clean_text(row.get("author")) or "匿名",
                 content=content,
-                time=str(row.get("time") or "").strip() or None,
-                reply=str(row.get("reply") or "").strip() or None,
+                time=clean_text(row.get("time")) or None,
+                reply=clean_text(row.get("reply")) or None,
             )
         )
     return out

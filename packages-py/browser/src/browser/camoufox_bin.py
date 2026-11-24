@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.browser.camoufox_bin")
 
@@ -44,7 +45,7 @@ def _find_exe(root: Path) -> Path | None:
 def resolve_camoufox_exe(*, download: bool = True) -> Path | None:
     """解析可用的 camoufox 可执行文件（download 参数保留兼容，忽略联网）。"""
     _ = download
-    env_exe = (os.getenv("DINGDA_CAMOUFOX_EXE") or "").strip()
+    env_exe = clean_text(os.getenv("DINGDA_CAMOUFOX_EXE"))
     if env_exe:
         path = Path(env_exe)
         if path.is_file():
@@ -52,7 +53,7 @@ def resolve_camoufox_exe(*, download: bool = True) -> Path | None:
             return path
         logger.warning("DINGDA_CAMOUFOX_EXE 无效 path=%s", env_exe)
 
-    bundled = (os.getenv("DINGDA_CAMOUFOX_DIR") or "").strip()
+    bundled = clean_text(os.getenv("DINGDA_CAMOUFOX_DIR"))
     if bundled:
         found = _find_exe(Path(bundled))
         if found:

@@ -11,6 +11,7 @@ from typing import Any
 from browser.context import cookies_to_playwright
 from channels.profile_fields import extract_profile_from_tree
 from channels.xiaohongshu.cookies import to_browser_cookies
+from core.values import as_dict, clean_text
 
 logger = logging.getLogger("dingda.channel.xiaohongshu.login")
 
@@ -162,8 +163,8 @@ def profile_from_user_me(payload: dict[str, Any]) -> dict[str, Any]:
     if data.get("guest") is True:
         logger.info("user/me 仍是 guest keys=%s", sorted(data.keys()))
         return {}
-    nickname = str(data.get("nickname") or "").strip() or None
-    avatar_url = str(data.get("images") or data.get("imageb") or "").strip() or None
+    nickname = clean_text(data.get("nickname")) or None
+    avatar_url = clean_text(data.get("images") or data.get("imageb")) or None
     user_id = _pick_user_id(data)
     logger.info(
         "user/me 字段 nickname=%s user_id=%s images=%s guest=%s keys=%s",
@@ -285,7 +286,7 @@ def _profile_from_response(response: Any) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
     data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
-    if isinstance(data, dict) and data.get("guest") is True:
+    if as_dict(data).get("guest") is True:
         logger.info("忽略 guest 资料响应 keys=%s", sorted(data.keys()))
         return {}
     profile = profile_from_user_me(payload)
@@ -565,8 +566,8 @@ def build_account_profile(
         login_info = {}
     settled = settled_profile or {}
 
-    nickname = str(settled.get("nickname") or "").strip() or None
-    avatar_url = str(settled.get("avatar_url") or "").strip() or None
+    nickname = clean_text(settled.get("nickname")) or None
+    avatar_url = clean_text(settled.get("avatar_url")) or None
     if not nickname or not avatar_url:
         tree_name, tree_avatar = extract_profile_from_tree(
             {"login_info": login_info, **completion_data}
@@ -594,7 +595,7 @@ def build_account_profile(
             "小红书缺少稳定 user_id，暂用 web_session 前缀 account_id=%s",
             account_id,
         )
-    display_name = (nickname or "").strip() or "新小红书账号"
+    display_name = clean_text(nickname) or "新小红书账号"
     return account_id, display_name, avatar_url
 
 def extract_qr_credentials(payload: dict[str, Any]) -> tuple[str, str]:

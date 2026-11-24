@@ -7,6 +7,7 @@ from typing import Any
 
 from contracts.browser_port import Page
 from crawler.sources.xiaohongshu import extractor as ex
+from core.values import clean_text
 
 
 class XiaohongshuDetailRepairAdapter:
@@ -49,7 +50,7 @@ class XiaohongshuDetailRepairAdapter:
         note = payload.get("note")
         if not isinstance(note, dict):
             return False
-        return bool(str(note.get("title") or "").strip())
+        return bool(clean_text(note.get("title")))
 
     def is_risk_payload(self, payload: dict[str, Any]) -> bool:
         return bool(payload.get("blocked"))

@@ -24,6 +24,7 @@ import os
 from pathlib import Path
 
 from infrastructure.db.session import data_dir
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.channel.ali1688.ak")
 
@@ -92,7 +93,7 @@ def ak_configured() -> bool:
 
 def probe(stored_raw: str) -> bool:
     """该账户的 AK 是否仍存在（与本地/环境变量中的 AK 对得上）。"""
-    stored = (stored_raw or "").strip()
+    stored = clean_text(stored_raw)
     current = raw_ak()
     if not stored or not current:
         return False
@@ -124,7 +125,7 @@ def clear_ak() -> None:
 
 def clear_account_ak(stored_raw: str) -> None:
     """删除该账户对应的本地 AK 文件（环境变量不改）。"""
-    stored = (stored_raw or "").strip()
+    stored = clean_text(stored_raw)
     file_raw = _raw_from_file()
     if not file_raw:
         return

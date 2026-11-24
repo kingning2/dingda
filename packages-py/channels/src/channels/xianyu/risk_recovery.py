@@ -33,6 +33,7 @@ from channels.xianyu.slider import (
     try_solve_slider,
 )
 from core.errors import AppError, risk_control_error
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.channel.xianyu.risk_recovery")
 
@@ -82,7 +83,7 @@ class XianyuRiskRecovery:
         url: str | None = None,
     ) -> None:
         """自动滑块；失败则有头窗口等人，并把新 Cookie 写回原 page。"""
-        target = (url or getattr(page, "url", "") or "").strip()
+        target = clean_text(url or getattr(page, "url", ""))
         logger.info("risk recover start where=%s url=%s", where, target[:120])
 
         raw = getattr(page, "raw", None)

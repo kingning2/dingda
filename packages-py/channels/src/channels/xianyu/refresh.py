@@ -21,6 +21,7 @@ from channels.xianyu.cookies import cookie_map, to_browser_cookies
 from channels.xianyu.mtop import call as mtop_call
 from channels.xianyu.session import Session
 from core.errors import AppError
+from core.values import clean_text
 
 logger = logging.getLogger("dingda.channel.xianyu.refresh")
 
@@ -176,8 +177,8 @@ def _profile_from_nav(raw: dict[str, Any]) -> XianyuNavProfile:
     base = module.get("base") if isinstance(module, dict) else None
     if not isinstance(base, dict):
         return XianyuNavProfile()
-    name = str(base.get("displayName") or "").strip() or None
-    avatar = str(base.get("avatar") or "").strip() or None
+    name = clean_text(base.get("displayName")) or None
+    avatar = clean_text(base.get("avatar")) or None
     return XianyuNavProfile(
         display_name=name,
         avatar_url=avatar,

@@ -33,6 +33,7 @@ from core.errors import AppError
 from tools.recovery import with_crawl_recovery
 
 from tools.spec import ToolSpec
+from core.values import clean_text
 logger = logging.getLogger("dingda.tools.product")
 
 TOOL_NAME = "product"
@@ -255,15 +256,15 @@ def _comments_from_raw(value: Any) -> list[ProductComment]:
     for row in value:
         if not isinstance(row, dict):
             continue
-        content = str(row.get("content") or "").strip()
+        content = clean_text(row.get("content"))
         if not content:
             continue
         out.append(
             ProductComment(
-                author=str(row.get("author") or "").strip() or "匿名",
+                author=clean_text(row.get("author")) or "匿名",
                 content=content,
-                time=str(row.get("time") or "").strip() or None,
-                reply=str(row.get("reply") or "").strip() or None,
+                time=clean_text(row.get("time")) or None,
+                reply=clean_text(row.get("reply")) or None,
             )
         )
     return out
